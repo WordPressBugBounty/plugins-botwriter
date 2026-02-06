@@ -1,0 +1,20 @@
+/**
+ * BotWriter Admin Menu Styles
+ * 
+ * Hides duplicate submenu entries for cleaner admin menu
+ * 
+ * @package BotWriter
+ */
+
+/* Hide duplicate submenu entries */
+#toplevel_page_botwriter_menu .wp-submenu a[href="admin.php?page=botwriter_menu"] {
+    display: none !important;
+}
+
+#toplevel_page_botwriter_menu .wp-submenu a[href="admin.php?page=botwriter_automatic_post_new"] {
+    display: none !important;
+}
+
+#toplevel_page_botwriter_menu .wp-submenu a[href="admin.php?page=botwriter_super_page"] {
+    display: none !important;
+}
