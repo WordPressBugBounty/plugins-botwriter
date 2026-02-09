@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+
+
 function botwriter_automatic_posts_page()
 {  
     // Verify user has permission
@@ -61,6 +63,7 @@ function botwriter_automatic_posts_page()
 
 
 function botwriter_form_page_handler(){
+    
     // Verify user has permission
     if (!current_user_can('manage_options')) {
         wp_die(esc_html__('You do not have permission to access this page.', 'botwriter'));
@@ -93,7 +96,9 @@ function botwriter_form_page_handler(){
 
         'website_name'              => '',                
         'domain_name'              => '',
+        'post_type'                => 'post',
         'category_id'              => '',
+        'taxonomy_data'            => '',
         'website_category_id'      => '',
         'website_category_name'      => '',
         'aigenerated_title'        => '',
@@ -149,7 +154,9 @@ function botwriter_form_page_handler(){
             'website_type'      => isset($_POST['website_type']) ? sanitize_text_field(wp_unslash($_POST['website_type'])) : '',
             'website_name'      => '',
             'domain_name'       => isset($_POST['domain_name']) ? sanitize_url(wp_unslash($_POST['domain_name'])) : '',
+            'post_type'         => isset($_POST['task_post_type']) ? sanitize_text_field(wp_unslash($_POST['task_post_type'])) : 'post',
             'category_id'       => isset($_POST['category_id']) ? array_map('intval', wp_unslash($_POST['category_id'])) : array(),
+            'taxonomy_data'     => isset($_POST['taxonomy_data']) ? sanitize_text_field(wp_unslash($_POST['taxonomy_data'])) : '',
             'website_category_id'=> isset($_POST['website_category_id']) ? array_map('intval', wp_unslash($_POST['website_category_id'])) : array(),
             'website_category_name'=> isset($_POST['website_category_name']) ? sanitize_text_field(wp_unslash($_POST['website_category_name'])) : '',
             'aigenerated_title'  => '',
@@ -180,9 +187,24 @@ function botwriter_form_page_handler(){
             'template_id'       => isset($_POST['template_id']) && !empty($_POST['template_id']) ? intval(wp_unslash($_POST['template_id'])) : null
 
         );
-        //Convert category_id array to text
-        $category_ids = implode(",", $item['category_id']);
-        $item['category_id'] = $category_ids;
+        
+        // Process taxonomy terms and build taxonomy_data JSON
+        $taxonomy_terms = isset($_POST['taxonomy_terms']) ? wp_unslash($_POST['taxonomy_terms']) : array();
+        $taxonomy_data = array();
+        foreach ($taxonomy_terms as $taxonomy_name => $term_ids) {
+            $taxonomy_name = sanitize_key($taxonomy_name);
+            $taxonomy_data[$taxonomy_name] = array_map('intval', (array)$term_ids);
+        }
+        $item['taxonomy_data'] = wp_json_encode($taxonomy_data);
+        
+        // For backward compatibility, extract category IDs if 'category' taxonomy is present
+        if (isset($taxonomy_data['category'])) {
+            $item['category_id'] = implode(',', $taxonomy_data['category']);
+        } else {
+            // Convert legacy category_id array to text
+            $category_ids = implode(",", $item['category_id']);
+            $item['category_id'] = $category_ids;
+        }
 
         //Convert website_category_id to text    
         $website_category_ids = implode(",", $item['website_category_id']);
@@ -190,8 +212,16 @@ function botwriter_form_page_handler(){
 
          $item['website_category_id'] = $website_category_ids;
           
+          botwriter_log('Task validation starting', [
+              'task_name' => $item['task_name'],
+              'post_type' => $item['post_type'] ?? 'not set',
+              'category_id' => $item['category_id'],
+              'taxonomy_data' => $item['taxonomy_data'] ?? 'not set',
+          ]);
 
           $item_valid = botwriter_validate_website($item);
+          botwriter_log('Task validation result', ['valid' => $item_valid === true ? 'yes' : $item_valid]);
+          
           if ($item_valid === true) {
 
         
@@ -200,13 +230,11 @@ function botwriter_form_page_handler(){
           // Do not insert primary key 'id' explicitly to allow AUTO_INCREMENT/SQLite AUTOINCREMENT to work
           $insert_data = $item;
           unset($insert_data['id']);
+          botwriter_log('Task INSERT data', ['fields' => array_keys($insert_data), 'post_type' => $insert_data['post_type'] ?? 'not set', 'taxonomy_data' => $insert_data['taxonomy_data'] ?? 'not set']);
           $result = $wpdb->insert($table_name, $insert_data);
-                  // mostrar el error de la base de datos
-                  //echo "console.log('" . $wpdb->last_error . "')";
-
-
-                  $item['id'] = $wpdb->insert_id;
-                  if ($result) {
+          
+          $item['id'] = $wpdb->insert_id;
+          if ($result) {
                       botwriter_log('Task created', [
                         'task_id' => $item['id'],
                         'website_type' => $item['website_type'],
@@ -222,8 +250,9 @@ function botwriter_form_page_handler(){
                   } else {
                       botwriter_log('Task insert failed', [
                         'error' => $wpdb->last_error,
+                        'last_query' => $wpdb->last_query,
                       ], 'error');
-                      $notice = __('There was an error while saving item', 'botwriter');
+                      $notice = __('There was an error while saving item', 'botwriter') . ': ' . $wpdb->last_error;
                   }
         } else {
           // Do not try to update the primary key value itself
@@ -556,44 +585,94 @@ function botwriter_post_form_meta_box_handler($item)
             <input type="number" name="times_per_day" min="1" value="<?php echo esc_attr($times_per_day); ?>" required>
     </div>
     <br>
+    
     <div class="col-md-6">
-      <label for="category_id" class="form-label">Categories:</label>
-      <select id="category_id" name="category_id[]" required multiple class="form-select">
+      <label for="task_post_type" class="form-label"><?php esc_html_e('Post Type:', 'botwriter'); ?></label>
+      <select id="task_post_type" name="task_post_type" class="form-select">
         <?php
-        //Get selected categories
-        $selected_categories = $item['category_id'];
-        //Turn categories to array list
-        $selected_categories = explode(',', $selected_categories);
-        // Remove empty values
-        $selected_categories = array_filter($selected_categories);
-
-        $categories = get_categories(array(
-          'orderby' => 'count',
-          'order' => 'DESC',
-          'hide_empty' => false
-        ));
-
-        // If no categories selected, select the one with most posts (first in the list since ordered by count DESC)
-        if (empty($selected_categories) && !empty($categories)) {
-            $selected_categories = array($categories[0]->term_id);
-        }
-
-        // Re-sort by name for display
-        usort($categories, function($a, $b) {
-            return strcasecmp($a->name, $b->name);
-        });
-
-        foreach ($categories as $category) {
-
-          if (isset($selected_categories) && in_array($category->term_id, $selected_categories)) {
-            echo '<option value="' . esc_attr($category->term_id) . '" selected>' . esc_html($category->name) . '</option>';
-            continue;
-          }
-          echo '<option value="' . esc_attr($category->term_id) . '">' . esc_html($category->name) . '</option>';
+        $post_types = get_post_types(array('public' => true), 'objects');
+        $current_post_type = isset($item['post_type']) ? $item['post_type'] : 'post';
+        foreach ($post_types as $pt) {
+            // Skip attachment
+            if ($pt->name === 'attachment') {
+                continue;
+            }
+            $selected = ($current_post_type === $pt->name) ? 'selected' : '';
+            echo '<option value="' . esc_attr($pt->name) . '" ' . esc_attr($selected) . '>' . esc_html($pt->label) . '</option>';
         }
         ?>
       </select>
-      <p class="form-text">Select one or more categories where the posts will be published.</p>  
+      <p class="form-text"><?php esc_html_e('Select the type of content to create.', 'botwriter'); ?></p>
+    </div>
+    
+    <div class="col-md-12" id="taxonomy-container">
+      <?php
+      // Get saved taxonomy data
+      $saved_taxonomy_data = array();
+      if (isset($item['taxonomy_data']) && !empty($item['taxonomy_data'])) {
+          $saved_taxonomy_data = json_decode($item['taxonomy_data'], true);
+          if (!is_array($saved_taxonomy_data)) {
+              $saved_taxonomy_data = array();
+          }
+      }
+      
+      // Fallback: if no taxonomy_data but has category_id, use it for 'category' taxonomy
+      if (empty($saved_taxonomy_data) && isset($item['category_id']) && !empty($item['category_id'])) {
+          $saved_taxonomy_data['category'] = array_filter(explode(',', $item['category_id']));
+      }
+      
+      // Get taxonomies for the current post type
+      // Skip tag taxonomies since AI generates tags automatically
+      $skip_taxonomies = array('post_tag', 'product_tag');
+      $taxonomies = get_object_taxonomies($current_post_type, 'objects');
+      foreach ($taxonomies as $taxonomy) {
+          if (!$taxonomy->public) {
+              continue;
+          }
+          
+          // Skip tag taxonomies (AI generates tags)
+          if (in_array($taxonomy->name, $skip_taxonomies, true)) {
+              continue;
+          }
+          
+          $terms = get_terms(array(
+              'taxonomy' => $taxonomy->name,
+              'hide_empty' => false,
+              'orderby' => 'name',
+              'order' => 'ASC',
+          ));
+          
+          if (is_wp_error($terms) || empty($terms)) {
+              continue;
+          }
+          
+          $selected_terms = isset($saved_taxonomy_data[$taxonomy->name]) ? (array)$saved_taxonomy_data[$taxonomy->name] : array();
+          
+          // For 'category' taxonomy, if nothing selected, select first one
+          if ($taxonomy->name === 'category' && empty($selected_terms) && !empty($terms)) {
+              $selected_terms = array($terms[0]->term_id);
+          }
+          ?>
+          <div class="taxonomy-field" data-taxonomy="<?php echo esc_attr($taxonomy->name); ?>">
+            <label for="taxonomy_<?php echo esc_attr($taxonomy->name); ?>" class="form-label">
+              <?php echo esc_html($taxonomy->label); ?>:
+            </label>
+            <select id="taxonomy_<?php echo esc_attr($taxonomy->name); ?>" 
+                    name="taxonomy_terms[<?php echo esc_attr($taxonomy->name); ?>][]" 
+                    class="form-select taxonomy-select" 
+                    multiple>
+              <?php
+              foreach ($terms as $term) {
+                  $is_selected = in_array($term->term_id, array_map('intval', $selected_terms)) ? 'selected' : '';
+                  echo '<option value="' . esc_attr($term->term_id) . '" ' . esc_attr($is_selected) . '>' . esc_html($term->name) . '</option>';
+              }
+              ?>
+            </select>
+          </div>
+          <?php
+      }
+      ?>
+      <input type="hidden" name="taxonomy_data" id="taxonomy_data" value="<?php echo esc_attr(isset($item['taxonomy_data']) ? $item['taxonomy_data'] : ''); ?>">
     </div>
 
     <?php

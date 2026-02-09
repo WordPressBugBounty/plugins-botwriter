@@ -3,7 +3,7 @@
 Plugin Name: BotWriter
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 2.0.7
+Version: 2.1.0
 Author: estebandezafra
 Requires PHP: 7.0
 License:           GPL v2 or later
@@ -18,8 +18,10 @@ if (!defined('ABSPATH')) {
 } 
 
 
+
+
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '2.0.7');
+    define('BOTWRITER_VERSION', '2.1.0');
 }
 
 // Plugin directory path (with trailing slash)
@@ -138,7 +140,7 @@ function botwriter_enqueue_scripts() {
     wp_enqueue_script( 'bootstrapjs' );
 
     
-    wp_register_script( 'botwriter_bootstrap_bundle',$my_plugin_dir.'/assets/js/bootstrap.bundle.min.js' , array('jquery','botwriter_jquery_ui'), false, true );
+    wp_register_script( 'botwriter_bootstrap_bundle',$my_plugin_dir.'/assets/js/bootstrap.bundle.min.js' , array('jquery'), false, true );
     wp_enqueue_script( 'botwriter_bootstrap_bundle' );
 
 
@@ -170,6 +172,10 @@ function botwriter_enqueue_scripts() {
     if ($slug==="botwriter_page_botwriter_automatic_post_new" || $slug === 'botwriter_page_botwriter_super_page' || $slug === 'botwriter_page_botwriter_write_now') {
         wp_register_script('botwriter_automatic_posts', $my_plugin_dir . 'assets/js/posts.js', array('jquery'), false, true);
         wp_enqueue_script('botwriter_automatic_posts');
+        wp_localize_script('botwriter_automatic_posts', 'botwriter_posts_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'taxonomies_nonce' => wp_create_nonce('botwriter_taxonomies_nonce'),
+        ));
     }
     
 
@@ -288,8 +294,6 @@ function botwriter_enqueue_styles(){
 
 add_action('admin_enqueue_scripts', 'botwriter_enqueue_styles');
 
-
-
   
 // Hook to add the admin menu
 add_action('admin_menu', function() {
@@ -349,7 +353,7 @@ add_action('admin_menu', function() {
     
 
     // Register the edit/detail page under the parent, then hide it programmatically to avoid null parent deprecations
-    add_submenu_page('botwriter_menu',                                 
+    $hook = add_submenu_page('botwriter_menu',                                 
         __('Add New Task', 'botwriter'),
         __('Add New Task', 'botwriter'),
         'manage_options',                
@@ -810,7 +814,9 @@ if (!class_exists('WP_List_Table')) {
                 `website_type` VARCHAR(255),
                 `task_type` VARCHAR(50) DEFAULT NULL,
                 `domain_name` VARCHAR(255) NOT NULL,
+                `post_type` VARCHAR(50) DEFAULT 'post',
                 `category_id` VARCHAR(255),
+                `taxonomy_data` TEXT,
                 `website_category_id` VARCHAR(255),
                 `website_category_name` VARCHAR(255),
                 `aigenerated_title` TEXT NOT NULL,
@@ -857,6 +863,18 @@ if (!class_exists('WP_List_Table')) {
             if (!$col) {
                 $wpdb->query("ALTER TABLE $tasks_table_name ADD COLUMN `template_id` INT(11) DEFAULT NULL");
             }
+            
+            // Ensure new column post_type exists for legacy installs
+            $col = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM $tasks_table_name LIKE %s", 'post_type'));
+            if (!$col) {
+                $wpdb->query("ALTER TABLE $tasks_table_name ADD COLUMN `post_type` VARCHAR(50) DEFAULT 'post' AFTER `domain_name`");
+            }
+            
+            // Ensure new column taxonomy_data exists for legacy installs
+            $col = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM $tasks_table_name LIKE %s", 'taxonomy_data'));
+            if (!$col) {
+                $wpdb->query("ALTER TABLE $tasks_table_name ADD COLUMN `taxonomy_data` TEXT AFTER `category_id`");
+            }
         }
 
         // Table botwriter_logs
@@ -873,6 +891,7 @@ if (!class_exists('WP_List_Table')) {
                 `intentosfase1` int(11) NOT NULL DEFAULT 0,
                 `intentosfase2` int(11) NOT NULL DEFAULT 0,                
                 `task_status` VARCHAR(255),
+                `task_type` VARCHAR(50) DEFAULT NULL,
                 `error` TEXT,
                 `link_post_original` TEXT,
                 `id_post_published` int(11) default 0,                
@@ -887,7 +906,9 @@ if (!class_exists('WP_List_Table')) {
                 `website_name` VARCHAR(255),
                 `website_type` VARCHAR(255),
                 `domain_name` VARCHAR(255) NOT NULL,
+                `post_type` VARCHAR(50) DEFAULT 'post',
                 `category_id` VARCHAR(255),
+                `taxonomy_data` TEXT,
                 `website_category_id` VARCHAR(255),
                 `aigenerated_title` TEXT NOT NULL,
                 `aigenerated_content` TEXT NOT NULL,
@@ -927,6 +948,24 @@ if (!class_exists('WP_List_Table')) {
             $col = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM $logs_table_name LIKE %s", 'template_id'));
             if (!$col) {
                 $wpdb->query("ALTER TABLE $logs_table_name ADD COLUMN `template_id` INT(11) DEFAULT NULL");
+            }
+            
+            // Ensure new column task_type exists in logs table for legacy installs (for writenow exclusion)
+            $col = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM $logs_table_name LIKE %s", 'task_type'));
+            if (!$col) {
+                $wpdb->query("ALTER TABLE $logs_table_name ADD COLUMN `task_type` VARCHAR(50) DEFAULT NULL AFTER `task_status`");
+            }
+            
+            // Ensure new column post_type exists in logs table for legacy installs
+            $col = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM $logs_table_name LIKE %s", 'post_type'));
+            if (!$col) {
+                $wpdb->query("ALTER TABLE $logs_table_name ADD COLUMN `post_type` VARCHAR(50) DEFAULT 'post' AFTER `domain_name`");
+            }
+            
+            // Ensure new column taxonomy_data exists in logs table for legacy installs
+            $col = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM $logs_table_name LIKE %s", 'taxonomy_data'));
+            if (!$col) {
+                $wpdb->query("ALTER TABLE $logs_table_name ADD COLUMN `taxonomy_data` TEXT AFTER `category_id`");
             }
         }
 
@@ -1615,8 +1654,16 @@ function botwriter_validate_website($item,$is_manual = false)
 
     
     if (empty($item['task_name'])) $messages[] = __('Task Name is required', 'botwriter');
-    if (empty($item['category_id'])) $messages[] = __('Category is required', 'botwriter');
     if (empty($item['website_type'])) $messages[] = __('Website Type is required', 'botwriter');
+    
+    // Category/taxonomy validation: require category_id for 'post' type, or taxonomy_data for other types
+    $post_type = isset($item['post_type']) ? $item['post_type'] : 'post';
+    if ($post_type === 'post') {
+        if (empty($item['category_id']) && empty($item['taxonomy_data'])) {
+            $messages[] = __('Category is required', 'botwriter');
+        }
+    }
+    // For other post types, taxonomy selection is optional
 
 
     if($item['website_type'] == 'wordpress'){
@@ -1639,8 +1686,6 @@ function botwriter_validate_website($item,$is_manual = false)
             $messages[] = __('News keyword is required', 'botwriter');
         }
     }
-    
-    if (empty($item['category_id'])) $messages[] = __('Category is required', 'botwriter');
 
     if (empty($messages)) return true;
     return implode('<br />', $messages);
@@ -1929,7 +1974,8 @@ function botwriter_execute_events_pass2(){
 
 
     //IN ERROR, depending on the attempt, it is resent later or marked as finished
-    $events1 = (array) $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table_name_logs} WHERE task_status=%s AND intentosfase1 < %d", 'error', 8));
+    // Exclude 'writenow' tasks from automatic retries - they should only be retried manually
+    $events1 = (array) $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table_name_logs} WHERE task_status=%s AND intentosfase1 < %d AND (task_type IS NULL OR task_type <> 'writenow')", 'error', 8));
     botwriter_log('Phase 1 retries fetched', ['error_count' => count($events1)]);
     $intento_tiempo = array(0=>0,1=>0,2=>5,3=>10,4=>30,5=>60,6=>120,7=>240,8=>480); // minutos    
     foreach ($events1 as $event) {
@@ -1957,18 +2003,42 @@ function botwriter_execute_events_pass2(){
 
 
 function botwriter_generate_post($data){
-    // Create a new post    
-    $post_id = wp_insert_post(array(
+    // Determine post type (default to 'post' for backward compatibility)
+    $post_type = isset($data['post_type']) && !empty($data['post_type']) ? $data['post_type'] : 'post';
+    
+    // Build post data array
+    $post_data = array(
         'post_title' => $data['aigenerated_title'],
         'post_content' => $data['aigenerated_content'],
         'post_status' => $data['post_status'],
         'post_author' => $data['author_selection'],
-        'post_category' => explode(',', $data['category_id']),        
-    ));
+        'post_type' => $post_type,
+    );
+    
+    // For 'post' type with category_id (backward compatibility)
+    if ($post_type === 'post' && !empty($data['category_id'])) {
+        $post_data['post_category'] = array_map('intval', explode(',', $data['category_id']));
+    }
+    
+    // Create the post
+    $post_id = wp_insert_post($post_data);
     
     if ($post_id === 0) {
         //error_log('Error creating post');
         return false;
+    }
+    
+    // Assign taxonomy terms from taxonomy_data (if present)
+    if (!empty($data['taxonomy_data'])) {
+        $taxonomy_data = json_decode($data['taxonomy_data'], true);
+        if (is_array($taxonomy_data)) {
+            foreach ($taxonomy_data as $taxonomy_name => $term_ids) {
+                if (!empty($term_ids) && taxonomy_exists($taxonomy_name)) {
+                    $term_ids = array_map('intval', (array)$term_ids);
+                    wp_set_object_terms($post_id, $term_ids, $taxonomy_name);
+                }
+            }
+        }
     }
 
     // Add tags to the post (unless disabled in settings)
@@ -1978,10 +2048,20 @@ function botwriter_generate_post($data){
         wp_set_post_tags($post_id, $tags);
     }
 
+    // SEO Slug Translation: translate post slug, tag slugs, and get image slug
+    $translated_image_slug = '';
+    if (function_exists('botwriter_apply_translated_slugs')) {
+        $translated_image_slug = botwriter_apply_translated_slugs(
+            $post_id, 
+            $data['aigenerated_title'], 
+            $data['aigenerated_tags'] ?? ''
+        );
+    }
+
     // Add image to the post only if image URL is provided and images are not disabled for this task
     $task_disable_images = isset($data['disable_ai_images']) ? intval($data['disable_ai_images']) : 0;
     if (!empty($data['aigenerated_image']) && $task_disable_images !== 1) {
-        botwriter_attach_image_to_post($post_id, $data['aigenerated_image'], $data['aigenerated_title']);
+        botwriter_attach_image_to_post($post_id, $data['aigenerated_image'], $data['aigenerated_title'], $translated_image_slug);
     } else {
         $skip_reason = '';
         if (empty($data['aigenerated_image'])) {
@@ -2667,9 +2747,70 @@ function botwriter_delete_log_ajax() {
     wp_die();
 }
 
+// AJAX handler for getting taxonomies and terms for a post type
+add_action('wp_ajax_botwriter_get_taxonomies', 'botwriter_get_taxonomies_ajax');
+function botwriter_get_taxonomies_ajax() {
+    // Verify user has permission
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Permission denied']);
+    }
+    
+    // Verify nonce
+    check_ajax_referer('botwriter_taxonomies_nonce', 'nonce');
+    
+    $post_type = isset($_POST['post_type']) ? sanitize_text_field(wp_unslash($_POST['post_type'])) : 'post';
+    
+    // Get taxonomies for this post type
+    $taxonomies = get_object_taxonomies($post_type, 'objects');
+    
+    $result = array();
+    // Skip tag taxonomies since AI generates tags automatically
+    $skip_taxonomies = array('post_tag', 'product_tag');
+    
+    foreach ($taxonomies as $taxonomy) {
+        // Skip non-public taxonomies
+        if (!$taxonomy->public) {
+            continue;
+        }
+        
+        // Skip tag taxonomies (AI generates tags)
+        if (in_array($taxonomy->name, $skip_taxonomies, true)) {
+            continue;
+        }
+        
+        // Get terms for this taxonomy
+        $terms = get_terms(array(
+            'taxonomy' => $taxonomy->name,
+            'hide_empty' => false,
+            'orderby' => 'name',
+            'order' => 'ASC',
+        ));
+        
+        $terms_data = array();
+        if (!is_wp_error($terms)) {
+            foreach ($terms as $term) {
+                $terms_data[] = array(
+                    'id' => $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                    'parent' => $term->parent,
+                );
+            }
+        }
+        
+        $result[] = array(
+            'name' => $taxonomy->name,
+            'label' => $taxonomy->label,
+            'hierarchical' => $taxonomy->hierarchical,
+            'terms' => $terms_data,
+        );
+    }
+    
+    wp_send_json_success($result);
+}
 
 
-function botwriter_attach_image_to_post($post_id, $image_url, $post_title) {
+function botwriter_attach_image_to_post($post_id, $image_url, $post_title, $translated_image_slug = '') {
         if (!$image_url || !$post_id || empty(trim($image_url))) {
             botwriter_log('Image attachment skipped', [
                 'post_id' => $post_id,
@@ -2683,7 +2824,12 @@ function botwriter_attach_image_to_post($post_id, $image_url, $post_title) {
             //$image_data = file_get_contents($image_url);
             $image_data = wp_remote_retrieve_body(wp_remote_get($image_url));
             $upload_dir = wp_upload_dir();
-            $base_name = sanitize_file_name(remove_accents($post_title));
+            // Use translated image slug if available, otherwise fall back to title
+            if (!empty($translated_image_slug)) {
+                $base_name = sanitize_file_name($translated_image_slug);
+            } else {
+                $base_name = sanitize_file_name(remove_accents($post_title));
+            }
             if (empty($base_name)) {
                 $base_name = 'botwriter-post-' . $post_id;
             }
@@ -3155,6 +3301,5 @@ function botwriter_eliminar_super1_y_logs0() {
     }
     wp_die();
 }
-
 
 ?>

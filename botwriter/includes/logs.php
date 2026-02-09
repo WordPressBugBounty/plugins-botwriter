@@ -235,7 +235,9 @@ class botwriter_Logs_Table extends WP_List_Table {
                 if ($item["error"]!='') {
                     $txt.= '<br>' . esc_html($item["error"]) . "<br>";
                 }
-                if ($intentosfase1 < 8) {  // these are the ones it has taken                    
+                // writenow tasks don't retry, so don't show retry info
+                $task_type = isset($item['task_type']) ? $item['task_type'] : '';
+                if ($intentosfase1 < 8 && $task_type !== 'writenow') {  // these are the ones it has taken                    
                     $tiempo = $intento_tiempo[$intentosfase1+1]; // next attempt
                     $created_at = strtotime($item["created_at"]);
                     $tiempo_siguiente_intento = $created_at + $tiempo*60;            
@@ -359,6 +361,7 @@ function botwriter_logs_register($data, $id = null) {
         'id_task_server',
         'post_status',
         'task_name',
+        'task_type',
         'writer',
         'narration',
         'custom_style',
@@ -371,7 +374,9 @@ function botwriter_logs_register($data, $id = null) {
         'website_name',
         'website_type',
         'domain_name',
+        'post_type',
         'category_id',
+        'taxonomy_data',
         'website_category_id',
         'aigenerated_title',
         'aigenerated_content',

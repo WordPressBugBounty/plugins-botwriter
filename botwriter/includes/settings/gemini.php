@@ -63,6 +63,8 @@ function botwriter_render_gemini_settings($settings, $is_active) {
     $info = botwriter_get_gemini_image_info();
     $models = botwriter_get_gemini_image_models();
     $current_model = $settings['botwriter_gemini_image_model'] ?? 'gemini-2.5-flash-image';
+    $google_api_key = $settings['botwriter_google_api_key'] ?? '';
+    $has_key = !empty($google_api_key);
     ?>
     <div class="provider-config-section">
         <div class="provider-config-card">
@@ -70,16 +72,28 @@ function botwriter_render_gemini_settings($settings, $is_active) {
             
             <div class="info-notice">
                 <span class="dashicons dashicons-info"></span>
-                <p><strong><?php esc_html_e('Gemini Images uses your Google AI API key.', 'botwriter'); ?></strong> 
-                <?php esc_html_e('Make sure you have configured your Google API key in the Text AI tab.', 'botwriter'); ?></p>
+                <p><strong><?php esc_html_e('Gemini Images uses Google AI API.', 'botwriter'); ?></strong> 
+                <?php esc_html_e('This is the same API key used in Text AI → Google Gemini. You can configure it from either tab.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row">
+                <label><?php esc_html_e('Google API Key:', 'botwriter'); ?></label>
+                <div class="api-key-wrapper">
+                    <input type="password" 
+                           name="botwriter_google_api_key" 
+                           class="form-control api-key-input" 
+                           value="<?php echo esc_attr(function_exists('botwriter_decrypt_api_key') ? botwriter_decrypt_api_key(get_option('botwriter_google_api_key')) : ''); ?>"
+                           placeholder="AIza..." />
+                    <button type="button" class="button toggle-api-key"><?php esc_html_e('Show', 'botwriter'); ?></button>
+                </div>
+                <p class="description"><?php esc_html_e('Get your API key from', 'botwriter'); ?> <a href="<?php echo esc_url($info['api_url']); ?>" target="_blank">Google AI Studio</a></p>
             </div>
 
             <div class="form-row">
                 <button type="button" class="button button-secondary test-api-key" data-provider="gemini">
-                    <span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('Test Google API Key', 'botwriter'); ?>
+                    <span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('Test API Key', 'botwriter'); ?>
                 </button>
                 <span class="test-api-result"></span>
-                <p class="description" style="margin-top: 8px;"><?php esc_html_e('Tests your Google API key configured in Text AI → Google Gemini', 'botwriter'); ?></p>
             </div>
 
             <div class="form-row">
@@ -97,7 +111,7 @@ function botwriter_render_gemini_settings($settings, $is_active) {
             <h4><span class="dashicons dashicons-info-outline"></span> <?php esc_html_e('How to Use Gemini Images', 'botwriter'); ?></h4>
             <ol class="setup-steps">
                 <li><?php esc_html_e('Get a free API key from', 'botwriter'); ?> <a href="<?php echo esc_url($info['api_url']); ?>" target="_blank"><?php esc_html_e('Google AI Studio', 'botwriter'); ?></a></li>
-                <li><?php esc_html_e('Configure your Google API key in the', 'botwriter'); ?> <strong><?php esc_html_e('Text AI → Google Gemini', 'botwriter'); ?></strong> <?php esc_html_e('tab', 'botwriter'); ?></li>
+                <li><?php esc_html_e('Enter your Google API key above (or in Text AI → Google Gemini)', 'botwriter'); ?></li>
                 <li><?php esc_html_e('Select Google Gemini as your image provider here', 'botwriter'); ?></li>
                 <li><?php esc_html_e('Choose your preferred model (2.5 Flash Image for free tier)', 'botwriter'); ?></li>
                 <li><?php esc_html_e('That\'s it! The same API key works for both text and images', 'botwriter'); ?></li>

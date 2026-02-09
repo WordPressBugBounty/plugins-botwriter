@@ -64,6 +64,8 @@ function botwriter_get_dalle_info() {
 function botwriter_render_dalle_settings($settings, $is_active) {
     $info = botwriter_get_dalle_info();
     $models = botwriter_get_dalle_models();
+    $openai_api_key = $settings['botwriter_openai_api_key'] ?? '';
+    $has_key = !empty($openai_api_key);
     ?>
     <div class="provider-config-section">
         <div class="provider-config-card">
@@ -71,16 +73,28 @@ function botwriter_render_dalle_settings($settings, $is_active) {
             
             <div class="info-notice">
                 <span class="dashicons dashicons-info"></span>
-                <p><strong><?php esc_html_e('DALL-E uses your OpenAI API key.', 'botwriter'); ?></strong> 
-                <?php esc_html_e('Make sure you have configured your OpenAI API key in the Text AI tab.', 'botwriter'); ?></p>
+                <p><strong><?php esc_html_e('DALL-E uses OpenAI API.', 'botwriter'); ?></strong> 
+                <?php esc_html_e('This is the same API key used in Text AI → OpenAI. You can configure it from either tab.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row">
+                <label><?php esc_html_e('OpenAI API Key:', 'botwriter'); ?></label>
+                <div class="api-key-wrapper">
+                    <input type="password" 
+                           name="botwriter_openai_api_key" 
+                           class="form-control api-key-input" 
+                           value="<?php echo esc_attr(function_exists('botwriter_decrypt_api_key') ? botwriter_decrypt_api_key(get_option('botwriter_openai_api_key')) : ''); ?>"
+                           placeholder="sk-..." />
+                    <button type="button" class="button toggle-api-key"><?php esc_html_e('Show', 'botwriter'); ?></button>
+                </div>
+                <p class="description"><?php esc_html_e('Get your API key from', 'botwriter'); ?> <a href="<?php echo esc_url($info['api_url']); ?>" target="_blank">platform.openai.com/api-keys</a></p>
             </div>
 
             <div class="form-row">
                 <button type="button" class="button button-secondary test-api-key" data-provider="dalle">
-                    <span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('Test OpenAI API Key', 'botwriter'); ?>
+                    <span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('Test API Key', 'botwriter'); ?>
                 </button>
                 <span class="test-api-result"></span>
-                <p class="description" style="margin-top: 8px;"><?php esc_html_e('Tests your OpenAI API key configured in Text AI → OpenAI', 'botwriter'); ?></p>
             </div>
 
             <div class="form-row">
@@ -96,7 +110,7 @@ function botwriter_render_dalle_settings($settings, $is_active) {
         <div class="provider-info-card">
             <h4><span class="dashicons dashicons-info-outline"></span> <?php esc_html_e('How to Use DALL-E', 'botwriter'); ?></h4>
             <ol class="setup-steps">
-                <li><?php esc_html_e('Configure your OpenAI API key in the', 'botwriter'); ?> <strong><?php esc_html_e('Text AI → OpenAI', 'botwriter'); ?></strong> <?php esc_html_e('tab', 'botwriter'); ?></li>
+                <li><?php esc_html_e('Enter your OpenAI API key above (or in Text AI → OpenAI)', 'botwriter'); ?></li>
                 <li><?php esc_html_e('Select DALL-E as your image provider here', 'botwriter'); ?></li>
                 <li><?php esc_html_e('Choose your preferred model and quality settings', 'botwriter'); ?></li>
                 <li><?php esc_html_e('That\'s it! The same API key works for both text and images', 'botwriter'); ?></li>

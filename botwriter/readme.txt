@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: gpt, openai, AI, claude, gemini
 Requires at least: 4.0
 Tested up to: 6.9
-Stable tag: 2.0.7
+Stable tag: 2.1.0
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -231,6 +231,25 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 2.1.0 =
+🌐 **SEO Slug Translation**
+* NEW: Automatically translate post URL slugs, tag slugs, and image filenames to your target language
+* NEW: "SEO Translation" settings tab with master enable/disable toggle
+* NEW: Choose what to translate independently — post slugs, tag slugs, image filenames
+* NEW: 28 target languages supported (English, Spanish, French, German, Chinese, Japanese, Arabic, and more)
+
+= 2.0.9 =
+📝 **Post Type & Taxonomy Selector**
+* NEW: Choose any post type for your tasks — Posts, Pages, Products (WooCommerce) or any custom post type
+* NEW: Dynamic taxonomy selector — automatically loads available taxonomies and terms for the selected post type
+* Tasks now store full taxonomy data for precise content categorization
+* Backward compatible with existing category-based tasks
+
+🔧 **Bug Fixes**
+* Fixed form submission conflict with WordPress core admin routing
+* Fixed JavaScript error in category pre-selection for new tasks
+* Minor stability improvements
+
 = 2.0.7 =
 🎨 **Image Style Presets**
 * NEW: Choose from 12 artistic styles for AI-generated images

@@ -909,7 +909,10 @@ ol.example li.placeholder:before {
 .bw-mt-12 { margin-top: 12px; }
 .bw-mt-15 { margin-top: 15px; }
 .bw-mb-8 { margin-bottom: 8px; }
+.bw-mb-10 { margin-bottom: 10px; }
+.bw-mb-15 { margin-bottom: 15px; }
 .bw-my-8 { margin-top: 8px; margin-bottom: 8px; }
+.bw-select-wide { min-width: 250px; }
 .bw-mr-5 { margin-right: 5px; }
 .bw-ml-10 { margin-left: 10px; }
 .bw-ml-20 { margin-left: 20px; }
@@ -1246,4 +1249,32 @@ ol.example li.placeholder:before {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Taxonomy and Post Type Selection */
+#taxonomy-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+#taxonomy-container .taxonomy-field {
+  flex: 1 1 calc(50% - 15px);
+  min-width: 250px;
+}
+
+#taxonomy-container .taxonomy-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+#taxonomy-container .taxonomy-select {
+  width: 100%;
+  min-height: 100px;
+}
+
+#post_type {
+  max-width: 300px;
 }

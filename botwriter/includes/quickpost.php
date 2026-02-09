@@ -36,7 +36,9 @@ function botwriter_quick_create() {
         'website_type'      => isset($_POST['website_type']) ? sanitize_text_field(wp_unslash($_POST['website_type'])) : 'ai',
     'website_name'      => '',
     'domain_name'       => isset($_POST['domain_name']) ? esc_url_raw(wp_unslash($_POST['domain_name'])) : '',
+        'post_type'         => isset($_POST['task_post_type']) ? sanitize_text_field(wp_unslash($_POST['task_post_type'])) : 'post',
         'category_id'       => isset($_POST['category_id']) ? array_map('intval', (array) wp_unslash($_POST['category_id'])) : array(),
+        'taxonomy_data'     => isset($_POST['taxonomy_data']) ? sanitize_text_field(wp_unslash($_POST['taxonomy_data'])) : '',
         'website_category_id'=> isset($_POST['website_category_id']) ? array_map('intval', (array) wp_unslash($_POST['website_category_id'])) : array(),
         'website_category_name'=> isset($_POST['website_category_name']) ? sanitize_text_field(wp_unslash($_POST['website_category_name'])) : '',
         'aigenerated_title'  => '',
@@ -66,6 +68,22 @@ function botwriter_quick_create() {
     // Convert arrays to comma strings
     $item['category_id'] = implode(',', $item['category_id']);
     $item['website_category_id'] = implode(',', $item['website_category_id']);
+    
+    // Process taxonomy terms and build taxonomy_data JSON if not already provided
+    if (empty($item['taxonomy_data']) && isset($_POST['taxonomy_terms'])) {
+        $taxonomy_terms = wp_unslash($_POST['taxonomy_terms']);
+        $taxonomy_data = array();
+        foreach ($taxonomy_terms as $taxonomy_name => $term_ids) {
+            $taxonomy_name = sanitize_key($taxonomy_name);
+            $taxonomy_data[$taxonomy_name] = array_map('intval', (array)$term_ids);
+        }
+        $item['taxonomy_data'] = wp_json_encode($taxonomy_data);
+        
+        // For backward compatibility, extract category IDs if 'category' taxonomy is present
+        if (isset($taxonomy_data['category'])) {
+            $item['category_id'] = implode(',', $taxonomy_data['category']);
+        }
+    }
 
     // Validate
     if (!function_exists('botwriter_validate_website')) { wp_send_json_error('validator-missing'); }
@@ -268,7 +286,9 @@ function botwriter_quick_post_page_handler() {
         'website_type' => 'ai',
         'website_name' => '',
         'domain_name' => '',
+        'post_type' => 'post',
         'category_id' => '',
+        'taxonomy_data' => '',
         'website_category_id' => '',
         'website_category_name' => '',
         'aigenerated_title' => '',

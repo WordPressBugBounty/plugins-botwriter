@@ -364,6 +364,15 @@ class BotWriter_Direct_Task_Runner {
             wp_set_post_tags($post_id, $tags);
         }
         
+        // SEO Slug Translation: translate post slug, tag slugs, and get image slug
+        if (function_exists('botwriter_apply_translated_slugs')) {
+            botwriter_apply_translated_slugs(
+                $post_id,
+                $text_result['title'],
+                $text_result['tags'] ?? ''
+            );
+        }
+        
         // Add meta to track this as AI-generated
         update_post_meta($post_id, '_botwriter_generated', 1);
         update_post_meta($post_id, '_botwriter_provider', 'selfhosted');

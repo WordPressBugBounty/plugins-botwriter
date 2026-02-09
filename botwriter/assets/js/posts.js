@@ -115,20 +115,28 @@ function toggleCustomStyleInput() {
 }
 
 function preSelectedOptions() {
-  let select = document.getElementById("website_category_id");
-  let selectedOptions = [...select.selectedOptions];
+  try {
+    let select = document.getElementById("website_category_id");
+    if (!select) {
+      return;
+    }
+    let selectedOptions = [...select.selectedOptions];
 
-  let values = selectedOptions.map(option => option.value);
-  let texts = selectedOptions.map(option => option.text);
+    let values = selectedOptions.map(option => option.value);
+    let texts = selectedOptions.map(option => option.text);
 
-  website_category_name = selectedOptions.map(option => option.text);
-  document.querySelector('input[name="website_category_name"]').value = website_category_name.join(',');    
-
+    website_category_name = selectedOptions.map(option => option.text);
+    let nameInput = document.querySelector('input[name="website_category_name"]');
+    if (nameInput) {
+      nameInput.value = website_category_name.join(',');
+    }
+  } catch (e) {
+    // silently ignore
+  }
 }
 
 
 jQuery(window).on("load", function() {
-  console.log("Start to process");
   jQuery("#loading").hide();
 });
 
@@ -157,4 +165,115 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+  
+  // Post Type change handler - load taxonomies dynamically
+  var postTypeSelect = document.getElementById('task_post_type');
+  var taxonomyContainer = document.getElementById('taxonomy-container');
+  
+  if (postTypeSelect && taxonomyContainer) {
+    postTypeSelect.addEventListener('change', function() {
+      loadTaxonomiesForPostType(this.value);
+    });
+  }
 });
+
+/**
+ * Load taxonomies and terms for a given post type via AJAX
+ */
+function loadTaxonomiesForPostType(postType) {
+  var taxonomyContainer = document.getElementById('taxonomy-container');
+  if (!taxonomyContainer || typeof botwriter_posts_ajax === 'undefined') {
+    return;
+  }
+  
+  // Show loading state
+  taxonomyContainer.innerHTML = '<p>Loading taxonomies...</p>';
+  
+  jQuery.ajax({
+    url: botwriter_posts_ajax.ajax_url,
+    type: 'POST',
+    data: {
+      action: 'botwriter_get_taxonomies',
+      nonce: botwriter_posts_ajax.taxonomies_nonce,
+      post_type: postType
+    },
+    success: function(response) {
+      if (response.success && response.data) {
+        renderTaxonomies(response.data);
+      } else {
+        taxonomyContainer.innerHTML = '<p>No taxonomies available for this post type.</p>';
+      }
+    },
+    error: function() {
+      taxonomyContainer.innerHTML = '<p>Error loading taxonomies.</p>';
+    }
+  });
+}
+
+/**
+ * Render taxonomy selectors in the container
+ */
+function renderTaxonomies(taxonomies) {
+  var taxonomyContainer = document.getElementById('taxonomy-container');
+  if (!taxonomyContainer) return;
+  
+  var html = '';
+  
+  if (taxonomies.length === 0) {
+    html = '<p>No taxonomies available for this post type.</p>';
+  } else {
+    taxonomies.forEach(function(taxonomy) {
+      if (taxonomy.terms.length === 0) return;
+      
+      html += '<div class="taxonomy-field" data-taxonomy="' + taxonomy.name + '">';
+      html += '<label for="taxonomy_' + taxonomy.name + '" class="form-label">' + taxonomy.label + ':</label>';
+      html += '<select id="taxonomy_' + taxonomy.name + '" name="taxonomy_terms[' + taxonomy.name + '][]" class="form-select taxonomy-select" multiple>';
+      
+      taxonomy.terms.forEach(function(term) {
+        html += '<option value="' + term.id + '">' + term.name + '</option>';
+      });
+      
+      html += '</select>';
+      html += '</div>';
+    });
+  }
+  
+  // Add hidden field for taxonomy_data
+  html += '<input type="hidden" name="taxonomy_data" id="taxonomy_data" value="">';
+  
+  taxonomyContainer.innerHTML = html;
+}
+
+/**
+ * Before form submit, build taxonomy_data JSON from selected terms
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  var form = document.getElementById('form') || document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      buildTaxonomyData();
+    });
+  }
+});
+
+function buildTaxonomyData() {
+  var taxonomyData = {};
+  var taxonomySelects = document.querySelectorAll('.taxonomy-select');
+  
+  taxonomySelects.forEach(function(select) {
+    var taxonomyName = select.closest('.taxonomy-field')?.getAttribute('data-taxonomy');
+    if (taxonomyName) {
+      var selectedValues = Array.from(select.selectedOptions).map(function(opt) {
+        return parseInt(opt.value, 10);
+      });
+      if (selectedValues.length > 0) {
+        taxonomyData[taxonomyName] = selectedValues;
+      }
+    }
+  });
+  
+  var taxonomyDataField = document.getElementById('taxonomy_data');
+  if (taxonomyDataField) {
+    taxonomyDataField.value = JSON.stringify(taxonomyData);
+  }
+}

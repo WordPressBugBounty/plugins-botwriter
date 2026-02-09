@@ -780,6 +780,12 @@ function botwriter_ajax_save_settings() {
         'botwriter_custom_image_type',
         'botwriter_custom_image_url',
         'botwriter_custom_image_model',
+        // SEO Translation fields
+        'botwriter_seo_translation_enabled',
+        'botwriter_seo_target_language',
+        'botwriter_seo_translate_title',
+        'botwriter_seo_translate_tags',
+        'botwriter_seo_translate_image',
     ];
 
     if (!in_array($field, $allowed_fields)) {
@@ -825,7 +831,9 @@ function botwriter_ajax_save_settings() {
         $value = sanitize_email($value);
     } elseif ($field === 'botwriter_paused_tasks') {
         $value = max(2, intval($value));
-    } elseif ($field === 'botwriter_cron_active' || $field === 'botwriter_tags_disabled') {
+    } elseif ($field === 'botwriter_cron_active' || $field === 'botwriter_tags_disabled'
+        || $field === 'botwriter_seo_translation_enabled' || $field === 'botwriter_seo_translate_title'
+        || $field === 'botwriter_seo_translate_tags' || $field === 'botwriter_seo_translate_image') {
         $value = ($value === '1' || $value === 'true' || $value === true) ? '1' : '0';
     } else {
         $value = sanitize_text_field($value);
@@ -950,6 +958,10 @@ function botwriter_settings_meta_box_handler() {
         <a href="#" class="main-tab" data-main-tab="general">
             <span class="dashicons dashicons-admin-generic"></span>
             <?php esc_html_e('General Settings', 'botwriter'); ?>
+        </a>
+        <a href="#" class="main-tab" data-main-tab="seo">
+            <span class="dashicons dashicons-translation"></span>
+            <?php esc_html_e('SEO Translation', 'botwriter'); ?>
         </a>
     </div>
 
@@ -1282,6 +1294,111 @@ function botwriter_settings_meta_box_handler() {
             <input id="botwriter_api_key" type="text" name="botwriter_api_key" value="<?php echo esc_attr(get_option('botwriter_api_key')); ?>">
         </div>
     </div>
+
+    <!-- Tab: SEO Translation -->
+    <div id="main-tab-seo" class="botwriter-main-tab-content">
+        <div class="general-settings-section">
+            <h4 class="section-title">
+                <span class="dashicons dashicons-translation"></span>
+                <?php esc_html_e('SEO Slug Translation', 'botwriter'); ?>
+            </h4>
+            <p class="description bw-mb-10">
+                <?php esc_html_e('By default, WordPress generates URL slugs from your post title in whatever language you write it. If you create content in Spanish, your slugs will be in Spanish (e.g. /receta-paella-valenciana/). The same applies to tag URLs and image filenames.', 'botwriter'); ?>
+            </p>
+            <p class="description bw-mb-10">
+                <?php esc_html_e('This feature is useful if you write content in a non-English language but want your URLs in English for international SEO — or vice versa. If you already write in your target slug language, you do not need this.', 'botwriter'); ?>
+            </p>
+            <p class="description bw-mb-15">
+                <?php esc_html_e('It uses a single, lightweight API call per post with your configured Text AI provider — cost is negligible (fractions of a cent per post).', 'botwriter'); ?>
+            </p>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_translation_enabled" value="1" <?php checked(get_option('botwriter_seo_translation_enabled', '0'), '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Enable SEO Slug Translation', 'botwriter'); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, slugs will be translated using your configured text AI provider before each post is published.', 'botwriter'); ?></p>
+            </div>
+        </div>
+
+        <div class="general-settings-section">
+            <h4 class="section-title">
+                <span class="dashicons dashicons-admin-settings"></span>
+                <?php esc_html_e('Target Language', 'botwriter'); ?>
+            </h4>
+
+            <div class="form-row">
+                <label for="botwriter_seo_target_language"><?php esc_html_e('Translate slugs to:', 'botwriter'); ?></label>
+                <?php
+                $seo_lang = get_option('botwriter_seo_target_language', 'en');
+                $seo_languages = array(
+                    'en' => 'English', 'es' => 'Spanish (Español)', 'fr' => 'French (Français)',
+                    'de' => 'German (Deutsch)', 'it' => 'Italian (Italiano)', 'pt' => 'Portuguese (Português)',
+                    'nl' => 'Dutch (Nederlands)', 'ru' => 'Russian (Русский)',
+                    'ja' => 'Japanese (日本語)', 'ko' => 'Korean (한국어)',
+                    'zh' => 'Chinese (中文)', 'ar' => 'Arabic (العربية)',
+                    'hi' => 'Hindi (हिन्दी)', 'tr' => 'Turkish (Türkçe)',
+                    'pl' => 'Polish (Polski)', 'sv' => 'Swedish (Svenska)',
+                    'da' => 'Danish (Dansk)', 'no' => 'Norwegian (Norsk)',
+                    'fi' => 'Finnish (Suomi)', 'cs' => 'Czech (Čeština)',
+                    'ro' => 'Romanian (Română)', 'hu' => 'Hungarian (Magyar)',
+                    'el' => 'Greek (Ελληνικά)', 'th' => 'Thai (ไทย)',
+                    'vi' => 'Vietnamese (Tiếng Việt)', 'id' => 'Indonesian (Bahasa)',
+                    'ms' => 'Malay (Melayu)', 'uk' => 'Ukrainian (Українська)',
+                );
+                ?>
+                <select name="botwriter_seo_target_language" id="botwriter_seo_target_language" class="botwriter-autosave bw-select-wide">
+                    <?php foreach ($seo_languages as $code => $name) : ?>
+                        <option value="<?php echo esc_attr($code); ?>" <?php selected($seo_lang, $code); ?>>
+                            <?php echo esc_html($name); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description"><?php esc_html_e('Select the language your URL slugs should be translated to. Typically, choose English for best global SEO.', 'botwriter'); ?></p>
+            </div>
+        </div>
+
+        <div class="general-settings-section">
+            <h4 class="section-title">
+                <span class="dashicons dashicons-list-view"></span>
+                <?php esc_html_e('What to Translate', 'botwriter'); ?>
+            </h4>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_translate_title" value="1" <?php checked(get_option('botwriter_seo_translate_title', '1'), '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Post Slug (URL)', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('Translate the post URL slug. Example: "receta-paella-valenciana" → "valencian-paella-recipe"', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_translate_tags" value="1" <?php checked(get_option('botwriter_seo_translate_tags', '1'), '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Tag Slugs', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('Translate tag URL slugs for consistent multi-language taxonomy URLs.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_translate_image" value="1" <?php checked(get_option('botwriter_seo_translate_image', '1'), '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Image Filenames', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('Use translated slugs for AI-generated image filenames, improving image SEO.', 'botwriter'); ?></p>
+            </div>
+        </div>
+
+        <div class="general-settings-section">
+            <h4 class="section-title">
+                <span class="dashicons dashicons-info-outline"></span>
+                <?php esc_html_e('How It Works', 'botwriter'); ?>
+            </h4>
+            <p class="description">
+                <?php esc_html_e('When a post is generated, BotWriter makes one extra API call using your configured Text AI provider to translate the title, tags, and image names into SEO-friendly slugs. This uses a fast, lightweight model (e.g. GPT-4o-mini, Gemini Flash, Haiku) with ~200 tokens — costing less than $0.001 per post. No additional API key is needed.', 'botwriter'); ?>
+            </p>
+        </div>
+    </div>
     <?php
 }
 
@@ -1303,6 +1420,23 @@ function botwriter_get_all_settings() {
         'botwriter_cron_active' => get_option('botwriter_cron_active', '1'),
         'botwriter_paused_tasks' => get_option('botwriter_paused_tasks', '2'),
         'botwriter_tags_disabled' => get_option('botwriter_tags_disabled', '0'),
+        // SEO Translation
+        'botwriter_seo_translation_enabled' => get_option('botwriter_seo_translation_enabled', '0'),
+        'botwriter_seo_target_language' => get_option('botwriter_seo_target_language', 'en'),
+        'botwriter_seo_translate_title' => get_option('botwriter_seo_translate_title', '1'),
+        'botwriter_seo_translate_tags' => get_option('botwriter_seo_translate_tags', '1'),
+        'botwriter_seo_translate_image' => get_option('botwriter_seo_translate_image', '1'),
+        // API keys (encrypted, just check if they exist for display purposes)
+        'botwriter_openai_api_key' => get_option('botwriter_openai_api_key', ''),
+        'botwriter_google_api_key' => get_option('botwriter_google_api_key', ''),
+        'botwriter_anthropic_api_key' => get_option('botwriter_anthropic_api_key', ''),
+        'botwriter_mistral_api_key' => get_option('botwriter_mistral_api_key', ''),
+        'botwriter_groq_api_key' => get_option('botwriter_groq_api_key', ''),
+        'botwriter_openrouter_api_key' => get_option('botwriter_openrouter_api_key', ''),
+        'botwriter_fal_api_key' => get_option('botwriter_fal_api_key', ''),
+        'botwriter_replicate_api_key' => get_option('botwriter_replicate_api_key', ''),
+        'botwriter_stability_api_key' => get_option('botwriter_stability_api_key', ''),
+        'botwriter_cloudflare_api_key' => get_option('botwriter_cloudflare_api_key', ''),
         // Text models
         'botwriter_openai_model' => get_option('botwriter_openai_model', 'gpt-5-mini'),
         'botwriter_anthropic_model' => get_option('botwriter_anthropic_model', 'claude-sonnet-4-5-20250929'),
