@@ -3,7 +3,7 @@
 Plugin Name: BotWriter
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 2.1.0
+Version: 2.2.0
 Author: estebandezafra
 Requires PHP: 7.0
 License:           GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '2.1.0');
+    define('BOTWRITER_VERSION', '2.2.0');
 }
 
 // Plugin directory path (with trailing slash)
@@ -111,6 +111,8 @@ require plugin_dir_path( __FILE__ ) . 'includes/announcements.php';
 require plugin_dir_path( __FILE__ ) . 'includes/super.php';
 require plugin_dir_path( __FILE__ ) . 'includes/addnew.php';
 require plugin_dir_path( __FILE__ ) . 'includes/quickpost.php';
+require plugin_dir_path( __FILE__ ) . 'includes/rewriter.php';
+require plugin_dir_path( __FILE__ ) . 'includes/siterewriter.php';
 require plugin_dir_path( __FILE__ ) . 'includes/templates.php';
 require plugin_dir_path( __FILE__ ) . 'includes/default-templates.php';
 
@@ -148,7 +150,9 @@ function botwriter_enqueue_scripts() {
     wp_enqueue_script( 'botwriter_botwriter' );
     wp_localize_script('botwriter_botwriter', 'botwriter_ajax', array(
         'ajax_url' => admin_url('admin-ajax.php'),
-        'nonce'    => wp_create_nonce('botwriter_super_nonce')            
+        'nonce'    => wp_create_nonce('botwriter_super_nonce'),
+        'rss_nonce' => wp_create_nonce('botwriter_check_rss_nonce'),
+        'wp_categories_nonce' => wp_create_nonce('botwriter_wp_categories_nonce'),
     ));
 
     wp_enqueue_script('botwriter-admin-ajax-status', $my_plugin_dir.'/assets/js/admin-ajax-status.js', ['jquery'], null, true);
@@ -169,7 +173,7 @@ function botwriter_enqueue_scripts() {
     }
 
 						
-    if ($slug==="botwriter_page_botwriter_automatic_post_new" || $slug === 'botwriter_page_botwriter_super_page' || $slug === 'botwriter_page_botwriter_write_now') {
+    if ($slug=="botwriter_page_botwriter_automatic_post_new" || $slug === 'botwriter_page_botwriter_super_page' || $slug === 'botwriter_page_botwriter_write_now' || $slug === 'botwriter_page_botwriter_rewriter_page' || $slug === 'botwriter_page_botwriter_siterewriter_page') {
         wp_register_script('botwriter_automatic_posts', $my_plugin_dir . 'assets/js/posts.js', array('jquery'), false, true);
         wp_enqueue_script('botwriter_automatic_posts');
         wp_localize_script('botwriter_automatic_posts', 'botwriter_posts_ajax', array(
@@ -198,6 +202,26 @@ function botwriter_enqueue_scripts() {
         wp_localize_script('botwriter_super', 'botwriter_super_ajax', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('botwriter_super_nonce')            
+        ));
+    }
+
+    if ($slug === 'botwriter_page_botwriter_rewriter_page') {
+        wp_register_script('botwriter_rewriter', $my_plugin_dir . 'assets/js/rewriter.js', array('jquery'), false, true);
+        wp_enqueue_script('botwriter_rewriter');
+        wp_localize_script('botwriter_rewriter', 'botwriter_rewriter_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('botwriter_rewriter_nonce'),
+            'logs_url' => admin_url('admin.php?page=botwriter_logs'),
+        ));
+    }
+
+    if ($slug === 'botwriter_page_botwriter_siterewriter_page') {
+        wp_register_script('botwriter_siterewriter', $my_plugin_dir . 'assets/js/siterewriter.js', array('jquery'), false, true);
+        wp_enqueue_script('botwriter_siterewriter');
+        wp_localize_script('botwriter_siterewriter', 'botwriter_siterewriter_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('botwriter_siterewriter_nonce'),
+            'logs_url' => admin_url('admin.php?page=botwriter_logs'),
         ));
     }
 
@@ -340,6 +364,22 @@ add_action('admin_menu', function() {
         'botwriter_automatic_posts_page'
     );
 
+    add_submenu_page('botwriter_menu',
+        __('Content Rewriter', 'botwriter'),
+        __('Content Rewriter', 'botwriter'),
+        'manage_options',
+        'botwriter_rewriter_page',
+        'botwriter_rewriter_page_handler'
+    );
+
+    add_submenu_page('botwriter_menu',
+        __('Site Rewriter', 'botwriter'),
+        __('Site Rewriter', 'botwriter'),
+        'manage_options',
+        'botwriter_siterewriter_page',
+        'botwriter_siterewriter_page_handler'
+    );
+
      // for development
      /*
     add_submenu_page('botwriter_menu', 
@@ -379,7 +419,9 @@ add_action('admin_menu', function() {
 
     add_submenu_page('botwriter_menu',
         __('Logs', 'botwriter'),
-        __('Logs', 'botwriter'),
+        get_option('botwriter_stopformany', false)
+            ? __('Logs', 'botwriter') . ' <span class="update-plugins count-1" style="background:#d63638;"><span class="plugin-count">!</span></span>'
+            : __('Logs', 'botwriter'),
         'manage_options',
         'botwriter_logs',
         'botwriter_logs_page_handler'
@@ -1170,7 +1212,8 @@ function botwriter_build_prompt_from_template($template_content, $data) {
         'gael' => 'Reflective, introspective and poetic',
     ];
     
-    // Prepare data for template
+    // Prepare data for template — NOTE: this is the legacy function,
+    // main flow uses botwriter_build_client_prompt() below.
     $writer = strtolower($data['writer'] ?? '');
     $writer_style = '';
     
@@ -1212,14 +1255,15 @@ function botwriter_build_prompt_from_template($template_content, $data) {
         $prompt = str_replace('{{' . $key . '}}', $value, $prompt);
     }
     
-    // Clean up lines that have empty placeholders (lines ending with : or empty after replacement)
+    // Clean up short instruction lines left empty after variable replacement
+    // e.g. "-Narrative style: " or "-Topic: " when the value is empty
+    // Never remove lines containing ENDARTICLE or other source markers
     $lines = explode("\n", $prompt);
     $cleaned_lines = [];
     foreach ($lines as $line) {
         $trimmed = trim($line);
-        // Skip lines that end with ":" followed by nothing, or are just "-" prefixed empty instructions
-        if (preg_match('/^-[^:]+:\s*$/', $trimmed)) {
-            continue; // Line like "-Narrative style: " with empty value
+        if (preg_match('/^-[^:]+:\s*$/', $trimmed) && strpos($trimmed, 'ENDARTICLE') === false && strlen($trimmed) < 40) {
+            continue;
         }
         $cleaned_lines[] = $line;
     }
@@ -1304,10 +1348,22 @@ function botwriter_build_client_prompt($data) {
             $content_prompt = $data['content_prompt'] ?? '';
             break;
             
-        case 'wordpress':
         case 'rss':
+            // RSS content is now pre-fetched on the client side
+            // Data is populated by botwriter_send1_data_to_server before calling this function
+            $source_title = $data['source_title'] ?? '';
+            $source_content = $data['source_content'] ?? '';
+            break;
+
+        case 'wordpress':
+            // WordPress content is now pre-fetched on the client side
+            // Data is populated by botwriter_send1_data_to_server before calling this function
+            $source_title = $data['source_title'] ?? '';
+            $source_content = $data['source_content'] ?? '';
+            break;
+
         case 'news':
-            // These types require external content - server will add source_content
+            // News still requires server-side content fetching
             // We leave source_title and source_content empty, server will fill them
             break;
     }
@@ -1327,10 +1383,47 @@ function botwriter_build_client_prompt($data) {
     ];
     
     $prompt = $template_content;
+
+    botwriter_log('PROMPT BUILD: before source embed', [
+        'website_type'       => $website_type,
+        'source_title_empty' => empty($source_title),
+        'source_title'       => mb_substr($source_title, 0, 100),
+        'source_content_len' => strlen($source_content),
+        'template_len'       => strlen($template_content),
+    ]);
     
-    // For types that need external content, we need to mark where to insert it
-    if (in_array($website_type, ['wordpress', 'rss', 'news'])) {
-        // Add a placeholder that the server will replace with actual content
+    // For RSS/WordPress: embed source content directly (already pre-fetched on client)
+    if (in_array($website_type, ['rss', 'wordpress']) && !empty($source_title)) {
+        $prompt .= "\n\n-Based on this news article (I indicate the end with the word ENDARTICLE):\n\n" . $source_title . "\n" . $source_content . "\n\nENDARTICLE:\n";
+        botwriter_log('PROMPT BUILD: ENDARTICLE block appended', [
+            'prompt_len_after' => strlen($prompt),
+        ]);
+    } else {
+        botwriter_log('PROMPT BUILD: ENDARTICLE block NOT appended', [
+            'reason' => !in_array($website_type, ['rss', 'wordpress']) ? 'type not rss/wordpress' : 'source_title is empty',
+        ]);
+    }
+    // For Super2: embed title and content instructions from the outline
+    if ($website_type === 'super2') {
+        // Rewrite instructions go BEFORE the ENDARTICLE block (rewriter / siterewriter tasks)
+        $rewrite_prompt = $data['rewrite_prompt'] ?? '';
+        if (!empty($rewrite_prompt)) {
+            $prompt .= "\n-" . $rewrite_prompt;
+        }
+        if (!empty($title_prompt)) {
+            $prompt .= "\n-The article title must be: " . $title_prompt;
+        }
+        if (!empty($content_prompt)) {
+            $prompt .= "\n\n-Based on the following content (I indicate the end with the word ENDARTICLE):\n\n" . $content_prompt . "\n\nENDARTICLE\n";
+        }
+        botwriter_log('PROMPT BUILD: super2 title/content appended', [
+            'title_prompt' => mb_substr($title_prompt, 0, 100),
+            'content_prompt_len' => strlen($content_prompt),
+            'has_rewrite_prompt' => !empty($rewrite_prompt),
+        ]);
+    }
+    // For News: server still needs to fetch content
+    if ($website_type === 'news') {
         $prompt .= "\n\n{{SERVER_SOURCE_CONTENT}}";
     }
     
@@ -1338,23 +1431,50 @@ function botwriter_build_client_prompt($data) {
     foreach ($replacements as $key => $value) {
         $prompt = str_replace('{{' . $key . '}}', $value, $prompt);
     }
+
+    $prompt_before_clean = $prompt;
+    botwriter_log('PROMPT BUILD: BEFORE cleanup', [
+        'prompt_len'              => strlen($prompt),
+        'contains_ENDARTICLE'     => (strpos($prompt, 'ENDARTICLE') !== false),
+        'contains_Based_on'       => (strpos($prompt, 'Based on this') !== false),
+        'first_300_chars'         => mb_substr($prompt, 0, 300),
+        'last_300_chars'          => mb_substr($prompt, -300),
+    ]);
     
     // Clean up lines that have empty placeholders (lines ending with : or empty after replacement)
     $lines = explode("\n", $prompt);
     $cleaned_lines = [];
+    $removed_lines = [];
     foreach ($lines as $line) {
         $trimmed = trim($line);
-        // Skip lines that end with ":" followed by nothing, or are just "-" prefixed empty instructions
-        if (preg_match('/^-[^:]+:\s*$/', $trimmed)) {
-            continue; // Line like "-Narrative style: " with empty value
+        // Skip short instruction lines left empty after variable replacement
+        // e.g. "-Narrative style: " or "-Topic: " — never remove ENDARTICLE marker
+        if (preg_match('/^-[^:]+:\s*$/', $trimmed) && strpos($trimmed, 'ENDARTICLE') === false && strlen($trimmed) < 40) {
+            $removed_lines[] = $trimmed . ' (len=' . strlen($trimmed) . ')';
+            continue;
         }
         $cleaned_lines[] = $line;
     }
     $prompt = implode("\n", $cleaned_lines);
     
+    if (!empty($removed_lines)) {
+        botwriter_log('PROMPT BUILD: lines REMOVED by cleanup', [
+            'count' => count($removed_lines),
+            'lines' => $removed_lines,
+        ]);
+    }
+    
     // Clean up multiple blank lines
     $prompt = preg_replace('/\n{3,}/', "\n\n", $prompt);
     $prompt = trim($prompt);
+
+    botwriter_log('PROMPT BUILD: AFTER cleanup (final)', [
+        'prompt_len'              => strlen($prompt),
+        'contains_ENDARTICLE'     => (strpos($prompt, 'ENDARTICLE') !== false),
+        'contains_Based_on'       => (strpos($prompt, 'Based on this') !== false),
+        'first_300_chars'         => mb_substr($prompt, 0, 300),
+        'last_300_chars'          => mb_substr($prompt, -300),
+    ]);
     
     return $prompt;
 }
@@ -1801,6 +1921,12 @@ register_deactivation_hook(__FILE__, 'botwriter_scheduled_events_plugin_deactiva
         return;
     }
 
+    // STOPFORMANY: refuse to dispatch new tasks while the flag is active
+    if (get_option('botwriter_stopformany', false)) {
+        botwriter_log('CRON BLOCKED by STOPFORMANY — too many consecutive errors on server');
+        return;
+    }
+
     // Get the current day (English name) and date based on WordPress local time
     // Use DateTime with wp_timezone() to respect site timezone and keep English day name
     try {
@@ -2077,6 +2203,20 @@ function botwriter_generate_post($data){
             'reason' => $skip_reason
         ]);
     }
+
+    // Generate SEO meta description using AI (unless disabled)
+    if ( function_exists( 'botwriter_generate_seo_meta' ) && get_option( 'botwriter_meta_disabled', '0' ) !== '1' ) {
+        $post_language = $data['post_language'] ?? '';
+        $meta_description = botwriter_generate_seo_meta(
+            $data['aigenerated_title'],
+            $data['aigenerated_content'],
+            $post_language
+        );
+        if ( $meta_description ) {
+            botwriter_apply_seo_meta( $post_id, $meta_description );
+        }
+    }
+
     return $post_id;
 }
  
@@ -2198,11 +2338,92 @@ function botwriter_send1_data_to_server($data) {
         $data['post_length'] = $data['custom_post_length'];
     } 
 
-    // Build prompt from template (except for super1 which is handled by server)
+    // =====================================================
+    // CLIENT-SIDE RSS FETCH (pre-fetch before prompt build)
+    // =====================================================
     $website_type = $data['website_type'] ?? '';
+    if ($website_type === 'rss') {
+        $rss_result = botwriter_fetch_rss_content(
+            $data['rss_source'] ?? '',
+            $data['links'] ?? ''
+        );
+
+        if ( ! $rss_result['success'] ) {
+            botwriter_log('Client RSS fetch failed', [
+                'log_id'  => $data['id'] ?? null,
+                'task_id' => $data['id_task'] ?? null,
+                'error'   => $rss_result['error'] ?? 'Unknown error',
+            ]);
+            $data['task_status'] = 'error';
+            $data['error'] = $rss_result['error'] ?? 'RSS fetch failed';
+            botwriter_logs_register($data, $data['id']);
+            return false;
+        }
+
+        // Populate data with the pre-fetched article so the prompt builder can use it
+        $data['source_title']       = $rss_result['source_title'];
+        $data['source_content']     = $rss_result['source_content'];
+        $data['link_post_original'] = $rss_result['link_original'];
+        $data['source_prefetched']  = '1';
+
+        botwriter_log('Client RSS article ready', [
+            'log_id'       => $data['id'] ?? null,
+            'task_id'      => $data['id_task'] ?? null,
+            'article_link' => $rss_result['link_original'],
+        ]);
+    }
+    // =====================================================
+
+    // =====================================================
+    // CLIENT-SIDE WORDPRESS FETCH (pre-fetch before prompt build)
+    // =====================================================
+    if ($website_type === 'wordpress') {
+        $wp_result = botwriter_fetch_wordpress_content(
+            $data['domain_name'] ?? '',
+            $data['website_category_id'] ?? '',
+            $data['links'] ?? ''
+        );
+
+        if ( ! $wp_result['success'] ) {
+            botwriter_log('Client WordPress fetch failed', [
+                'log_id'  => $data['id'] ?? null,
+                'task_id' => $data['id_task'] ?? null,
+                'error'   => $wp_result['error'] ?? 'Unknown error',
+            ]);
+            $data['task_status'] = 'error';
+            $data['error'] = $wp_result['error'] ?? 'WordPress fetch failed';
+            botwriter_logs_register($data, $data['id']);
+            return false;
+        }
+
+        $data['source_title']       = $wp_result['source_title'];
+        $data['source_content']     = $wp_result['source_content'];
+        $data['link_post_original'] = $wp_result['link_original'];
+        $data['source_prefetched']  = '1';
+
+        botwriter_log('Client WordPress article ready', [
+            'log_id'       => $data['id'] ?? null,
+            'task_id'      => $data['id_task'] ?? null,
+            'article_link' => $wp_result['link_original'],
+        ]);
+    }
+    // =====================================================
+
+    // Build prompt from template (except for super1 which is handled by server)
     if ($website_type !== 'super1') {
         $data['client_prompt'] = botwriter_build_client_prompt($data);
     }
+
+    botwriter_log('SEND1: after prompt build', [
+        'log_id'              => $data['id'] ?? null,
+        'website_type'        => $website_type,
+        'has_client_prompt'   => !empty($data['client_prompt']),
+        'client_prompt_len'   => strlen($data['client_prompt'] ?? ''),
+        'source_prefetched'   => $data['source_prefetched'] ?? '0',
+        'has_source_title'    => !empty($data['source_title']),
+        'has_source_content'  => !empty($data['source_content']),
+        'link_post_original'  => $data['link_post_original'] ?? '',
+    ]);
     
     botwriter_log('Dispatching phase 1 request', [
         'log_id' => $data['id'] ?? null,
@@ -2264,6 +2485,21 @@ function botwriter_send1_data_to_server($data) {
             $result = json_decode($body, true);        
 
             //error_log("Data received: " . print_r($body, true));
+
+            // STOPFORMANY: server reports too many consecutive errors
+            if (isset($result['error']) && strpos($result['error'], 'STOPFORMANY') === 0) {
+                update_option('botwriter_stopformany', true);
+                $data['task_status'] = 'error';
+                $data['error'] = $result['error'];
+                $data['intentosfase1'] = 8; // stop retries
+                botwriter_logs_register($data, $data['id']);
+                botwriter_log('STOPFORMANY activated from phase 1', [
+                    'log_id'  => $data['id'] ?? null,
+                    'task_id' => $data['id_task'] ?? null,
+                    'error'   => $result['error'],
+                ]);
+                return false;
+            }
 
             if (isset($result['id_task_server']) && $result['id_task_server'] !== 0) { // ok                
                 $data["id_task_server"]=$result['id_task_server'];
@@ -2597,6 +2833,16 @@ function botwriter_send2_data_to_server($data) {
                     botwriter_announcements_add("API Key error", "Your API Key is invalid. Please check your API Key in the plugin settings. <a href='admin.php?page=botwriter_settings'>Go to Settings</a>");
                     $data["intentosfase1"]=8;
                 }
+                // STOPFORMANY: server reports too many consecutive errors
+                if (isset($result['error']) && strpos($result['error'], 'STOPFORMANY') === 0) {
+                    update_option('botwriter_stopformany', true);
+                    $data['intentosfase1'] = 8;
+                    botwriter_log('STOPFORMANY activated from phase 2', [
+                        'log_id'  => $data['id'] ?? null,
+                        'task_id' => $data['id_task'] ?? null,
+                        'error'   => $result['error'],
+                    ]);
+                }
                 
                 botwriter_logs_register($data, $data["id"]);
                 return false;  
@@ -2715,6 +2961,60 @@ function botwriter_cambiar_status_ajax() {
     wp_die();
 }
 add_action('wp_ajax_botwriter_cambiar_status', 'botwriter_cambiar_status_ajax');
+
+/**
+ * AJAX handler to check/preview an RSS feed from the admin UI.
+ * Reads the feed client-side using botwriter_fetch_rss_content().
+ */
+function botwriter_check_rss_ajax() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'error' => 'Permission denied' ] );
+    }
+
+    check_ajax_referer( 'botwriter_check_rss_nonce', 'nonce' );
+
+    $url = isset( $_POST['url'] ) ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : '';
+    if ( empty( $url ) ) {
+        wp_send_json_error( [ 'error' => 'RSS URL is required.' ] );
+    }
+
+    $result = botwriter_fetch_rss_content( $url );
+    if ( $result['success'] ) {
+        wp_send_json_success( [
+            'title'       => $result['source_title'],
+            'description' => $result['source_content'],
+            'link'        => $result['link_original'],
+        ] );
+    } else {
+        wp_send_json_error( [ 'error' => $result['error'] ] );
+    }
+}
+add_action( 'wp_ajax_botwriter_check_rss', 'botwriter_check_rss_ajax' );
+
+/**
+ * AJAX handler to fetch categories from a remote WordPress site.
+ * Reads categories client-side using botwriter_fetch_wordpress_categories().
+ */
+function botwriter_get_wordpress_categories_ajax() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'error' => 'Permission denied' ] );
+    }
+
+    check_ajax_referer( 'botwriter_wp_categories_nonce', 'nonce' );
+
+    $domain = isset( $_POST['website_domainname'] ) ? esc_url_raw( wp_unslash( $_POST['website_domainname'] ) ) : '';
+    if ( empty( $domain ) ) {
+        wp_send_json_error( [ 'error' => 'WordPress domain is required.' ] );
+    }
+
+    $result = botwriter_fetch_wordpress_categories( $domain );
+    if ( $result['success'] ) {
+        wp_send_json_success( $result['categories'] );
+    } else {
+        wp_send_json_error( [ 'error' => $result['error'] ] );
+    }
+}
+add_action( 'wp_ajax_botwriter_get_wp_categories', 'botwriter_get_wordpress_categories_ajax' );
 
 // AJAX handler for deleting a log entry
 add_action('wp_ajax_botwriter_delete_log', 'botwriter_delete_log_ajax');
@@ -3300,6 +3600,479 @@ function botwriter_eliminar_super1_y_logs0() {
         wp_send_json_error('Error');
     }
     wp_die();
+}
+
+add_action('wp_ajax_botwriter_create_super1_manual', 'botwriter_create_super1_manual_callback');
+
+function botwriter_create_super1_manual_callback() {
+    // Verify user has permission
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Permission denied');
+    }
+    
+    check_ajax_referer('botwriter_super_nonce');
+    
+    if (!isset($_POST['manual_titles']) || empty(trim(wp_unslash($_POST['manual_titles'])))) {
+        wp_send_json_error('No titles provided.');
+        wp_die();
+    }
+    
+    $raw_titles = sanitize_textarea_field(wp_unslash($_POST['manual_titles']));
+    $global_prompt = isset($_POST['global_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['global_prompt'])) : '';
+    $category_id = isset($_POST['category_id']) ? intval(wp_unslash($_POST['category_id'])) : 0;
+    
+    // Split titles by newline and filter empty lines
+    $titles = array_filter(array_map('trim', explode("\n", $raw_titles)), function($t) {
+        return !empty($t);
+    });
+    
+    if (empty($titles)) {
+        wp_send_json_error('No valid titles found.');
+        wp_die();
+    }
+    
+    // Limit to 100 titles max
+    if (count($titles) > 100) {
+        $titles = array_slice($titles, 0, 100);
+    }
+    
+    botwriter_log('Manual Super1 creation request', [
+        'num_titles' => count($titles),
+        'category_id' => $category_id,
+        'has_global_prompt' => !empty($global_prompt),
+    ]);
+    
+    global $wpdb;
+    
+    // 1. Create a completed super1 log entry (bypassing AI generation)
+    $log_data = array(
+        'task_name' => 'Manual Super1 Task ' . current_time('Y-m-d H:i:s'),
+        'task_status' => 'completed',
+        'website_type' => 'super1',
+        'title_prompt' => 'Manual',
+        'content_prompt' => $global_prompt,
+        'post_count' => count($titles),
+        'category_id' => $category_id,
+    );
+    $log_id = botwriter_logs_register($log_data);
+    
+    if (!$log_id) {
+        wp_send_json_error('Error creating log entry.');
+        wp_die();
+    }
+    
+    // 2. Insert each title into wp_botwriter_super
+    $table_name = $wpdb->prefix . 'botwriter_super';
+    $category_name = '';
+    if ($category_id > 0) {
+        $category_name = get_cat_name($category_id);
+    }
+    
+    foreach ($titles as $title) {
+        $data = array(
+            'title'         => sanitize_text_field($title),
+            'content'       => $global_prompt,
+            'category_name' => $category_name,
+            'category_id'   => $category_id,
+            'id_log'        => $log_id,
+            'id_task'       => 0, // draft, will be assigned on save
+            'task_status'   => '',
+        );
+        $wpdb->insert($table_name, $data);
+    }
+    
+    botwriter_log('Manual Super1 titles inserted', [
+        'log_id' => $log_id,
+        'count' => count($titles),
+    ]);
+    
+    // 3. Return the articles HTML for immediate review
+    $html = botwriter_super1_view_articles_html(0);
+    wp_send_json_success($html);
+}
+
+
+// ========================================
+// CONTENT REWRITER AJAX HANDLERS
+// ========================================
+add_action('wp_ajax_botwriter_rewriter_fetch', 'botwriter_rewriter_fetch_ajax');
+add_action('wp_ajax_botwriter_rewriter_create_task', 'botwriter_rewriter_create_task_ajax');
+
+/**
+ * AJAX: Fetch and extract content from URLs
+ */
+function botwriter_rewriter_fetch_ajax() {
+    check_ajax_referer('botwriter_rewriter_nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(__('Permission denied.', 'botwriter'));
+    }
+
+    $urls = isset($_POST['urls']) ? array_map('esc_url_raw', $_POST['urls']) : array();
+
+    if (empty($urls)) {
+        wp_send_json_error(__('No URLs provided.', 'botwriter'));
+    }
+
+    if (count($urls) > 20) {
+        wp_send_json_error(__('Maximum 20 URLs allowed.', 'botwriter'));
+    }
+
+    $articles = array();
+    $errors   = array();
+
+    foreach ($urls as $url) {
+        if (empty($url)) {
+            continue;
+        }
+
+        $result = botwriter_rewriter_extract_content($url);
+
+        if (is_wp_error($result)) {
+            $errors[] = array(
+                'url'   => $url,
+                'error' => $result->get_error_message(),
+            );
+        } else {
+            $articles[] = $result;
+        }
+    }
+
+    wp_send_json_success(array(
+        'articles' => $articles,
+        'errors'   => $errors,
+    ));
+}
+
+/**
+ * AJAX: Create a Super Task with the articles to rewrite.
+ *
+ * Inserts the task as an active super2 task and stores each article
+ * in the botwriter_super table. The cron loop picks them up via
+ * botwriter_super_prepare_event() just like normal Super Tasks.
+ */
+function botwriter_rewriter_create_task_ajax() {
+    check_ajax_referer('botwriter_rewriter_nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(__('Permission denied.', 'botwriter'));
+    }
+
+    // wp_unslash only — sanitize_text_field corrupts JSON (strips tags/newlines)
+    $articles_json  = isset($_POST['articles']) ? wp_unslash($_POST['articles']) : '';
+    $rewrite_prompt = isset($_POST['rewrite_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['rewrite_prompt'])) : '';
+    $category_id    = isset($_POST['category_id']) ? intval($_POST['category_id']) : 0;
+
+    // Task properties from Step 3 form
+    $post_status       = isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft';
+    $post_language     = isset($_POST['post_language']) ? sanitize_text_field(wp_unslash($_POST['post_language'])) : substr(get_locale(), 0, 2);
+    $author_selection  = isset($_POST['author_selection']) ? sanitize_text_field(wp_unslash($_POST['author_selection'])) : strval(get_current_user_id());
+    $post_length       = isset($_POST['post_length']) ? sanitize_text_field(wp_unslash($_POST['post_length'])) : '800';
+    $custom_post_length = isset($_POST['custom_post_length']) ? sanitize_text_field(wp_unslash($_POST['custom_post_length'])) : '';
+    $template_id       = isset($_POST['template_id']) && !empty($_POST['template_id']) ? intval($_POST['template_id']) : null;
+    $disable_ai_images = isset($_POST['disable_ai_images']) ? intval($_POST['disable_ai_images']) : 0;
+    $days              = isset($_POST['days']) ? sanitize_text_field(wp_unslash($_POST['days'])) : 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
+    $times_per_day     = isset($_POST['times_per_day']) ? intval($_POST['times_per_day']) : 1;
+    $task_name_custom  = isset($_POST['task_name']) ? sanitize_text_field(wp_unslash($_POST['task_name'])) : '';
+
+    // Validate post_status
+    if (!in_array($post_status, array('draft', 'publish'), true)) {
+        $post_status = 'draft';
+    }
+
+    $articles = json_decode($articles_json, true);
+    if (!is_array($articles) || empty($articles)) {
+        wp_send_json_error(__('No articles provided.', 'botwriter'));
+    }
+
+    global $wpdb;
+    $tasks_table = $wpdb->prefix . 'botwriter_tasks';
+    $super_table = $wpdb->prefix . 'botwriter_super';
+
+    // Build default rewrite prompt if user didn't provide one
+    if (empty($rewrite_prompt)) {
+        $rewrite_prompt = 'Rewrite this article completely in your own words while preserving all key information. Make it original, engaging, and well-structured.';
+    }
+
+    // Count valid articles (filter empties before inserting)
+    $valid_articles = array();
+    foreach ($articles as $article) {
+        $title   = sanitize_text_field($article['title'] ?? '');
+        $content = wp_kses_post($article['content'] ?? '');
+        if (!empty($title) || !empty($content)) {
+            $valid_articles[] = array('title' => $title, 'content' => $content);
+        }
+    }
+
+    if (empty($valid_articles)) {
+        wp_send_json_error(__('All articles are empty.', 'botwriter'));
+    }
+
+    $task_name = !empty($task_name_custom) ? $task_name_custom : 'Rewriter: ' . count($valid_articles) . ' articles - ' . wp_date('M j, Y H:i');
+
+    // Use the days and times_per_day from the form
+    $wpdb->insert($tasks_table, array(
+        'task_name'      => $task_name,
+        'post_status'    => $post_status,
+        'writer'         => 'ai_cerebro',
+        'narration'      => 'Descriptive',
+        'custom_style'   => '',
+        'post_language'  => $post_language,
+        'post_length'    => $post_length,
+        'custom_post_length' => $custom_post_length,
+        'days'           => $days,
+        'times_per_day'  => $times_per_day > 0 ? $times_per_day : 1,
+        'status'         => 1,
+        'website_type'   => 'super2',
+        'task_type'      => 'rewriter',
+        'domain_name'    => get_site_url(),
+        'category_id'    => $category_id > 0 ? strval($category_id) : '',
+        'title_prompt'   => '',
+        'content_prompt' => $rewrite_prompt,
+        'tags_prompt'    => '',
+        'image_prompt'   => '',
+        'aigenerated_title'   => '',
+        'aigenerated_content' => '',
+        'aigenerated_tags'    => '',
+        'aigenerated_image'   => '',
+        'ai_keywords'    => '',
+        'author_selection' => $author_selection,
+        'disable_ai_images' => $disable_ai_images,
+        'template_id'    => $template_id,
+    ));
+
+    $task_id = $wpdb->insert_id;
+
+    if (!$task_id) {
+        wp_send_json_error(__('Failed to create task.', 'botwriter'));
+    }
+
+    // Insert each article into the super table.
+    // Only the article content goes here — rewrite instructions stay in the task's content_prompt.
+    // super_prepare_event() preserves the rewrite_prompt, and
+    // botwriter_build_client_prompt() outputs it BEFORE the ENDARTICLE-wrapped content.
+    $inserted = 0;
+    foreach ($valid_articles as $art) {
+        $wpdb->insert($super_table, array(
+            'id_task' => $task_id,
+            'id_log'  => 0,
+            'title'   => $art['title'],
+            'content' => $art['content'],
+        ));
+        // task_status left NULL — super_prepare_event picks rows with NULL/empty task_status
+        $inserted++;
+    }
+
+    botwriter_log('Content Rewriter: Task created', [
+        'task_id'       => $task_id,
+        'article_count' => $inserted,
+    ]);
+
+    wp_send_json_success(array(
+        'task_id'  => $task_id,
+        'count'    => $inserted,
+        'edit_url' => wp_nonce_url(admin_url('admin.php?page=botwriter_super_page&id=' . $task_id), 'botwriter_tasks_action'),
+    ));
+}
+
+// ========================================
+// SITE REWRITER AJAX HANDLERS
+// ========================================
+add_action('wp_ajax_botwriter_siterewriter_crawl', 'botwriter_siterewriter_crawl_ajax');
+add_action('wp_ajax_botwriter_siterewriter_fetch', 'botwriter_siterewriter_fetch_ajax');
+add_action('wp_ajax_botwriter_siterewriter_create_task', 'botwriter_siterewriter_create_task_ajax');
+
+/**
+ * AJAX: Crawl a single page — returns title + internal links.
+ * The JS manages the BFS queue for live/progressive UI updates.
+ */
+function botwriter_siterewriter_crawl_ajax() {
+    check_ajax_referer('botwriter_siterewriter_nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(__('Permission denied.', 'botwriter'));
+    }
+
+    $url         = isset($_POST['url'])         ? esc_url_raw(wp_unslash($_POST['url']))                : '';
+    $base_domain = isset($_POST['base_domain']) ? sanitize_text_field(wp_unslash($_POST['base_domain'])) : '';
+
+    if (empty($url) || empty($base_domain)) {
+        wp_send_json_error(__('Missing URL or domain.', 'botwriter'));
+    }
+
+    $result = botwriter_siterewriter_crawl_page($url, $base_domain);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error($result->get_error_message());
+    }
+
+    wp_send_json_success($result);
+}
+
+/**
+ * AJAX: Fetch and extract content from selected URLs.
+ * Reuses botwriter_rewriter_extract_content() for full content extraction.
+ */
+function botwriter_siterewriter_fetch_ajax() {
+    check_ajax_referer('botwriter_siterewriter_nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(__('Permission denied.', 'botwriter'));
+    }
+
+    @set_time_limit(0);
+
+    $urls = isset($_POST['urls']) ? array_map('esc_url_raw', $_POST['urls']) : array();
+
+    if (empty($urls)) {
+        wp_send_json_error(__('No URLs provided.', 'botwriter'));
+    }
+
+    $articles = array();
+    $errors   = array();
+
+    foreach ($urls as $url) {
+        if (empty($url)) continue;
+
+        $result = botwriter_rewriter_extract_content($url);
+
+        if (is_wp_error($result)) {
+            $errors[] = array(
+                'url'   => $url,
+                'error' => $result->get_error_message(),
+            );
+        } else {
+            $articles[] = $result;
+        }
+    }
+
+    wp_send_json_success(array(
+        'articles' => $articles,
+        'errors'   => $errors,
+    ));
+}
+
+/**
+ * AJAX: Create a Super Task with the articles to rewrite.
+ * Identical flow to Content Rewriter but with task_type = 'siterewriter'.
+ */
+function botwriter_siterewriter_create_task_ajax() {
+    check_ajax_referer('botwriter_siterewriter_nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(__('Permission denied.', 'botwriter'));
+    }
+
+    $articles_json  = isset($_POST['articles'])       ? wp_unslash($_POST['articles'])                             : '';
+    $rewrite_prompt = isset($_POST['rewrite_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['rewrite_prompt'])) : '';
+    $category_id    = isset($_POST['category_id'])    ? intval($_POST['category_id'])                               : 0;
+
+    $post_status        = isset($_POST['post_status'])       ? sanitize_text_field(wp_unslash($_POST['post_status']))       : 'draft';
+    $post_language      = isset($_POST['post_language'])     ? sanitize_text_field(wp_unslash($_POST['post_language']))     : substr(get_locale(), 0, 2);
+    $author_selection   = isset($_POST['author_selection'])  ? sanitize_text_field(wp_unslash($_POST['author_selection']))  : strval(get_current_user_id());
+    $post_length        = isset($_POST['post_length'])       ? sanitize_text_field(wp_unslash($_POST['post_length']))       : '800';
+    $custom_post_length = isset($_POST['custom_post_length'])? sanitize_text_field(wp_unslash($_POST['custom_post_length'])): '';
+    $template_id        = isset($_POST['template_id']) && !empty($_POST['template_id']) ? intval($_POST['template_id']) : null;
+    $disable_ai_images  = isset($_POST['disable_ai_images']) ? intval($_POST['disable_ai_images'])                          : 0;
+    $days               = isset($_POST['days'])              ? sanitize_text_field(wp_unslash($_POST['days']))              : 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
+    $times_per_day      = isset($_POST['times_per_day'])     ? intval($_POST['times_per_day'])                              : 1;
+    $task_name_custom   = isset($_POST['task_name'])         ? sanitize_text_field(wp_unslash($_POST['task_name']))         : '';
+
+    if (!in_array($post_status, array('draft', 'publish'), true)) {
+        $post_status = 'draft';
+    }
+
+    $articles = json_decode($articles_json, true);
+    if (!is_array($articles) || empty($articles)) {
+        wp_send_json_error(__('No articles provided.', 'botwriter'));
+    }
+
+    global $wpdb;
+    $tasks_table = $wpdb->prefix . 'botwriter_tasks';
+    $super_table = $wpdb->prefix . 'botwriter_super';
+
+    if (empty($rewrite_prompt)) {
+        $rewrite_prompt = 'Rewrite this article completely in your own words while preserving all key information. Make it original, engaging, and well-structured.';
+    }
+
+    $valid_articles = array();
+    foreach ($articles as $article) {
+        $title   = sanitize_text_field($article['title'] ?? '');
+        $content = wp_kses_post($article['content'] ?? '');
+        if (!empty($title) || !empty($content)) {
+            $valid_articles[] = array('title' => $title, 'content' => $content);
+        }
+    }
+
+    if (empty($valid_articles)) {
+        wp_send_json_error(__('All articles are empty.', 'botwriter'));
+    }
+
+    $task_name = !empty($task_name_custom)
+        ? $task_name_custom
+        : 'Site Rewriter: ' . count($valid_articles) . ' articles - ' . wp_date('M j, Y H:i');
+
+    $wpdb->insert($tasks_table, array(
+        'task_name'      => $task_name,
+        'post_status'    => $post_status,
+        'writer'         => 'ai_cerebro',
+        'narration'      => 'Descriptive',
+        'custom_style'   => '',
+        'post_language'  => $post_language,
+        'post_length'    => $post_length,
+        'custom_post_length' => $custom_post_length,
+        'days'           => $days,
+        'times_per_day'  => $times_per_day > 0 ? $times_per_day : 1,
+        'status'         => 1,
+        'website_type'   => 'super2',
+        'task_type'      => 'siterewriter',
+        'domain_name'    => get_site_url(),
+        'category_id'    => $category_id > 0 ? strval($category_id) : '',
+        'title_prompt'   => '',
+        'content_prompt' => $rewrite_prompt,
+        'tags_prompt'    => '',
+        'image_prompt'   => '',
+        'aigenerated_title'   => '',
+        'aigenerated_content' => '',
+        'aigenerated_tags'    => '',
+        'aigenerated_image'   => '',
+        'ai_keywords'    => '',
+        'author_selection' => $author_selection,
+        'disable_ai_images' => $disable_ai_images,
+        'template_id'    => $template_id,
+    ));
+
+    $task_id = $wpdb->insert_id;
+
+    if (!$task_id) {
+        wp_send_json_error(__('Failed to create task.', 'botwriter'));
+    }
+
+    // Insert each article into the super table.
+    // Only the article content goes here — rewrite instructions stay in the task's content_prompt.
+    // super_prepare_event() preserves the rewrite_prompt, and
+    // botwriter_build_client_prompt() outputs it BEFORE the ENDARTICLE-wrapped content.
+    $inserted = 0;
+    foreach ($valid_articles as $art) {
+        $wpdb->insert($super_table, array(
+            'id_task' => $task_id,
+            'id_log'  => 0,
+            'title'   => $art['title'],
+            'content' => $art['content'],
+        ));
+        $inserted++;
+    }
+
+    botwriter_log('Site Rewriter: Task created', [
+        'task_id'       => $task_id,
+        'article_count' => $inserted,
+    ]);
+
+    wp_send_json_success(array(
+        'task_id'  => $task_id,
+        'count'    => $inserted,
+        'edit_url' => wp_nonce_url(admin_url('admin.php?page=botwriter_super_page&id=' . $task_id), 'botwriter_tasks_action'),
+    ));
 }
 
 ?>

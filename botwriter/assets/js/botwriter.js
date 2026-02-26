@@ -187,33 +187,25 @@ function fetchRSSFeed() {
 
   jQuery(document).ready(function($) {
       $.ajax({
-          url: 'https://wpbotwriter.com/public/api_rss.php', // Cambia 'ruta_al_php.php' por la URL real del archivo PHP
+          url: botwriter_ajax.ajax_url,
           type: 'POST',
-          dataType: 'json', // Esperamos una respuesta JSON
+          dataType: 'json',
           data: {
-              url: rssUrl // Pasar la URL del RSS como dato
+              action: 'botwriter_check_rss',
+              nonce: botwriter_ajax.rss_nonce,
+              url: rssUrl
           },
           success: function(response) {
-              if (response.error) {
-                  // Mostrar el mensaje de error si la respuesta contiene un error
-                  console.error('Error:', response.error);
-                  // escibir el el div id rss_response en rojo
-                  var rss_response = jQuery('#rss_response');
-                  rss_response.empty();
-                  rss_response.append('<p style="color: red;">' + response.error + '</p>');                  
-
-
-                  //alert('Error: ' + response.error);
-              } else {
-                  // Manejar las noticias recibidas
-                  // escibir el el div id rss_response en azul
-                  var rss_response = jQuery('#rss_response');
-                  rss_response.empty();
+              var rss_response = jQuery('#rss_response');
+              rss_response.empty();
+              if (response.success) {
                   rss_response.append('<p style="color: blue;">RSS SOURCE IS OK!</p>');
-
-
-                  console.log('RSS Feed:', response);
-                  //mostrarNoticias(response);
+                  rss_response.append('<p><strong>' + response.data.title + '</strong></p>');
+                  console.log('RSS Feed:', response.data);
+              } else {
+                  var errorMsg = (response.data && response.data.error) ? response.data.error : 'Unknown error';
+                  console.error('Error:', errorMsg);
+                  rss_response.append('<p style="color: red;">' + errorMsg + '</p>');
               }
           },
           error: function(jqXHR, textStatus, errorThrown) {
@@ -264,21 +256,29 @@ function refreshWebsiteCategories() {
 
   
 
-  // Realizar la solicitud AJAX
+  // Realizar la solicitud AJAX (local, via WordPress admin-ajax)
   jQuery(document).ready(function($) {
       $.ajax({
-          url: "https://wpbotwriter.com/public/getWebsiteCategories.php",
+          url: botwriter_ajax.ajax_url,
           method: "POST",
           data: {
-              user_domainname: adminDomain,
-              user_email: adminEmail,
+              action: 'botwriter_get_wp_categories',
+              nonce: botwriter_ajax.wp_categories_nonce,
               website_domainname: websiteDomainName
           },
-          success: function(categories) {
+          success: function(response) {
               jQuery("#loading").hide();
+              // wp_send_json_success wraps data in response.data
+              var categories = response.success ? response.data : response;
               var multiselect = $('#website_category_id');
               multiselect.empty();
               console.log('Categories:', categories);
+
+              if (!response.success) {
+                  var errMsg = (response.data && response.data.error) ? response.data.error : 'Failed to fetch categories.';
+                  alert(errMsg);
+                  return;
+              }
 
               // Llenar el select con las categorías obtenidas
               $.each(categories, function(index, category) {
@@ -295,8 +295,8 @@ function refreshWebsiteCategories() {
               var errorMessage = "Error refreshing website categories.";
               if (jqXHR.status === 0) {
                   errorMessage = "Connection error. Please check your internet connection.";
-              } else if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
-                  errorMessage = jqXHR.responseJSON.error;
+              } else if (jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.error) {
+                  errorMessage = jqXHR.responseJSON.data.error;
               }
               alert(errorMessage);
           }

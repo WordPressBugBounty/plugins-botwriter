@@ -917,6 +917,191 @@ ol.example li.placeholder:before {
 .bw-ml-10 { margin-left: 10px; }
 .bw-ml-20 { margin-left: 20px; }
 
+/* ==========================================
+   Add New Task - 2x2 Grid Cards
+   ========================================== */
+.bw-addnew-subtitle {
+  font-size: 14px;
+  color: #646970;
+  margin: 0 0 24px;
+}
+
+.bw-addnew-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  max-width: 1100px;
+}
+
+@media (max-width: 960px) {
+  .bw-addnew-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bw-addnew-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+.bw-addnew-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,.1);
+  transform: translateY(-2px);
+}
+
+/* Color accent top border */
+.bw-addnew-card--blue  { border-top: 4px solid #2271b1; }
+.bw-addnew-card--purple { border-top: 4px solid #8c5fc7; }
+.bw-addnew-card--green  { border-top: 4px solid #00a32a; }
+.bw-addnew-card--orange { border-top: 4px solid #d67e09; }
+.bw-addnew-card--teal   { border-top: 4px solid #0d9488; }
+
+.bw-addnew-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 24px 0;
+}
+
+.bw-addnew-card-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.bw-addnew-card-icon {
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+.bw-addnew-card-icon img {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+
+.bw-addnew-card-body {
+  flex: 1;
+  padding: 12px 24px 8px;
+}
+
+.bw-addnew-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.bw-addnew-badge--blue   { background: #e5f0f9; color: #2271b1; }
+.bw-addnew-badge--purple { background: #f0e9f7; color: #8c5fc7; }
+.bw-addnew-badge--green  { background: #e6f6ea; color: #00802b; }
+.bw-addnew-badge--orange { background: #fef3e0; color: #b35c00; }
+.bw-addnew-badge--teal   { background: #e6f7f5; color: #0d7d72; }
+
+.bw-addnew-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1d2327;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.bw-addnew-card-desc {
+  font-size: 13px;
+  color: #50575e;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.bw-addnew-card-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bw-addnew-card-features li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #3c434a;
+  line-height: 1.7;
+}
+
+.bw-addnew-card-features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  font-weight: 700;
+  color: #00a32a;
+}
+
+.bw-addnew-card-footer {
+  padding: 16px 24px 20px;
+  margin-top: auto;
+}
+
+.bw-addnew-btn {
+  display: block;
+  text-align: center;
+  width: 100%;
+  padding: 10px 16px !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+/* Color-matched buttons */
+.bw-addnew-card--blue .bw-addnew-btn {
+  background: #2271b1 !important;
+  border-color: #2271b1 !important;
+}
+.bw-addnew-card--blue .bw-addnew-btn:hover {
+  background: #135e96 !important;
+  border-color: #135e96 !important;
+}
+.bw-addnew-card--purple .bw-addnew-btn {
+  background: #8c5fc7 !important;
+  border-color: #8c5fc7 !important;
+}
+.bw-addnew-card--purple .bw-addnew-btn:hover {
+  background: #7245b0 !important;
+  border-color: #7245b0 !important;
+}
+.bw-addnew-card--green .bw-addnew-btn {
+  background: #00a32a !important;
+  border-color: #00a32a !important;
+}
+.bw-addnew-card--green .bw-addnew-btn:hover {
+  background: #008a20 !important;
+  border-color: #008a20 !important;
+}
+.bw-addnew-card--orange .bw-addnew-btn {
+  background: #d67e09 !important;
+  border-color: #d67e09 !important;
+}
+.bw-addnew-card--orange .bw-addnew-btn:hover {
+  background: #b56a06 !important;
+  border-color: #b56a06 !important;
+}
+.bw-addnew-card--teal .bw-addnew-btn {
+  background: #0d9488 !important;
+  border-color: #0d9488 !important;
+}
+.bw-addnew-card--teal .bw-addnew-btn:hover {
+  background: #0a7d72 !important;
+  border-color: #0a7d72 !important;
+}
+
 /* Utility visibility */
 .bw-hidden { display: none; }
 
@@ -1179,6 +1364,30 @@ ol.example li.placeholder:before {
   text-decoration: underline;
 }
 
+/* Schedule tip for days/posts per day */
+.bw-schedule-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #fef9e7, #fef3cd);
+  border-radius: 6px;
+  border-left: 3px solid #f0ad4e;
+  font-size: 13px;
+  color: #5a4e00;
+  line-height: 1.5;
+}
+
+.bw-schedule-tip .dashicons {
+  color: #f0ad4e;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 /* Super Task Free Tier Warning */
 .bw-supertask-tier-warning {
   display: flex;
@@ -1277,4 +1486,209 @@ ol.example li.placeholder:before {
 
 #post_type {
   max-width: 300px;
+}
+
+/* ==========================================
+   Content Rewriter - Article cards
+   ========================================== */
+.rewriter-article-card {
+  background: #fff;
+  border: 1px solid #ccd0d4;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.rewriter-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f6f7f7;
+  border-bottom: 1px solid #ccd0d4;
+}
+
+.rewriter-card-num {
+  font-weight: 600;
+  color: #50575e;
+  min-width: 28px;
+}
+
+.rewriter-title-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #8c8f94;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.rewriter-toggle-btn,
+.rewriter-remove-btn {
+  flex-shrink: 0;
+}
+
+.rewriter-card-meta {
+  padding: 4px 12px;
+  color: #646970;
+}
+
+.rewriter-card-meta a {
+  word-break: break-all;
+}
+
+.rewriter-card-content {
+  padding: 0 12px 12px;
+}
+
+.rewriter-content-textarea {
+  width: 100%;
+  font-family: monospace;
+  font-size: 13px;
+  resize: vertical;
+}
+
+/* Warning state for cards with failed/partial extraction */
+.rewriter-card-warning {
+  border-color: #d63638;
+  border-width: 2px;
+}
+
+.rewriter-card-warning .rewriter-card-header {
+  background: #fcf0f1;
+}
+
+.rewriter-card-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fcf0f1;
+  border-bottom: 1px solid #d63638;
+  color: #8a2424;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rewriter-card-alert-soft {
+  background: #fef8ee;
+  border-bottom-color: #dba617;
+  color: #6e4e00;
+}
+
+.rewriter-alert-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+/* Success banner (used via JS after task creation) */
+.rewriter-success-banner {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.rewriter-success-banner h3 {
+  margin: 0 0 10px;
+  color: #155724;
+}
+
+.rewriter-success-banner p {
+  margin: 0;
+  color: #155724;
+}
+
+.rewriter-success-banner p + p {
+  margin-top: 5px;
+}
+
+/* Image hue-rotate utilities */
+.bw-hue-rotate-90 {
+  filter: hue-rotate(90deg);
+}
+
+.bw-hue-rotate-200 {
+  filter: hue-rotate(200deg);
+}
+
+/* Rewriter step containers */
+.bw-flex-col {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.bw-flex-row-center {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.bw-img-shrink {
+  flex-shrink: 0;
+}
+
+.bw-img-80 {
+  max-width: 80px;
+}
+
+.bw-mt-10 {
+  margin-top: 10px;
+}
+
+.bw-mt-20 {
+  margin-top: 20px;
+}
+
+/* === Rewriter Task Properties Grid === */
+.bw-rewriter-props-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+  max-width: 800px;
+}
+
+.bw-rewriter-prop {
+  display: flex;
+  flex-direction: column;
+}
+
+.bw-rewriter-prop .form-label {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.bw-rewriter-prop .form-select,
+.bw-rewriter-prop .form-control {
+  width: 100%;
+  max-width: 100%;
+}
+
+.bw-rewriter-prop .form-text {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.bw-rewriter-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.bw-rewriter-checkbox-label input[type="checkbox"] {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .bw-rewriter-props-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bw-mb-15 {
+  margin-bottom: 15px;
 }

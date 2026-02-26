@@ -772,6 +772,7 @@ function botwriter_ajax_save_settings() {
         'botwriter_cron_active',
         'botwriter_paused_tasks',
         'botwriter_tags_disabled',
+        'botwriter_meta_disabled',
         // Custom provider fields (text)
         'botwriter_custom_text_url',
         'botwriter_custom_text_api_key',
@@ -832,6 +833,7 @@ function botwriter_ajax_save_settings() {
     } elseif ($field === 'botwriter_paused_tasks') {
         $value = max(2, intval($value));
     } elseif ($field === 'botwriter_cron_active' || $field === 'botwriter_tags_disabled'
+        || $field === 'botwriter_meta_disabled'
         || $field === 'botwriter_seo_translation_enabled' || $field === 'botwriter_seo_translate_title'
         || $field === 'botwriter_seo_translate_tags' || $field === 'botwriter_seo_translate_image') {
         $value = ($value === '1' || $value === 'true' || $value === true) ? '1' : '0';
@@ -1286,6 +1288,14 @@ function botwriter_settings_meta_box_handler() {
                 </label>
                 <p class="description"><?php esc_html_e('When enabled, posts created by BotWriter will not have tags assigned.', 'botwriter'); ?></p>
             </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_meta_disabled" value="1" <?php checked(get_option('botwriter_meta_disabled', '0'), '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Disable Meta Description', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, BotWriter will NOT auto-generate an SEO meta description for new posts. The meta is generated using a fast AI call after each post is created and is saved to the post excerpt and to popular SEO plugins (Yoast, Rank Math, AIOSEO, SEOPress, The SEO Framework).', 'botwriter'); ?></p>
+            </div>
         </div>
 
         <!-- Hidden fields -->
@@ -1420,6 +1430,7 @@ function botwriter_get_all_settings() {
         'botwriter_cron_active' => get_option('botwriter_cron_active', '1'),
         'botwriter_paused_tasks' => get_option('botwriter_paused_tasks', '2'),
         'botwriter_tags_disabled' => get_option('botwriter_tags_disabled', '0'),
+        'botwriter_meta_disabled' => get_option('botwriter_meta_disabled', '0'),
         // SEO Translation
         'botwriter_seo_translation_enabled' => get_option('botwriter_seo_translation_enabled', '0'),
         'botwriter_seo_target_language' => get_option('botwriter_seo_target_language', 'en'),

@@ -39,7 +39,9 @@ function botwriter_super_page_handler(){
   
     
 ?>
+  <?php $super_mode = isset($_GET['mode']) && $_GET['mode'] === 'manual' ? 'manual' : 'auto'; ?>
   <input type="hidden" id="super1status" name="super1status" value="<?php echo esc_attr($super1status); ?>">
+  <input type="hidden" id="super_mode" name="super_mode" value="<?php echo esc_attr($super_mode); ?>">
   <div class="wrap">
 
 
@@ -268,15 +270,15 @@ function botwriter_super_page_handler(){
       <?php if (!$is_editing) { ?>
        
         <div class="super-content">
-          <h2 class="super-title">Creation of titles and summaries for articles</h2>
-          <p class="super-text">Choose a predefined one or customize.</p>
+          <h2 class="super-title"><?php echo $super_mode === 'manual' ? 'Manual titles for articles' : 'Creation of titles and summaries for articles'; ?></h2>
+          <p class="super-text"><?php echo $super_mode === 'manual' ? 'Paste your list of titles and the AI will write the articles.' : 'Choose a predefined one or customize.'; ?></p>
 
           <div id="new_supertask">
           <div class="super-ia">      
 
 
             <div class="super-ia-image">
-            <img src="<?php echo esc_url($dir_images . 'ai_cerebro.png'); ?>" alt="<?php echo esc_attr__('AI', 'botwriter'); ?>">
+            <img src="<?php echo esc_url($dir_images . 'ai_cerebro.png'); ?>" alt="<?php echo esc_attr__('AI', 'botwriter'); ?>"<?php echo $super_mode === 'manual' ? ' style="filter: hue-rotate(90deg);"' : ''; ?>>
             </div>
 
             <form id="form_super1" name="form_super1">
@@ -287,9 +289,10 @@ function botwriter_super_page_handler(){
                 <option value="Pack of Tutorial/Step-by-Step Articles">Pack of Tutorial/Step-by-Step Articles</option>
                 <option value="Pack of Tips, Tricks, and Recommendations Articles">Pack of Tips, Tricks, and Recommendations Articles</option>
                 <option value="Pack of Reviews, Buying Guides, etc.">Pack of Reviews, Buying Guides, etc.</option>              
-                <option value="Custom">Custom Pack</option>                              
+                <option value="Custom">Custom Pack</option>
+                <option value="Manual"<?php echo $super_mode === 'manual' ? ' selected' : ''; ?>>Manual Titles</option>                              
               </select>                            
-              <p class="form-text">Choose a pack and the AI will automatically propose articles based on your blog content. If you don't want it to be automatic, choose Custom Pack.</p>
+              <p class="form-text">Choose a pack and the AI will automatically propose articles based on your blog content. Choose Custom Pack for a custom prompt, or Manual Titles to paste your own list.</p>
               
             </div>
             
@@ -297,6 +300,15 @@ function botwriter_super_page_handler(){
             <div class="col-md-6" id="customPromptInput" style="display: none;">
                 <label for="custom_prompt">Custom Prompt:</label>
                 <textarea id="super1_custom_prompt" name="super1_custom_prompt" rows="4" cols="50" placeholder="For example: Articles about pet care or Articles about the solar system, etc"></textarea>
+                <br><br>
+            </div>
+
+            <div class="col-md-6" id="manualTitlesInput" style="display: none;">
+                <label for="manual_titles">List of Titles (one per line):</label>
+                <textarea id="super1_manual_titles" name="super1_manual_titles" rows="10" cols="50" placeholder="How to train your dog&#10;Best recipes for beginners&#10;10 tips for better sleep&#10;..."></textarea>
+                <br><br>
+                <label for="manual_global_prompt">Global Instructions/Prompt (Optional):</label>
+                <textarea id="super1_manual_global_prompt" name="super1_manual_global_prompt" rows="4" cols="50" placeholder="Optional: Write in a friendly tone, include practical examples, etc."></textarea>
                 <br><br>
             </div>
             
@@ -326,7 +338,7 @@ function botwriter_super_page_handler(){
             </div>
               
               
-              <div class="col-md-6">
+              <div class="col-md-6" id="div_numarticles">
                 <label for="super1number">Number of Articles (1-50max):</label>
                 <input type="number" id="super1_numarticles" name="super1_numarticles" value="10" min="1" max="50"><br>            
                 
@@ -483,6 +495,13 @@ function botwriter_super_form_meta_box_handler($item)
                 <div class="col-md-6">
                     <label class="form-label">Post per Day:</label>
                     <input type="number" name="times_per_day" min="1" value="<?php echo esc_attr($times_per_day); ?>" required>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="bw-schedule-tip">
+                        <span class="dashicons dashicons-calendar-alt"></span>
+                        <span><?php esc_html_e('This schedule runs only until all articles in the task are published. For example, if you have 3 articles and set 1 post per day on weekdays, they will be published over 3 days and then the task will stop automatically.', 'botwriter'); ?></span>
+                    </div>
                 </div>
                 <br>
 
@@ -985,6 +1004,12 @@ function botwriter_super_prepare_event($event) {
         'log_id' => $event['id'],
         'article_id' => $articulo['id'],
     ]);
+    // For rewriter/siterewriter tasks, preserve the original content_prompt
+    // (rewrite instructions) before overwriting with the article content.
+    $task_type = $event['task_type'] ?? '';
+    if (in_array($task_type, ['rewriter', 'siterewriter'], true) && !empty($event['content_prompt'])) {
+        $event['rewrite_prompt'] = $event['content_prompt'];
+    }
     $event['content_prompt'] = $articulo['content'];
     $event['title_prompt'] = $articulo['title'];
     $event['category_id'] = $articulo['category_id'];

@@ -301,6 +301,124 @@ function botwriter_review_notice() {
     echo '</div>';
 }
 
+// =====================================================
+// STOPFORMANY — Tasks paused due to too many consecutive errors
+// =====================================================
+
+/**
+ * Show a critical admin notice when STOPFORMANY is active.
+ * The notice includes a "Reset & Resume" button that calls the server
+ * endpoint to clear the consecutive-error counter and removes the local flag.
+ */
+add_action('admin_notices', 'botwriter_stopformany_notice');
+function botwriter_stopformany_notice() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    if (!get_option('botwriter_stopformany', false)) {
+        return;
+    }
+
+    $logs_url = admin_url('admin.php?page=botwriter_logs');
+    $nonce    = wp_create_nonce('botwriter_stopformany_reset_nonce');
+    ?>
+    <div class="notice notice-error" id="botwriter-stopformany-notice" style="border-left-color:#d63638;">
+        <p><strong>🛑 <?php esc_html_e('BotWriter: All tasks have been STOPPED due to too many consecutive errors!', 'botwriter'); ?></strong></p>
+        <p><?php esc_html_e('The server detected 100+ consecutive task errors for your site and paused all task processing to prevent further failures.', 'botwriter'); ?></p>
+        <p><?php esc_html_e('Please review your logs, fix the underlying issue (API key, provider quota, etc.), then click the button below to resume.', 'botwriter'); ?></p>
+        <p>
+            <a class="button button-primary" href="<?php echo esc_url($logs_url); ?>">
+                <span class="dashicons dashicons-warning" style="vertical-align:middle; margin-right:4px;"></span>
+                <?php esc_html_e('View Logs', 'botwriter'); ?>
+            </a>
+            <button type="button" class="button" id="botwriter-stopformany-reset" data-nonce="<?php echo esc_attr($nonce); ?>" style="margin-left:8px;">
+                <?php esc_html_e('Reset & Resume Tasks', 'botwriter'); ?>
+            </button>
+            <span id="botwriter-stopformany-spinner" class="spinner" style="float:none; margin-top:0;"></span>
+        </p>
+    </div>
+    <script>
+    jQuery(document).ready(function($) {
+        $('#botwriter-stopformany-reset').on('click', function() {
+            var btn = $(this);
+            var spinner = $('#botwriter-stopformany-spinner');
+            btn.prop('disabled', true);
+            spinner.addClass('is-active');
+            $.post(ajaxurl, {
+                action: 'botwriter_stopformany_reset',
+                security: btn.data('nonce')
+            }, function(r) {
+                spinner.removeClass('is-active');
+                if (r.success) {
+                    $('#botwriter-stopformany-notice')
+                        .removeClass('notice-error').addClass('notice-success')
+                        .html('<p><strong>✅ <?php echo esc_js(__('Tasks resumed! The error counter has been reset.', 'botwriter')); ?></strong></p>');
+                    // Remove badge from Logs menu item
+                    $('a[href*="botwriter_logs"] .update-plugins').remove();
+                } else {
+                    btn.prop('disabled', false);
+                    alert(r.data || 'Error resetting. Please try again.');
+                }
+            }).fail(function() {
+                spinner.removeClass('is-active');
+                btn.prop('disabled', false);
+                alert('Network error. Please try again.');
+            });
+        });
+    });
+    </script>
+    <?php
+}
+
+/**
+ * AJAX: Reset the STOPFORMANY flag (calls server + clears local option).
+ */
+add_action('wp_ajax_botwriter_stopformany_reset', 'botwriter_stopformany_reset_handler');
+function botwriter_stopformany_reset_handler() {
+    check_ajax_referer('botwriter_stopformany_reset_nonce', 'security');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(__('Permission denied.', 'botwriter'));
+    }
+
+    // Call the server endpoint to reset the counter
+    $remote_url = BOTWRITER_API_URL . 'redis_reset_stop.php';
+    $ssl_verify = get_option('botwriter_sslverify', 'yes') !== 'no';
+
+    $response = wp_remote_post($remote_url, array(
+        'timeout'   => 15,
+        'sslverify' => $ssl_verify,
+        'body'      => array(
+            'api_key'         => get_option('botwriter_api_key'),
+            'user_domainname' => esc_url(get_site_url()),
+        ),
+    ));
+
+    $server_ok = false;
+    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        if (!empty($body['success'])) {
+            $server_ok = true;
+        }
+    }
+
+    // Always clear the local flag even if the server call failed
+    // (the server will reject the next task if the counter is still high,
+    //  re-activating the flag automatically)
+    delete_option('botwriter_stopformany');
+
+    botwriter_log('STOPFORMANY reset requested', [
+        'server_ok' => $server_ok,
+    ]);
+
+    if ($server_ok) {
+        wp_send_json_success();
+    } else {
+        // Local flag cleared; warn that server reset may have failed
+        wp_send_json_success(['message' => 'Local flag cleared. Server reset may have failed — tasks will resume but may be stopped again if errors persist.']);
+    }
+}
+
 /**
  * Check for consecutive errors in logs and show warning notice
  * Shows when 4+ consecutive errors are found in the most recent logs

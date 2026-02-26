@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: gpt, openai, AI, claude, gemini
 Requires at least: 4.0
 Tested up to: 6.9
-Stable tag: 2.1.0
+Stable tag: 2.2.0
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -231,6 +231,27 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 2.2.0 =
+✏️ **Content Rewriter**
+* NEW: Rewrite existing articles from any URL using AI
+* Add articles by URL or paste content manually
+
+🌐 **Site Rewriter**
+* NEW: Crawl an entire website and rewrite all its pages with AI
+* Select which pages to rewrite with checkbox UI
+* Content warnings for pages with missing or short content
+
+📋 **Manual Titles for Articles**
+* NEW: Paste your list of titles and the AI will write the articles
+* Quick way to plan and generate content in bulk
+
+🔍 **SEO Meta Description**
+* NEW: AI-generated meta descriptions for every published post
+* Compatible with Yoast SEO, Rank Math, All in One SEO, SEOPress, and The SEO Framework
+* Falls back to a standard meta tag if no SEO plugin is detected
+
+
+
 = 2.1.0 =
 🌐 **SEO Slug Translation**
 * NEW: Automatically translate post URL slugs, tag slugs, and image filenames to your target language
