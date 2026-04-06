@@ -31,45 +31,6 @@
 
 
 
-/* Style for Pro writers that are locked */
-.writer-pro-blurred {
-  filter: grayscale(100%);
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.writer-pro-blurred .writer-info {
-  position: relative;
-}
-
-.writer-pro-blurred .writer-info::after {
-  content: 'Available with Pro license';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  padding: 2px 5px;
-  font-size: 12px;
-}
-
-/* Upgrade message */
-.upgrade-message {
-  margin-top: 10px;
-  font-size: 14px;
-}
-.upgrade-message a {
-  color: #007bff;
-  text-decoration: none;
-}
-.upgrade-message a:hover {
-  text-decoration: underline;
-}
-
-
-
 
 .form-label {
   font-weight: 600;

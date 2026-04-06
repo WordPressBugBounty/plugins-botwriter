@@ -416,17 +416,12 @@ function botwriter_post_form_meta_box_handler($item)
     </div>
     <br>
 
-    <?php
-      $pro_writers = ['max', 'cloe', 'gael']; // Writers available only for Pro users in future
-      $is_pro_user = true; // Set to true to make all writers available if the user is Pro
-    ?>
-
   <!-- Writers -->
 <div class="col-md-6">
   <label class="form-label"><?php echo esc_html__('Writer:', 'botwriter'); ?></label>
   <div class="writer-options">
 
-    <!-- Orion, the Versatile Assistant (Free) -->
+    <!-- Orion, the Versatile Assistant -->
     <label class="writer-option">
       <input type="radio" name="writer" value="orion" required <?php if ($item['writer'] === 'orion') {
                                                                       echo 'checked';
@@ -438,7 +433,7 @@ function botwriter_post_form_meta_box_handler($item)
       </div>
     </label>
 
-    <!-- Lucida, the Analytical Critic (Free) -->
+    <!-- Lucida, the Analytical Critic -->
     <label class="writer-option">
       <input type="radio" name="writer" value="lucida" required <?php if ($item['writer'] === 'lucida') {
                                                                       echo 'checked';
@@ -450,9 +445,9 @@ function botwriter_post_form_meta_box_handler($item)
       </div>
     </label>
 
-    <!-- Max, the Adventurous Narrator (Pro) -->
-    <label class="writer-option <?php echo $is_pro_user ? '' : 'writer-pro-blurred'; ?>">
-      <input type="radio" name="writer" value="max" required <?php echo $item['writer'] === 'max' ? 'checked' : ''; ?> <?php echo $is_pro_user ? '' : 'disabled'; ?>>
+    <!-- Max, the Adventurous Narrator -->
+    <label class="writer-option">
+      <input type="radio" name="writer" value="max" required <?php echo $item['writer'] === 'max' ? 'checked' : ''; ?>>
       <img src="<?php echo esc_url($dir_images_writers . 'max.jpeg'); ?>" alt="<?php echo esc_attr__('Max', 'botwriter'); ?>" class="writer-photo">
       <div class="writer-info">
         <strong><?php echo esc_html__('Max, the Adventurous Narrator', 'botwriter'); ?></strong>
@@ -460,9 +455,9 @@ function botwriter_post_form_meta_box_handler($item)
       </div>
     </label>
 
-    <!-- Cloe, the Ironic Cultural Critic (Pro) -->
-    <label class="writer-option <?php echo $is_pro_user ? '' : 'writer-pro-blurred'; ?>">
-      <input type="radio" name="writer" value="cloe" required <?php echo $item['writer'] === 'cloe' ? 'checked' : ''; ?> <?php echo $is_pro_user ? '' : 'disabled'; ?>>
+    <!-- Cloe, the Ironic Cultural Critic -->
+    <label class="writer-option">
+      <input type="radio" name="writer" value="cloe" required <?php echo $item['writer'] === 'cloe' ? 'checked' : ''; ?>>
       <img src="<?php echo esc_url($dir_images_writers . 'cloe.jpeg'); ?>" alt="<?php echo esc_attr__('Cloe', 'botwriter'); ?>" class="writer-photo">
       <div class="writer-info">
         <strong><?php echo esc_html__('Cloe, the Ironic Cultural Critic', 'botwriter'); ?></strong>
@@ -470,9 +465,9 @@ function botwriter_post_form_meta_box_handler($item)
       </div>
     </label>
 
-    <!-- Gael, the Reflective Poet (Pro) -->
-    <label class="writer-option <?php echo $is_pro_user ? '' : 'writer-pro-blurred'; ?>">
-      <input type="radio" name="writer" value="gael" required <?php echo $item['writer'] === 'gael' ? 'checked' : ''; ?> <?php echo $is_pro_user ? '' : 'disabled'; ?>>
+    <!-- Gael, the Reflective Poet -->
+    <label class="writer-option">
+      <input type="radio" name="writer" value="gael" required <?php echo $item['writer'] === 'gael' ? 'checked' : ''; ?>>
       <img src="<?php echo esc_url($dir_images_writers . 'gael.jpeg'); ?>" alt="<?php echo esc_attr__('Gael', 'botwriter'); ?>" class="writer-photo">
       <div class="writer-info">
         <strong><?php echo esc_html__('Gael, the Reflective Poet', 'botwriter'); ?></strong>
@@ -480,9 +475,9 @@ function botwriter_post_form_meta_box_handler($item)
       </div>
     </label>
 
-    <!-- Custom (Pro) -->
-    <label class="writer-option <?php echo $is_pro_user ? '' : 'writer-pro-blurred'; ?>">
-      <input type="radio" name="writer" value="custom" required <?php echo $item['writer'] === 'custom' ? 'checked' : ''; ?> <?php echo $is_pro_user ? '' : 'disabled'; ?>>
+    <!-- Custom -->
+    <label class="writer-option">
+      <input type="radio" name="writer" value="custom" required <?php echo $item['writer'] === 'custom' ? 'checked' : ''; ?>>
       <img src="<?php echo esc_url($dir_images_writers . 'custom.jpeg'); ?>" alt="<?php echo esc_attr__('Custom', 'botwriter'); ?>" class="writer-photo">
       <div class="writer-info">
         <strong><?php echo esc_html__('Custom, the User-Selected Style Bot', 'botwriter'); ?></strong>
@@ -503,7 +498,7 @@ function botwriter_post_form_meta_box_handler($item)
             "LanguagePlayAndPoeticExpression" => "Language Play and Poetic Expression",
             "InternalMonologue" => "Internal Monologue",
             "Dialogical" => "Dialogical",
-            "Custom" => "Custom" // Agregar opción personalizada
+            "Custom" => "Custom"
         ];
         foreach ($styles as $value => $name) {
             $selected = ($item["narration"] == $value) ? 'selected' : '';
@@ -511,7 +506,6 @@ function botwriter_post_form_meta_box_handler($item)
         }
         ?>
         </select>
-        <!-- Campo adicional para que el usuario escriba su estilo personalizado -->
         <div id="customStyleInput" style="display: none; margin-top: 10px;">
             <label for="customStyle" class="form-label">Specify Custom Style:</label>
             <input type="text" class="form-control" id="custom_style" name="custom_style" placeholder="Enter your custom writing style" value="<?php echo esc_attr($item['custom_style']); ?>">
@@ -523,11 +517,6 @@ function botwriter_post_form_meta_box_handler($item)
 
   </div>
 
-  <?php if (!$is_pro_user): ?>
-    <p class="upgrade-message">
-      Want to unlock more writers? <a href="link-to-upgrade">Upgrade to the Pro version here.</a>
-    </p>
-  <?php endif; ?>
 </div>
 <br>
 

@@ -1,20 +1,21 @@
-=== BotWriter – Free AI Content Generator ===
+=== BotWriter – AI Content Generator ===
 Contributors: estebandezafra
 Donate link: https://wpbotwriter.com
-Tags: gpt, openai, AI, claude, gemini
+Tags: ai content generator, ai writer, auto blogging, wordpress ai, woocommerce ai
 Requires at least: 4.0
 Tested up to: 6.9
-Stable tag: 2.2.0
+Stable tag: 3.2.4
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Multi-provider AI content automation for WordPress. SEO-ready posts with GPT-5, Claude, Gemini + images from DALL-E, Flux, Nano Banana Pro & more.
+AI content generator for WordPress & WooCommerce. Auto blogging, AI writing plugin, product descriptions and SEO content with GPT, Claude, Gemini.
 
 == Description ==
 
-Do you want to keep your WordPress blog updated automatically with fresh, SEO-optimized content? 📈 With BotWriter, artificial intelligence takes care of writing and publishing articles for you!
-You can go on vacation or stop worrying about your blog:
+BotWriter is the most complete **AI content plugin for WordPress**. It works as an **AI auto blogging** tool that automatically generates and publishes SEO-optimized articles, and as a **WooCommerce AI content optimizer** that bulk-improves your entire product catalog.
+
+Whether you need an **AI writing plugin** to keep your blog updated on autopilot, or an **AI-powered SEO content creator** for your online store, BotWriter handles it all with support for 7+ AI text providers and 8 image generators.
 
 🔹 Automatically publish content every day / every week
 🔹 Generate 100% original articles with AI images
@@ -23,13 +24,19 @@ You can go on vacation or stop worrying about your blog:
 🔹 **NEW:** Article templates for consistent, professional content
 🔹 **NEW:** Image style presets (realistic, cartoon, anime, 3D, watercolor...)
 🔹 **NEW:** Smart image optimization for Google Discover (WebP, resize, compress)
+🔹 **NEW:** WooCommerce AI Content Optimizer — bulk-optimize product titles, descriptions, tags, SEO & more
+🔹 **NEW:** AI Review Generator for WooCommerce products
 🔹 Optimize your blog to rank higher on Google
 🔹 Set it up in minutes and let AI do the rest
 
 In this video, we'll show you how to set up BotWriter in just a few steps so your blog stays active effortlessly. Take advantage of AI-powered automation and streamline your content strategy! 🚀
 [youtube https://www.youtube.com/watch?v=PatljFLDNwI]
 
-BotWriter has been designed to simplify content creation for blogs, websites, and online stores. Version 2.0 introduces **multi-provider architecture**—choose the best AI for each job. Use GPT-5 for creative writing, Claude for technical content, or Gemini for multilingual articles. Pair them with cutting-edge image models like Flux 2 Pro, Google's Nano Banana, or Stable Diffusion.
+BotWriter has been designed to simplify content creation for blogs, websites, and online stores. As a **WordPress AI plugin** with multi-provider architecture, you can choose the best AI for each job. Use GPT-5 for creative writing, Claude for technical content, or Gemini for multilingual articles. Pair them with cutting-edge image models like Flux 2 Pro, Google's Nano Banana, or Stable Diffusion.
+
+For **WooCommerce** store owners, BotWriter includes a dedicated AI Content Optimizer that bulk-optimizes product titles, descriptions, tags, image ALT text, SEO metadata and more—all from a single dashboard. It also generates AI-powered product reviews and SEO-optimized category descriptions to help your store rank higher.
+
+BotWriter is also an **AI blogging plugin** that can automatically generate and publish blog posts based on keywords, RSS feeds, or news sources—making it the ideal tool for AI-powered SEO content creation.
 
 BotWriter is capable of creating entire blog content in minutes! Check out the example:
 [youtube https://www.youtube.com/watch?v=MpJ0KHKRYi8]
@@ -74,6 +81,19 @@ Automatic post-processing for web-ready images:
 * Compress to target file size (default: 120KB for Google Discover)
 * Works with any image provider
 
+**🛒 WooCommerce AI Content Optimizer** *(NEW in 3.0)*
+Bulk-optimize your entire product catalog with AI:
+* **9 content fields:** titles, descriptions, short descriptions, tags, image ALT text, review summaries, SEO meta descriptions, SEO titles and category descriptions
+* **Bulk Optimizer:** select products, choose fields and AI provider, preview all changes before applying
+* **Category Optimizer:** generate SEO-friendly category descriptions using product data as context
+* **AI Review Generator:** create realistic product reviews with configurable ratings, length, tone, reviewer names and date spread
+* **Full Backup & Revert:** automatic backup before every change, per-field or full revert, visual before/after diff
+* **Optimization History:** browse all past optimizations with filters, search and pagination
+* **Advanced product filters:** filter by status, category, stock, type, word count, price, tag count, review count and more
+* **SEO plugin integration:** auto-writes to Yoast SEO, Rank Math, SEOPress, All in One SEO and The SEO Framework
+* **Customizable prompt templates** with {{placeholder}} variables for full control over AI output
+* Works with all supported AI text providers
+
 **⛽ Article Templates**
 Create professional, consistent content with reusable templates:
 * Pre-configured prompts for different content types
@@ -108,7 +128,50 @@ Need content immediately? The "Write Now" feature creates and publishes a single
 * Control publishing frequency and timing
 
 **Your API Keys, Your Control**
-BotWriter is 100% free. You only pay the AI providers directly for API usage—BotWriter doesn't charge subscription fees or take a cut of your API costs.
+BotWriter lets you bring your own API keys and pay the AI providers directly.
+
+All AI requests are routed through the BotWriter cloud service at api.wpbotwriter.com, which handles request queuing, long-running AI sessions, error recovery, retries, and delivery coordination. This architecture ensures reliable content generation even on shared hosting environments with strict timeout limits.
+
+
+== Why BotWriter? ==
+
+Unlike other AI WordPress plugins, BotWriter supports **multiple AI providers** instead of locking you into a single API. You can choose between GPT, Claude, Gemini, Mistral, Groq and more—depending on cost, speed, or quality.
+
+Looking for the **best AI WordPress plugin**? Here's what sets BotWriter apart:
+
+* **Multi-provider freedom:** switch between 7+ AI text providers and 8 image generators—no vendor lock-in
+* **WooCommerce native:** the only AI writer for WordPress with a dedicated WooCommerce product optimizer, review generator, and category description tool
+* **True automation:** schedule posts daily or weekly, generate bulk content series, or publish instantly with Write Now
+* **Full SEO stack:** AI-generated meta descriptions, SEO titles, slug translation, image optimization for Core Web Vitals
+* **Your keys, your cost:** BotWriter doesn't mark up API costs—you pay providers directly at their published rates
+
+
+== Who Is BotWriter For? ==
+
+BotWriter is the ideal AI content plugin for WordPress for:
+
+* **Bloggers** who want to publish consistently without writing every post by hand
+* **SEO agencies** that need to produce high-volume, optimized content for client sites
+* **Affiliate marketers** building niche sites with AI-generated review articles and comparisons
+* **Niche site builders** creating topical authority with bulk content series
+* **WooCommerce store owners** looking to optimize product descriptions, tags, SEO metadata, and generate reviews
+* **Content marketers** scaling their output across multiple blogs and languages
+* **News aggregation sites** that rewrite trending stories automatically
+
+
+== Use Cases ==
+
+BotWriter can be used for:
+
+* **AI auto blogging** — Automatically publish fresh articles on a schedule you define
+* **AI-powered SEO content creation** — Generate keyword-rich, well-structured articles optimized for search engines
+* **WooCommerce content automation** — Bulk-optimize product titles, descriptions, tags, SEO metadata, and generate AI reviews
+* **News aggregation blogs** — Pull and rewrite trending news stories for your niche
+* **Affiliate niche websites** — Create product reviews, comparisons, and buying guides at scale
+* **RSS feed rewriting** — Transform any RSS feed into unique, original blog posts
+* **Multilingual content** — Generate articles in any language using Gemini, GPT, or Claude
+* **Bulk content libraries** — Build entire topic clusters with Super Tasks (5, 10, 20+ articles at once)
+* **WooCommerce SEO** — Generate SEO meta descriptions, SEO titles, and category descriptions for your store
 
 
 == Installation ==
@@ -121,10 +184,21 @@ BotWriter is 100% free. You only pay the AI providers directly for API usage—B
 == Frequently Asked Questions ==
 
 = What is BotWriter? =
-BotWriter is a multi-provider AI-powered WordPress plugin that automatically writes and publishes blog posts on a schedule you define. Choose from 7 text AI providers and 8 image generators. Set it up once, and it will keep your blog updated with fresh, SEO-optimized content automatically.
+BotWriter is a multi-provider AI-powered WordPress plugin—an **AI writer for WordPress** that automatically generates and publishes blog posts on a schedule you define. It also works as a **WooCommerce AI content optimizer** to bulk-improve your product catalog. Choose from 7 text AI providers and 8 image generators. Set it up once, and it will keep your blog updated with fresh, SEO-optimized content automatically.
 
-= Is BotWriter free? =
-Yes! BotWriter is completely free. You only need API keys from your preferred AI providers (OpenAI, Anthropic, Google, etc.). You pay the providers directly—BotWriter doesn't charge any subscription fees or commissions.
+= How does BotWriter work? =
+BotWriter works as a client/cloud architecture. The WordPress plugin handles scheduling, configuration, and publishing, while all AI processing happens through the BotWriter cloud service at api.wpbotwriter.com.
+
+When a task runs, the plugin sends the request to the cloud service, which manages the entire generation pipeline:
+
+1. **Text generation** — The cloud service calls your selected AI text provider (OpenAI, Claude, Gemini, etc.) with the configured prompt, waits as long as needed for the response, and handles retries if the provider fails.
+2. **Automatic image prompt creation** — From the generated article, the cloud service uses AI to craft an optimized image prompt that captures the essence of the content — so the featured image is always relevant and visually coherent with the text.
+3. **Image generation** — Using that AI-crafted prompt, the cloud service calls your selected image provider to generate the featured image. Text and image providers can be completely different — for example, you can write articles with Claude and generate images with DALL-E or Flux 2.
+4. **Result delivery** — The plugin polls for the completed result and publishes the post with its title, content, tags, and AI-generated featured image.
+
+This architecture means your WordPress site only makes short HTTP requests (a few seconds each), while the cloud service handles the heavy lifting — long-running AI calls, multi-step orchestration, error recovery, and cross-provider coordination. It works reliably even on basic shared hosting with strict timeout limits.
+
+You bring your own API keys for each AI provider and pay them directly. BotWriter does not mark up API costs.
 
 = Which AI providers does BotWriter support? =
 **Text Generation:** OpenAI (GPT-5, GPT-4o), Anthropic (Claude), Google (Gemini), Mistral, Groq, OpenRouter, DeepSeek
@@ -145,6 +219,9 @@ BotWriter can:
 * Create bulk article series with Super Tasks
 * Generate instant posts with the "Write Now" feature
 * Apply article templates for consistent formatting
+* Optimize WooCommerce product titles, descriptions, tags, SEO metadata and image ALT text
+* Generate AI-powered customer reviews for WooCommerce products
+* Create SEO-optimized WooCommerce category descriptions
 
 = How do article templates work? =
 Templates let you save and reuse content configurations:
@@ -185,7 +262,7 @@ This is ideal for Google Discover optimization and fast page loading. A 2MB imag
 Absolutely! Each task has a "Disable AI Images" option. When enabled, BotWriter generates text-only posts, reducing your API costs and speeding up content creation.
 
 = Is the generated content SEO-friendly? =
-Yes! BotWriter focuses on creating SEO-optimized content with relevant titles, meta descriptions, tags, and well-structured articles designed to rank in search engines.
+Yes! As an AI content plugin for WordPress built with SEO in mind, BotWriter creates optimized content with relevant titles, meta descriptions, tags, and well-structured articles designed to rank in search engines. It integrates with Yoast SEO, Rank Math, SEOPress, All in One SEO, and The SEO Framework for both blog posts and WooCommerce products.
 
 = Can I review posts before publishing? =
 Absolutely. Set the "Post Status" to "Draft" in your task configuration, and BotWriter will save posts as drafts for you to review and edit before publishing.
@@ -214,11 +291,45 @@ BotWriter includes automatic retry mechanisms with intelligent backoff. If a tas
 = Can I run multiple tasks simultaneously? =
 Yes! Create as many tasks as you need. BotWriter's cron engine processes them intelligently, respecting the cooldown period you configure between posts.
 
+= What is the best AI content plugin for WordPress? =
+BotWriter is one of the most advanced AI content generators for WordPress. Unlike single-provider plugins, BotWriter lets you choose from 7+ text AI providers (GPT-5, Claude, Gemini, Mistral, Groq, OpenRouter, DeepSeek) and 8 image generators — so you can pick the best model for each task based on cost, speed, or quality. It also includes a dedicated WooCommerce AI optimizer, article templates, image style presets, smart image optimization, and full SEO plugin integration — features most AI writing plugins don't offer.
+
+= Can AI write blog posts in WordPress automatically? =
+Yes. BotWriter is an AI auto blogging plugin that can generate and publish posts automatically on a schedule you define. Set the days, frequency, AI provider, and content preferences — then BotWriter's cron engine creates and publishes SEO-optimized articles with AI-generated images, tags, and meta descriptions, all without manual intervention. You can also generate instant posts with the "Write Now" feature.
+
+= Can AI generate WooCommerce product descriptions? =
+Yes! BotWriter's WooCommerce AI Content Optimizer can bulk-generate and optimize product titles, full descriptions, short descriptions, tags, image ALT text, SEO meta descriptions, SEO titles, review summaries, and category descriptions. Every change is previewed before applying, backed up automatically, and can be reverted at any time. It works with all supported AI providers and integrates with Yoast SEO, Rank Math, SEOPress, All in One SEO, and The SEO Framework.
+
+= Is BotWriter the best AI writer for WordPress? =
+BotWriter stands out as a top AI writing plugin for WordPress thanks to its multi-provider architecture, WooCommerce support, and comprehensive feature set. You're not locked into a single AI — switch freely between GPT, Claude, Gemini, and others. Combined with features like Super Tasks for bulk content, RSS rewriting, article templates, 12 image style presets, and automatic image optimization, BotWriter is designed for serious content creators who need flexibility and scale.
+
+= Can I use AI to create SEO content for WordPress? =
+Absolutely. BotWriter is built for AI-powered SEO content creation. Every article is generated with optimized titles, proper heading hierarchy, keyword placement, meta descriptions, and relevant tags. It integrates with all major SEO plugins and supports AI-generated SEO titles and meta descriptions for both blog posts and WooCommerce products. Features like slug translation and image optimization further boost your search rankings.
+
+= Does BotWriter work with WooCommerce? =
+Yes! BotWriter includes a dedicated **WooCommerce AI Content Optimizer** that can bulk-optimize your entire product catalog. It generates AI-written product titles, descriptions, short descriptions, tags, image ALT text, SEO meta descriptions, SEO titles, review summaries and category descriptions. Everything is previewed before applying, and you can revert any change at any time.
+
+= Can BotWriter generate product reviews? =
+Yes. The AI Review Generator creates realistic WooCommerce reviews with configurable star ratings, review length, tone, reviewer names, and date spread. Reviews are inserted as standard WooCommerce comments with proper rating metadata.
+
+= How does BotWriter route AI requests? =
+All AI requests—both for blog content and WooCommerce product optimization—are routed through the BotWriter cloud service at api.wpbotwriter.com. It manages the full generation pipeline: text generation, automatic image prompt creation from the article content, image generation (which can use a completely different AI provider than the text), error recovery, automatic retries, and result delivery—so your WordPress site doesn't need to keep long-running HTTP connections open or deal with provider-specific error handling.
+
+= How does BotWriter identify my site? =
+Each site is identified by a **site_token** — a unique UUID that is automatically provisioned on first contact with the BotWriter cloud service. The plugin stores this token locally (in a WordPress option) and includes it in every API request to authenticate the site. 
+
 = Does BotWriter use third-party services? =
-Yes. BotWriter connects to:
-* wpbotwriter.com for task processing and coordination
-* Your configured AI providers (OpenAI, Anthropic, Google, Fal.ai, Replicate, etc.)
-* Optional: News APIs and RSS feeds for content sources
+Yes. All content generation requests are routed through the BotWriter cloud service at api.wpbotwriter.com, which provides centralized job processing, request queuing, error recovery, automatic retries, and delivery coordination. The plugin may also contact provider endpoints directly for optional settings actions such as API key verification and model connectivity tests initiated by the site administrator. The cloud architecture ensures reliable content generation even on hosting environments with strict execution time limits, simplifies API key management, and provides consistent error handling across all providers.
+
+Every request to the cloud service includes:
+* **site_token** — a unique UUID auto-provisioned on first contact, used to identify and authenticate the site
+* **domain** — the site URL
+* **Provider settings** — selected AI provider, model, and your provider API keys (forwarded securely to the cloud service for processing on your behalf)
+
+BotWriter connects to:
+* **api.wpbotwriter.com** — cloud processing service (API endpoint) for AI request queuing, execution, and delivery
+* **Your configured AI providers** (OpenAI, Anthropic, Google, Fal.ai, Replicate, etc.) — called by the cloud service on your behalf using your API keys
+* **Optional:** News APIs and RSS feeds for content sources
 
 All external service usage is detailed in the "External Services" section below.
 
@@ -231,6 +342,58 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.1.0 =
+🏗️ **Architecture Refactor — Pure SaaS Client**
+* Refactored plugin to act purely as a client/interface to the BotWriter cloud service
+* All service-level decisions (processing, scheduling, retries) are now handled by the remote service
+* Removed local checking engine — the plugin delegates entirely to the cloud service
+* Removed Freemius SDK entirely — no longer bundled with the plugin
+* Removed local entitlement logic from all generation flows
+* All writers (Max, Cloe, Gael, Custom) are now available to all users
+* Neutral, non-marketing service error messages replace all upgrade/renew prompts
+* Centralized service response handler for consistent error display
+* Updated readme to accurately describe the SaaS architecture
+
+= 3.0.1 =
+🌟 **AI Review Generator for WooCommerce**
+* NEW: Generate realistic AI-powered product reviews with configurable settings
+* Configurable star rating distribution (1★–5★ percentages)
+* Review length options: short, medium, long, or mixed with custom percentages
+* Content style/tone selection: natural, enthusiastic, professional, casual
+* Optional minor cons inclusion for authenticity
+* Auto-generated or custom reviewer names
+* Date scheduling: all today or spread over past N days
+* Optional verified owner badge
+* Delete only AI-generated reviews (tracked via metadata)
+* Product filter by review count, rating, and category
+
+📊 **Optimization History**
+* NEW: Full history of all WooCommerce AI optimizations
+* Visual before/after diff for every field
+* Per-field revert or full product revert
+* Search, filter by date, category, and pagination
+* "Select all filtered" for bulk operations
+
+🔧 **Improvements**
+* SEO meta/title now stored in BotWriter fallback keys when no SEO plugin is installed
+* Fixed SEO meta incorrectly writing to short description field
+* Better error handling for WooCommerce AI operations
+
+= 3.0.0 =
+🛒 **WooCommerce AI Content Optimizer**
+* NEW: Dedicated WooCommerce AI Content Optimizer dashboard
+* Bulk-optimize product titles, descriptions, short descriptions, tags, and image ALT text
+* AI-generated SEO meta descriptions and SEO titles
+* AI-powered review summaries (sentiment analysis of existing reviews)
+* Category description optimizer with product context
+* Advanced product filters: status, category, stock, type, word count, price, tag count, review count
+* Preview & approve workflow: review all AI changes before applying
+* Automatic backup and one-click revert for every optimization
+* SEO plugin integration: Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework
+* Customizable prompt templates with {{placeholder}} variables
+* Configurable batch size and processing delay
+* Works with all supported AI text providers
+
 = 2.2.0 =
 ✏️ **Content Rewriter**
 * NEW: Rewrite existing articles from any URL using AI
@@ -290,14 +453,9 @@ All external service usage is detailed in the "External Services" section below.
 * Fix for Japanese and non-ASCII image filenames
 
 = 2.0.6 =
-🖥️ **Custom Text Provider (Self-Hosting)**
-* NEW: Custom Provider for text generation - use any OpenAI-compatible API
-* Supports self-hosted LLMs: LM Studio, Ollama, text-generation-webui, and more
-* Action Scheduler integration for reliable background processing
-
-🚫 **No Image Generation Option**
+� **No Image Generation Option**
 * NEW: "No Image Generation" option in Image Provider dropdown
-* Useful when using Custom Provider for text-only workflows
+* Useful for text-only workflows where images are not needed
 * Automatically forces "Disable AI Images" in task creation when selected
 
 
@@ -375,35 +533,7 @@ Major: Write now (one-off post, runs immediately)
 * Error handling: Friendly error details with Retry and Cancel options
 * Security: Stricter nonce/capability checks
 
-= 1.4.0 =
-* Change to total free plan with your own OpenAI API key
 
-= 1.3.9 =
-* Super task reset for multiple retries
-
-= 1.3.8 =
-* Update supertask considering blog pages in addition to posts and categories
-
-= 1.3.7 =
-* Change GMT time to local WordPress time zone
-
-= 1.3.6 =
-* New video tutorial
-
-= 1.3.5 =
-* Added 2 video tutorials
-
-= 1.3.1 =
-* New options for article packs. Super Tasks.
-
-= 1.3.0 =
-* Various bug fixes
-
-= 1.2.9 =
-* Various revisions to comply with WordPress.org guidelines
-
-= 1.2.6 =
-* Initial version of the plugin
 
 
 == External Services ==
@@ -411,22 +541,45 @@ Major: Write now (one-off post, runs immediately)
 This plugin relies on third-party external services to generate text and images automatically, as well as to retrieve related content for your blog.
 
     Service's Terms
-     https://wpbotwriter.com/services-terms/
+     https://wpbotwriter.com/service-terms.html
 
     Privacy Policy
-    https://wpbotwriter.com/privacy-policy/
+    https://wpbotwriter.com/privacy-policy.html
 
 Below is a summary of the external services used and the data they handle:
 
-**1. BotWriter Platform (wpbotwriter.com)**
-These endpoints are part of the service provided by our platform:
-- **Activation:** `https://wpbotwriter.com/public/activation.php` - Validates and activates the plugin
-- **Generate Posts:** `https://wpbotwriter.com/public/redis_api_cola.php` and `redis_api_finish.php` - Process content generation
-- **User Data:** `https://wpbotwriter.com/public/getUserData.php` - Subscription data for Pro users
-- **Email Confirmation:** `https://wpbotwriter.com/public/envio_email_confirmacion.php` - Optional email registration
+**1. BotWriter Cloud Service — Managed AI Processing Hub (api.wpbotwriter.com)**
 
-**2. Text Generation Providers**
-When configured, the plugin connects to these services for text generation:
+BotWriter routes all content generation requests through the BotWriter cloud service at api.wpbotwriter.com, which acts as a **centralized processing hub** between your site and the AI providers. The plugin may also contact provider endpoints directly for optional settings actions such as API key verification and model connectivity tests initiated by the site administrator.
+
+**Why is this cloud service necessary?**
+
+AI content generation is fundamentally different from typical WordPress operations. A single article generation request involves multiple sequential steps — building a structured prompt, calling the AI text provider, parsing and validating the response, extracting image prompts, calling a separate AI image provider, downloading and processing the generated image, and assembling the final result. This entire pipeline can take anywhere from 30 seconds to several minutes depending on the providers and content length.
+
+Most WordPress hosting environments (shared hosting, managed WordPress hosts) impose strict execution time limits (typically 30–60 seconds) and restrict long-running background processes. Making these calls directly from WordPress would result in frequent timeouts, lost content, and failed tasks — especially when generating multiple articles in sequence or processing bulk WooCommerce optimizations.
+
+The BotWriter cloud service solves these problems by offloading the heavy lifting to a dedicated infrastructure designed for long-running AI workloads:
+
+* **Long-running session management:** AI provider API calls can take 30–120+ seconds per request. The cloud service maintains persistent HTTPS connections to AI providers for as long as needed, without being constrained by your web server's timeout limits. Your WordPress site only needs short polling requests (a few seconds each) to check for completed results.
+* **Asynchronous job queue:** Tasks are placed in a processing queue and executed independently. Your WordPress cron submits a task and moves on immediately — the cloud service handles the actual generation in the background. This means your site's performance is never affected by AI processing.
+* **Multi-provider orchestration:** BotWriter supports 7+ text providers and 6+ image providers, each with different API formats, authentication methods, rate limits, and error behaviors. The cloud service normalizes all of this into a single consistent interface, so the plugin doesn't need to bundle and maintain separate API client libraries for every provider.
+* **Intelligent error recovery and retries:** AI providers frequently return transient errors — rate limits (HTTP 429), server overload (HTTP 503), temporary outages, and malformed responses. The cloud service implements provider-specific retry strategies with exponential backoff, automatically re-submitting failed requests without any intervention from your WordPress site.
+* **Provider-specific fallback logic:** If a provider consistently fails (e.g., an API outage), the cloud service can detect patterns and surface clear error messages, preventing your WordPress cron from burning cycles on doomed requests.
+* **Result caching and delivery guarantee:** Completed results are stored in the cloud and delivered to your site on the next cron poll. Even if your WordPress server is briefly unavailable (maintenance, reboot, host downtime), no generated content is ever lost.
+* **Structured response parsing:** AI models don't always return perfectly formatted output. The cloud service parses, validates, and structures the AI response (title, content, tags, image prompt) before delivering it, handling edge cases like malformed JSON, markdown fences in code blocks, and truncated responses.
+* **Image generation pipeline:** After text generation completes, the cloud service automatically extracts the AI-generated image prompt, calls the configured image provider, waits for the image to be rendered, and makes it available for download — all in a single seamless pipeline that would be nearly impossible to run reliably within WordPress's execution constraints.
+* **Request lifecycle tracking:** The cloud service monitors the processing pipeline end-to-end — from queue entry through provider call to result delivery — ensuring every request completes or surfaces a clear diagnostic message.
+
+This architecture means that even sites on basic shared hosting can reliably generate AI content with any provider — something that would be technically impossible if the plugin attempted to make these long-running API calls directly.
+
+Endpoints used:
+- **Queue Request:** `https://api.wpbotwriter.com/redis_api_cola.php` — Submits content generation requests to the processing queue
+- **Retrieve Results:** `https://api.wpbotwriter.com/redis_api_finish.php` — Retrieves completed content from the queue
+
+**Data transmitted to api.wpbotwriter.com:** site URL, site_token (a unique UUID auto-provisioned on first contact, used to identify the site — see FAQ), plugin version, task configuration (prompts, language, length, provider preferences), and the AI provider API keys you configure. API keys are encrypted in your WordPress database (AES-256 using your site's AUTH_KEY) and transmitted securely over HTTPS to the cloud service, which uses them only for the duration of the request and does not store them permanently.
+
+**2. Text Generation Providers** *(called by the cloud service on your behalf)*
+When configured, the cloud service connects to these AI providers for text generation using your API keys:
 - **OpenAI API** - [Terms](https://openai.com/terms/) | [Privacy](https://openai.com/privacy/)
 - **Anthropic API (Claude)** - [Terms](https://www.anthropic.com/legal/consumer-terms) | [Privacy](https://www.anthropic.com/legal/privacy)
 - **Google AI (Gemini)** - [Terms](https://ai.google.dev/terms) | [Privacy](https://policies.google.com/privacy)
@@ -434,15 +587,13 @@ When configured, the plugin connects to these services for text generation:
 - **Groq** - [Terms](https://groq.com/terms-of-use/) | [Privacy](https://groq.com/privacy-policy/)
 - **OpenRouter** - [Terms](https://openrouter.ai/terms) | [Privacy](https://openrouter.ai/privacy)
 
-**3. Image Generation Providers**
-When configured, the plugin connects to these services for image generation:
+**3. Image Generation Providers** *(called by the cloud service on your behalf)*
+When configured, the cloud service connects to these AI providers for image generation using your API keys:
 - **OpenAI DALL-E** - [Terms](https://openai.com/terms/) | [Privacy](https://openai.com/privacy/)
 - **Fal.ai** - [Terms](https://fal.ai/terms) | [Privacy](https://fal.ai/privacy)
 - **Replicate** - [Terms](https://replicate.com/terms) | [Privacy](https://replicate.com/privacy)
 - **Stability AI** - [Terms](https://stability.ai/terms-of-service) | [Privacy](https://stability.ai/privacy-policy)
 - **Cloudflare Workers AI** - [Terms](https://www.cloudflare.com/terms/) | [Privacy](https://www.cloudflare.com/privacypolicy/)
-
-**Data Transmitted:** The plugin sends user-supplied prompts, configuration parameters, and API keys when requesting content generation. Your API keys are stored encrypted in your WordPress database and transmitted securely to the respective providers.
 
 By using this plugin, you acknowledge that it communicates with these third-party and external services, and that data is transmitted as described above. Please review the respective Terms of Service and Privacy Policies for each service.
 

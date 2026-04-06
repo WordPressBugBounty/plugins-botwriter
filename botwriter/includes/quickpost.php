@@ -143,9 +143,8 @@ function botwriter_quick_poll() {
 
     $status = $log['task_status'];
 
-    // Try to advance phase 2 when pending/inqueue/direct_queued/processing
-    // send2 will handle routing to server or Action Scheduler based on status
-    if (in_array($status, array('pending', 'inqueue', 'direct_queued', 'processing'), true)) {
+    // Try to advance phase 2 when pending/inqueue
+    if (in_array($status, array('pending', 'inqueue'), true)) {
         if (!function_exists('botwriter_send2_data_to_server')) { wp_send_json_error('send2-missing'); }
         botwriter_send2_data_to_server($log);
         // reload

@@ -17,6 +17,7 @@ function botwriter_get_gemini_image_models() {
     return [
         'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image (fast, efficient)',
         'gemini-3-pro-image-preview' => 'Gemini 3 Pro Image Preview (advanced, 4K)',
+        'gemini-3.1-flash-image-preview' => 'Gemini 3.1 Flash Image Preview (latest)',
     ];
 }
 
@@ -35,6 +36,7 @@ function botwriter_get_gemini_image_info() {
         'pricing_summary' => [
             'Gemini 2.5 Flash Image' => __('See pricing page', 'botwriter'),
             'Gemini 3 Pro Image Preview' => __('See pricing page', 'botwriter'),
+            'Gemini 3.1 Flash Image Preview' => __('See pricing page', 'botwriter'),
         ],
         'features' => [
             __('Uses the same API key as Google Gemini text models', 'botwriter'),
@@ -103,7 +105,7 @@ function botwriter_render_gemini_settings($settings, $is_active) {
                         <option value="<?php echo esc_attr($id); ?>" <?php selected($current_model, $id); ?>><?php echo esc_html($name); ?></option>
                     <?php endforeach; ?>
                 </select>
-                <p class="description"><?php esc_html_e('2.5 Flash Image is recommended for speed. 3 Pro Preview for advanced features.', 'botwriter'); ?></p>
+                <p class="description"><?php esc_html_e('2.5 Flash Image is recommended for speed. 3 Pro Preview for advanced features. 3.1 Flash Image Preview is the latest model.', 'botwriter'); ?></p>
             </div>
         </div>
 

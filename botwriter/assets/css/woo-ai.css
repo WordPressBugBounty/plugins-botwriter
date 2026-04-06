@@ -1,0 +1,688 @@
+/**
+ * BotWriter WooCommerce AI – Styles
+ * BUILD: 2026-03-13a
+ *
+ * Consistent with the existing BotWriter admin UI:
+ * cards, badges, progress bars, preview cards with diff view.
+ *
+ * @package BotWriter
+ * @since   2.3.0
+ */
+
+/* ================================================================
+ *  Layout & Cards
+ * ================================================================ */
+
+.bw-woo-ai-wrap {
+    max-width: 1200px;
+}
+
+.bw-woo-card {
+    background: #fff;
+    padding: 22px 28px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+}
+
+.bw-woo-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+/* ================================================================
+ *  Tab Navigation
+ * ================================================================ */
+
+.bw-woo-tabs .nav-tab {
+    border-radius: 6px 6px 0 0;
+    font-size: 14px;
+    padding: 8px 16px;
+}
+
+.bw-woo-tabs .nav-tab-active {
+    background: #fff;
+    border-bottom-color: #fff;
+    font-weight: 600;
+}
+
+/* ================================================================
+ *  Badges
+ * ================================================================ */
+
+.bw-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.bw-badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.bw-badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.bw-badge-default {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.bw-badge-error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* ================================================================
+ *  Product Table
+ * ================================================================ */
+
+.bw-product-table img {
+    vertical-align: middle;
+}
+
+.bw-product-table td,
+.bw-product-table th {
+    vertical-align: middle;
+}
+
+/* ================================================================
+ *  Step Indicator
+ * ================================================================ */
+
+.bw-woo-steps {
+    display: flex;
+    gap: 0;
+}
+
+.bw-step {
+    flex: 1;
+    text-align: center;
+    padding: 10px 12px;
+    background: #f0f0f1;
+    color: #787c82;
+    font-size: 13px;
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.bw-step:first-child {
+    border-radius: 8px 0 0 0;
+}
+
+.bw-step:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+.bw-step.active {
+    background: #fff;
+    color: #1d2327;
+    border-bottom-color: #667eea;
+    font-weight: 600;
+}
+
+/* ================================================================
+ *  Progress Bar
+ * ================================================================ */
+
+.bw-progress-bar {
+    width: 100%;
+    height: 24px;
+    background: #e9ecef;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.bw-progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    transition: width 0.4s ease;
+}
+
+.bw-progress-text {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #555;
+}
+
+/* ================================================================
+ *  Accordion Compact Cards
+ * ================================================================ */
+
+.bw-compact-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.bw-compact-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.bw-compact-header:hover {
+    background: #f9f9fb;
+}
+
+.bw-compact-toggle {
+    color: #888;
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.bw-compact-name {
+    flex: 1;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.bw-compact-status {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bw-compact-body {
+    padding: 0 18px 18px;
+    border-top: 1px solid #f0f0f1;
+}
+
+/* ================================================================
+ *  Preview Cards
+ * ================================================================ */
+
+.bw-preview-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 14px;
+    transition: opacity 0.3s;
+}
+
+.bw-preview-card.bw-rejected {
+    opacity: 1;
+    border-color: #d63638;
+    position: relative;
+}
+
+.bw-preview-card.bw-rejected::after {
+    content: '\2715';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    font-weight: bold;
+    color: rgba(214, 54, 56, 0.25);
+    background: rgba(214, 54, 56, 0.04);
+    pointer-events: none;
+    z-index: 1;
+    border-radius: 8px;
+}
+
+.bw-reject-btn.bw-active {
+    background: #d63638 !important;
+    color: #fff !important;
+    border-color: #d63638 !important;
+}
+
+.bw-preview-card.bw-preview-error {
+    border-left: 4px solid #d63638;
+}
+
+.bw-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.bw-preview-header h4 {
+    margin: 0;
+    font-size: 15px;
+}
+
+.bw-preview-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.bw-preview-actions .bw-active {
+    background: #667eea;
+    color: #fff;
+    border-color: #667eea;
+}
+
+.bw-preview-actions .bw-reject-btn.bw-active {
+    background: #d63638;
+    border-color: #d63638;
+}
+
+/* ================================================================
+ *  Diff View
+ * ================================================================ */
+
+.bw-field-preview {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.bw-field-preview:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.bw-field-preview > strong {
+    display: block;
+    margin-bottom: 8px;
+    text-transform: capitalize;
+    font-size: 13px;
+    color: #50575e;
+}
+
+.bw-field-error .bw-error-text {
+    color: #d63638;
+}
+
+.bw-diff-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 782px) {
+    .bw-diff-wrap {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bw-diff-old,
+.bw-diff-new {
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.bw-diff-old {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.bw-diff-new {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+
+.bw-diff-label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    color: #888;
+}
+
+.bw-editable {
+    outline: none;
+    min-height: 40px;
+}
+
+.bw-editable:focus {
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+    border-radius: 4px;
+}
+
+/* ================================================================
+ *  Filter Bar
+ * ================================================================ */
+
+.bw-filter-bar select,
+.bw-filter-bar input[type="text"] {
+    height: 36px;
+    font-size: 13px;
+}
+
+.bw-filter-bar label strong {
+    font-size: 12px;
+    color: #50575e;
+}
+
+/* ================================================================
+ *  Custom Filter Row
+ * ================================================================ */
+
+.bw-custom-filter-row select,
+.bw-custom-filter-row input[type="text"] {
+    height: 36px;
+    font-size: 13px;
+}
+
+.bw-custom-filter-row label strong {
+    font-size: 12px;
+    color: #50575e;
+}
+
+/* ================================================================
+ *  Field Options (checkboxes in step 2)
+ * ================================================================ */
+
+.bw-field-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.bw-field-option:hover {
+    border-color: #667eea;
+    background: #f5f3ff;
+}
+
+.bw-field-option input:checked ~ * {
+    font-weight: 500;
+}
+
+/* ================================================================
+ *  Prompt Template Editor
+ * ================================================================ */
+
+.bw-template-block {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    background: #fafafa;
+}
+
+.bw-tpl-textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 120px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background: #fff;
+}
+
+.bw-tpl-textarea:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 1px rgba(102, 126, 234, 0.3);
+    outline: none;
+}
+
+.bw-tpl-reset {
+    font-size: 12px !important;
+    color: #888 !important;
+}
+
+.bw-tpl-reset:hover {
+    color: #d63638 !important;
+}
+
+/* ================================================================
+ *  Error text
+ * ================================================================ */
+
+.bw-error-text {
+    color: #d63638;
+    font-size: 13px;
+}
+
+/* ================================================================
+ *  Selection summary
+ * ================================================================ */
+
+.bw-selection-count {
+    font-size: 13px;
+    color: #50575e;
+    font-weight: 500;
+}
+
+/* ================================================================
+ *  Compact Card Thumbnail
+ * ================================================================ */
+
+.bw-compact-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.bw-compact-name small {
+    color: #888;
+    font-weight: 400;
+}
+
+/* ================================================================
+ *  Category Hierarchy Indent
+ * ================================================================ */
+
+.bw-cat-indent {
+    display: inline-block;
+}
+
+.bw-cat-indent .bw-cat-arrow {
+    color: #aaa;
+    margin-right: 4px;
+}
+
+/* ================================================================
+ *  Reviews – Step 2 input overrides
+ * ================================================================ */
+
+.bw-woo-reviews-wrap label input.small-text {
+    margin-top: 6px;
+}
+
+.bw-woo-reviews-wrap input[type=number].small-text {
+    width: 40px;
+}
+
+/* ================================================================
+ *  Diff Modal
+ * ================================================================ */
+
+.bw-diff-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100100;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bw-diff-modal {
+    background: #fff;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 960px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: bwDiffSlideIn 0.2s ease-out;
+}
+
+@keyframes bwDiffSlideIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.bw-diff-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+.bw-diff-modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.bw-diff-modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #666;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.bw-diff-modal-close:hover {
+    color: #d63638;
+}
+
+.bw-diff-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Individual field block */
+.bw-diff-field {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.bw-diff-field:last-child {
+    margin-bottom: 0;
+}
+
+.bw-diff-field-same {
+    opacity: 0.6;
+}
+
+.bw-diff-field-reverted {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.bw-diff-field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.bw-diff-field-header strong {
+    font-size: 13px;
+    color: #1d2327;
+}
+
+.bw-diff-unchanged-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8c8f94;
+    background: #f0f0f1;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.bw-diff-reverted-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Two-column layout */
+.bw-diff-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 782px) {
+    .bw-diff-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bw-diff-col {
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    max-height: 220px;
+    overflow-y: auto;
+    word-break: break-word;
+}
+
+.bw-diff-col-old {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.bw-diff-col-new {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+
+.bw-diff-col-label {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    color: #888;
+}
+
+.bw-diff-html-preview {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.bw-diff-html-preview ul,
+.bw-diff-html-preview ol {
+    margin: 4px 0 4px 18px;
+}
+
+.bw-diff-html-preview p {
+    margin: 4px 0;
+}

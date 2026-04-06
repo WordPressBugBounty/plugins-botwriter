@@ -106,17 +106,6 @@ jQuery(document).ready(function($) {
         $('#main-tab-' + tabId).addClass('active');
     });
 
-    // Go to General Settings link (from SSL warning in custom providers)
-    $(document).on('click', '.go-to-general-settings', function(e) {
-        e.preventDefault();
-        $('.botwriter-main-tabs .main-tab').removeClass('main-tab-active');
-        $('.botwriter-main-tabs .main-tab[data-main-tab="general"]').addClass('main-tab-active');
-        $('.botwriter-main-tab-content').removeClass('active');
-        $('#main-tab-general').addClass('active');
-        // Scroll to top of settings
-        $('html, body').animate({ scrollTop: $('.botwriter-main-tabs').offset().top - 50 }, 300);
-    });
-
     // Toggle API key visibility
     $(document).on('click', '.toggle-api-key', function() {
         var input = $(this).closest('.api-key-wrapper').find('.api-key-input');
@@ -134,9 +123,6 @@ jQuery(document).ready(function($) {
         var provider = $(this).val();
         $('#main-tab-text .provider-content').removeClass('active');
         $('#provider-' + provider).addClass('active');
-        
-        // Apply image provider coherence
-        enforceImageProviderCoherence(provider);
     });
 
     $('#botwriter_image_provider').on('change', function() {
@@ -144,55 +130,6 @@ jQuery(document).ready(function($) {
         $('#main-tab-images .provider-content').removeClass('active');
         $('#image-provider-' + provider).addClass('active');
     });
-
-    /**
-     * Enforce image provider coherence when text provider is "custom"
-     * When using Custom Provider for text, only Custom or None can be used for images
-     */
-    function enforceImageProviderCoherence(textProvider) {
-        var $imageSelect = $('#botwriter_image_provider');
-        var $imageOptions = $imageSelect.find('option');
-        var $coherenceWarning = $('#custom-image-coherence-warning');
-        
-        if (textProvider === 'custom') {
-            // Disable all cloud providers, only allow custom and none
-            $imageOptions.each(function() {
-                var val = $(this).val();
-                if (val !== 'custom' && val !== 'none') {
-                    $(this).prop('disabled', true);
-                } else {
-                    $(this).prop('disabled', false);
-                }
-            });
-            
-            // If current selection is a cloud provider, switch to 'none'
-            var currentImage = $imageSelect.val();
-            if (currentImage !== 'custom' && currentImage !== 'none') {
-                $imageSelect.val('none').trigger('change');
-                // Also save the change
-                saveField('botwriter_image_provider', 'none');
-            }
-            
-            // Show warning if not already present
-            if ($coherenceWarning.length === 0) {
-                var warningHtml = '<div id="custom-image-coherence-warning" class="notice notice-warning inline" style="margin: 10px 0; padding: 10px 15px;">' +
-                    '<p><span class="dashicons dashicons-warning" style="color: #dba617;"></span> ' +
-                    '<strong>' + (i18n.custom_image_warning_title || 'Custom Provider Mode') + '</strong></p>' +
-                    '<p>' + (i18n.custom_image_warning_text || 'When using Custom Provider for text, image generation is limited to Custom Provider or None. Cloud image providers (DALL-E, Gemini, etc.) are not available in this mode.') + '</p>' +
-                    '</div>';
-                $imageSelect.closest('.form-row').after(warningHtml);
-            }
-        } else {
-            // Enable all image provider options
-            $imageOptions.prop('disabled', false);
-            
-            // Remove warning
-            $coherenceWarning.remove();
-        }
-    }
-
-    // Apply coherence on page load
-    enforceImageProviderCoherence($('#botwriter_text_provider').val());
 
     // Image Size/Format Preview
     var sizeSpecs = {
@@ -555,48 +492,6 @@ jQuery(document).ready(function($) {
                 $btn.prop('disabled', false);
                 $btn.find('.dashicons').removeClass('dashicons-update spin').addClass('dashicons-database-remove');
             }
-        });
-    });
-
-    // Test Custom Provider Text connection
-    $(document).on('click', '.test-custom-text-connection', function() {
-        var $btn = $(this);
-        var $result = $('#test-custom-text-result');
-        var url = $('#botwriter_custom_text_url').val();
-        var apiKey = $('#botwriter_custom_text_api_key').val();
-        
-        if (!url) {
-            $result.html('<span class="error">' + (i18n.enter_api_url || 'Please enter an API URL') + '</span>');
-            return;
-        }
-        
-        $btn.prop('disabled', true);
-        $result.html('<span class="testing"><span class="spinner is-active"></span> ' + (i18n.testing || 'Testing...') + '</span>');
-        
-        $.post(ajaxUrl, {
-            action: 'botwriter_test_custom_provider',
-            nonce: nonce,
-            url: url,
-            api_key: apiKey,
-            type: 'text'
-        }, function(response) {
-            $btn.prop('disabled', false);
-            if (response.success) {
-                var html = '<span class="success"><span class="dashicons dashicons-yes"></span> ' + response.data.message + '</span>';
-                if (response.data.models && response.data.models.length > 0) {
-                    html += '<div class="fetched-models"><small>' + (i18n.models_found || 'Models found:') + ' ' + response.data.models.slice(0, 5).join(', ');
-                    if (response.data.models.length > 5) {
-                        html += ' (+' + (response.data.models.length - 5) + ' more)';
-                    }
-                    html += '</small></div>';
-                }
-                $result.html(html);
-            } else {
-                $result.html('<span class="error"><span class="dashicons dashicons-no"></span> ' + response.data.message + '</span>');
-            }
-        }).fail(function() {
-            $btn.prop('disabled', false);
-            $result.html('<span class="error">' + (i18n.connection_failed || 'Connection failed') + '</span>');
         });
     });
 });

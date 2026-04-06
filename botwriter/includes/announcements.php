@@ -325,7 +325,7 @@ function botwriter_stopformany_notice() {
     <div class="notice notice-error" id="botwriter-stopformany-notice" style="border-left-color:#d63638;">
         <p><strong>🛑 <?php esc_html_e('BotWriter: All tasks have been STOPPED due to too many consecutive errors!', 'botwriter'); ?></strong></p>
         <p><?php esc_html_e('The server detected 100+ consecutive task errors for your site and paused all task processing to prevent further failures.', 'botwriter'); ?></p>
-        <p><?php esc_html_e('Please review your logs, fix the underlying issue (API key, provider quota, etc.), then click the button below to resume.', 'botwriter'); ?></p>
+        <p><?php esc_html_e('Please review your logs, fix the underlying issue (API key, provider configuration, etc.), then click the button below to resume.', 'botwriter'); ?></p>
         <p>
             <a class="button button-primary" href="<?php echo esc_url($logs_url); ?>">
                 <span class="dashicons dashicons-warning" style="vertical-align:middle; margin-right:4px;"></span>
@@ -389,8 +389,8 @@ function botwriter_stopformany_reset_handler() {
         'timeout'   => 15,
         'sslverify' => $ssl_verify,
         'body'      => array(
-            'api_key'         => get_option('botwriter_api_key'),
             'user_domainname' => esc_url(get_site_url()),
+            'site_token'      => get_option('botwriter_site_token', ''),
         ),
     ));
 
@@ -421,7 +421,7 @@ function botwriter_stopformany_reset_handler() {
 
 /**
  * Check for consecutive errors in logs and show warning notice
- * Shows when 4+ consecutive errors are found in the most recent logs
+ * Shows when 5+ consecutive errors are found in the most recent logs
  * Dismissable but reappears if errors continue after a successful log
  */
 add_action('admin_notices', 'botwriter_consecutive_errors_notice');
@@ -438,7 +438,7 @@ function botwriter_consecutive_errors_notice() {
     // Check for consecutive errors
     $consecutive_errors = botwriter_count_consecutive_errors();
     
-    if ($consecutive_errors < 4) {
+    if ($consecutive_errors < 5) {
         return;
     }
     
@@ -491,9 +491,9 @@ function botwriter_count_consecutive_errors() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'botwriter_logs';
     
-    // Get the last 10 logs ordered by most recent first
+    // Get the last 20 logs ordered by most recent first
     $recent_logs = $wpdb->get_results(
-        "SELECT task_status FROM {$table_name} ORDER BY id DESC LIMIT 10",
+        "SELECT task_status FROM {$table_name} ORDER BY id DESC LIMIT 20",
         ARRAY_A
     );
     

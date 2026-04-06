@@ -1,9 +1,9 @@
 <?php
 /* 
-Plugin Name: BotWriter
+Plugin Name: BotWriter – AI Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 2.2.0
+Version: 3.2.4
 Author: estebandezafra
 Requires PHP: 7.0
 License:           GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '2.2.0');
+    define('BOTWRITER_VERSION', '3.2.4');
 }
 
 // Plugin directory path (with trailing slash)
@@ -31,15 +31,16 @@ if (!defined('BOTWRITER_PLUGIN_DIR')) {
 
 define('BOTWRITER_URL', plugin_dir_url(__FILE__));
 
-define('BOTWRITER_API_URL', "https://wpbotwriter.com/public2/");
-
+define('BOTWRITER_API_URL', "https://api.wpbotwriter.com/");
 
 
 
 // Debugging constant for development
 if (!defined('BOTWRITER_DEBUG')) {
-    define('BOTWRITER_DEBUG', false);
+    define('BOTWRITER_DEBUG', true);
 }
+
+
 
 
 if (!function_exists('botwriter_log')) {
@@ -116,18 +117,12 @@ require plugin_dir_path( __FILE__ ) . 'includes/siterewriter.php';
 require plugin_dir_path( __FILE__ ) . 'includes/templates.php';
 require plugin_dir_path( __FILE__ ) . 'includes/default-templates.php';
 
-// Load Action Scheduler for self-hosted direct mode
-require plugin_dir_path( __FILE__ ) . 'includes/direct-mode/class-action-scheduler-loader.php';
-require plugin_dir_path( __FILE__ ) . 'includes/direct-mode/class-direct-database.php';
-require plugin_dir_path( __FILE__ ) . 'includes/direct-mode/class-direct-content-sources.php';
-require plugin_dir_path( __FILE__ ) . 'includes/direct-mode/class-direct-text-generator.php';
-require plugin_dir_path( __FILE__ ) . 'includes/direct-mode/class-direct-image-generator.php';
-require plugin_dir_path( __FILE__ ) . 'includes/direct-mode/class-direct-task-runner.php';
-
-// Initialize Action Scheduler immediately (don't wait for plugins_loaded)
-BotWriter_Action_Scheduler_Loader::init();
-
-
+// WooCommerce AI Content Optimizer (loads only when WooCommerce is active)
+require plugin_dir_path( __FILE__ ) . 'includes/woocommerce-ai/class-bw-woo-ai.php';
+add_action( 'plugins_loaded', function () {
+    $bw_woo_ai = new BW_Woo_AI();
+    $bw_woo_ai->init();
+} );
 
 
 // Enqueque JS Files
@@ -246,8 +241,6 @@ function botwriter_enqueue_scripts() {
                 'models_found' => __('Models found:', 'botwriter'),
                 'configure_openai_key' => __('Configure OpenAI API key in Text AI tab first.', 'botwriter'),
                 'confirm_reset_models' => __('Are you sure you want to reset all model lists to factory defaults?', 'botwriter'),
-                'custom_image_warning_title' => __('Custom Provider Mode', 'botwriter'),
-                'custom_image_warning_text' => __('When using Custom Provider for text, image generation is limited to Custom Provider or None. Cloud image providers (DALL-E, Gemini, etc.) are not available in this mode.', 'botwriter'),
             )
         ));
     }
@@ -317,6 +310,8 @@ function botwriter_enqueue_styles(){
 }
 
 add_action('admin_enqueue_scripts', 'botwriter_enqueue_styles');
+
+
 
   
 // Hook to add the admin menu
@@ -669,27 +664,12 @@ function botwriter_plugin_activate() {
 
 
 function botwriter_activate_apikey_and_defaults() {    
-    $site_url = get_site_url();
-    $admin_email = get_option('admin_email');
-    
-    $remote_url = BOTWRITER_API_URL . 'activation.php';
-    
-    //options
-    $api_key = get_option('botwriter_api_key');    
-    if ($api_key) {        
-        return;
-    }
-
     if (get_option('botwriter_paused_tasks') === false) {
         update_option('botwriter_paused_tasks', "2");
     }
     
     if (get_option('botwriter_email') === false) {
         update_option('botwriter_email', get_option('admin_email'));
-    }
-
-    if (get_option('botwriter_email_confirmed') === false) {
-        update_option('botwriter_email_confirmed', '0');
     }
 
     if (get_option('botwriter_cron_active') === false) {
@@ -709,81 +689,6 @@ function botwriter_activate_apikey_and_defaults() {
     }
     if (get_option('botwriter_ai_image_quality') === false) {
         update_option('botwriter_ai_image_quality', 'medium');
-    }
-
-    $data = array(
-        'user_domainname' => $site_url,
-        'email_blog' => $admin_email,
-    );
-
-    $ssl_verify = get_option('botwriter_sslverify');
-    if ($ssl_verify === 'no') {
-        $ssl_verify = false;
-    } else {
-        $ssl_verify = true;
-    }   
-    
-    $challenge_response = wp_remote_post($remote_url, array(
-        'method'    => 'POST',
-        'body'      => $data,
-        'timeout'   => 45,
-        'headers'   => array(),
-        'sslverify' => $ssl_verify, 
-    ));
-
-    
-    
-    if (is_wp_error($challenge_response)) {
-        $error_message = $challenge_response->get_error_message();
-        //error_log("Error sending data to $remote_url: $error_message");
-        return;
-    }
-
-    $challenge_body = wp_remote_retrieve_body($challenge_response);
-    $challenge_result = json_decode($challenge_body, true);
-
-    
-    if (!isset($challenge_result['status']) || $challenge_result['status'] !== 'success' || !isset($challenge_result['challenge'])) {
-        //error_log('Invalid challenge response from server.');
-        return;
-    }
-
-    $challenge = $challenge_result['challenge'];
-
-    
-    $secret_key = '1c7b2be420b05ec389c6b7fd59ec5d7db0e457425a81fc88312dee66f3c2c663'; 
-    $challenge_response_hash = hash_hmac('sha256', $challenge, $secret_key);
-
-    
-    $response_data = array(
-        'user_domainname' => $site_url,
-        'email_blog' => $admin_email,
-        'challenge_response' => $challenge_response_hash,
-    );
-
-    $final_response = wp_remote_post($remote_url, array(
-        'method'    => 'POST', 
-        'body'      => $response_data,
-        'timeout'   => 45,
-        'headers'   => array(),
-        'sslverify' => $ssl_verify, 
-    ));
-
-
-    if (is_wp_error($final_response)) {
-        $error_message = $final_response->get_error_message();
-        //error_log("Error sending challenge response to $remote_url: $error_message");
-    } else {        
-        $body = wp_remote_retrieve_body($final_response);
-        $result = json_decode($body, true);
-
-        if (isset($result['status']) && $result['status'] === 'success' && isset($result['api_key'])) {            
-            update_option('botwriter_api_key', sanitize_text_field($result['api_key']));
-            //error_log('API Key received and stored successfully.');            
-            
-        } else {
-            //error_log('API Key not received or invalid response.');
-        }    
     }
 }
 
@@ -1052,11 +957,6 @@ if (!class_exists('WP_List_Table')) {
 
             // Insert all default templates
             botwriter_insert_all_default_templates();
-        }
-
-        // Create/update direct mode table if class exists
-        if (class_exists('BotWriter_Direct_Database')) {
-            BotWriter_Direct_Database::create_table();
         }
 
     } catch (Exception $e) {
@@ -1909,6 +1809,16 @@ register_deactivation_hook(__FILE__, 'botwriter_scheduled_events_plugin_deactiva
     $table_name_logs = $wpdb->prefix . 'botwriter_logs';
     $table_name_super = $wpdb->prefix . 'botwriter_super';
 
+    // ── Prevent overlapping cron runs (race condition guard) ──
+    // Use a transient lock so two cron ticks cannot run simultaneously.
+    // Lock expires after 120 seconds as a safety net.
+    $lock_key = 'botwriter_cron_lock';
+    if (get_transient($lock_key)) {
+        botwriter_log('CRON SKIPPED — another cron run is still in progress');
+        return;
+    }
+    set_transient($lock_key, time(), 120);
+
     // Check if cron is active
     $cron_active = get_option('botwriter_cron_active');
     botwriter_log('=== CRON START ===', [
@@ -1918,12 +1828,14 @@ register_deactivation_hook(__FILE__, 'botwriter_scheduled_events_plugin_deactiva
     
     if ($cron_active !== '1') {
         botwriter_log('CRON DISABLED - exiting', ['cron_active' => $cron_active]);
+        delete_transient($lock_key);
         return;
     }
 
     // STOPFORMANY: refuse to dispatch new tasks while the flag is active
     if (get_option('botwriter_stopformany', false)) {
         botwriter_log('CRON BLOCKED by STOPFORMANY — too many consecutive errors on server');
+        delete_transient($lock_key);
         return;
     }
 
@@ -2058,10 +1970,11 @@ register_deactivation_hook(__FILE__, 'botwriter_scheduled_events_plugin_deactiva
                     'log_id' => $id_log,
                     'website_type' => $task['website_type'],
                 ]);
-                botwriter_send1_data_to_server((array) $event);                                      
-                // Update execution count in the database and last_execution_time
-                $current_time = current_time('Y-m-d H:i:s'); // Usar hora local de WordPress
+                // Update execution count BEFORE the HTTP call to prevent
+                // overlapping cron ticks from creating duplicate logs.
+                $current_time = current_time('Y-m-d H:i:s');
                 $wpdb->update($table_name_tasks, ['execution_count' => $task["execution_count"] + 1, 'last_execution_time' => $current_time], ['id' => $task["id"]]);            
+                botwriter_send1_data_to_server((array) $event);
             } else {
                 botwriter_log('Task paused - waiting for pause interval', [
                     'task_id' => $task['id'],
@@ -2082,6 +1995,9 @@ register_deactivation_hook(__FILE__, 'botwriter_scheduled_events_plugin_deactiva
     }  // end tasks
     
     botwriter_log('=== CRON END ===', ['timestamp' => current_time('Y-m-d H:i:s')]);
+
+    // ── Release cron lock ──
+    delete_transient('botwriter_cron_lock');
 }
 
 function botwriter_execute_events_pass2(){  
@@ -2094,8 +2010,33 @@ function botwriter_execute_events_pass2(){
     botwriter_log('Phase 2 queue check', ['inqueue_count' => count($events2)]);
     foreach ($events2 as $event) {
         $event = (array) $event;
-        // Execute the event        
-        botwriter_send2_data_to_server( (array) $event);                
+
+        // ── Atomically mark as 'polling' to prevent overlapping cron ticks ──
+        // Only update if the status is still 'inqueue'; if another cron tick
+        // already changed it, affected_rows will be 0 and we skip this log.
+        $affected = $wpdb->query($wpdb->prepare(
+            "UPDATE {$table_name_logs} SET task_status = 'polling' WHERE id = %d AND task_status = 'inqueue'",
+            $event['id']
+        ));
+        if ($affected === 0) {
+            botwriter_log('Phase 2 skipped — already being polled', ['log_id' => $event['id']]);
+            continue;
+        }
+
+        // Execute the event (send2 will set final status: completed/error/inqueue)
+        $result = botwriter_send2_data_to_server( (array) $event);
+
+        // If send2 did NOT update the log status (returned false without changing it),
+        // restore to 'inqueue' so the next tick can retry.
+        if ($result === false) {
+            $current_status = $wpdb->get_var($wpdb->prepare(
+                "SELECT task_status FROM {$table_name_logs} WHERE id = %d",
+                $event['id']
+            ));
+            if ($current_status === 'polling') {
+                $wpdb->update($table_name_logs, ['task_status' => 'inqueue'], ['id' => $event['id']]);
+            }
+        }
     } // end INQUEUE
 
 
@@ -2226,18 +2167,6 @@ function botwriter_generate_post($data){
 // Function to send data to the server pass1
 function botwriter_send1_data_to_server($data) {
     
-    // ========================================
-    // CHECK FOR DIRECT MODE (CUSTOM PROVIDER)
-    // ========================================
-    // If text_provider is 'custom', automatically enable direct mode
-    $text_provider = get_option('botwriter_text_provider', 'openai');
-    $custom_text_url = get_option('botwriter_custom_text_url', '');
-    
-    if ($text_provider === 'custom' && !empty($custom_text_url) && class_exists('BotWriter_Action_Scheduler_Loader')) {
-        return botwriter_direct_mode_dispatch($data);
-    }
-    // ========================================
-        
     Global $botwriter_version;
     $remote_url = BOTWRITER_API_URL . 'redis_api_cola.php';
     
@@ -2247,7 +2176,9 @@ function botwriter_send1_data_to_server($data) {
     // settings
     $data['version'] = $botwriter_version;
     $data['api_key'] = get_option('botwriter_api_key');    // la api_key del programa
-    $data["user_domainname"] = esc_url(get_site_url()); 
+    $data["user_domainname"] = esc_url(get_site_url());
+    $data['site_token'] = get_option('botwriter_site_token', ''); 
+
     $data["ai_image_size"]=get_option('botwriter_ai_image_size');
     $data["ai_image_quality"]=get_option('botwriter_ai_image_quality');
     $data["ai_image_style"]=get_option('botwriter_ai_image_style', 'realistic');
@@ -2258,6 +2189,9 @@ function botwriter_send1_data_to_server($data) {
     if (!isset($data["disable_ai_images"])) {
         $data["disable_ai_images"] = 0;
     }
+
+    // If image generation fails, publish the post without image instead of erroring
+    $data['image_error_continue'] = get_option('botwriter_image_error_continue', '0');
     
     // Provider selections
     $data['text_provider'] = get_option('botwriter_text_provider', 'openai');
@@ -2503,7 +2437,13 @@ function botwriter_send1_data_to_server($data) {
 
             if (isset($result['id_task_server']) && $result['id_task_server'] !== 0) { // ok                
                 $data["id_task_server"]=$result['id_task_server'];
-                $data["task_status"]='inqueue';                   
+                $data["task_status"]='inqueue';
+
+                // Capture site_token from server response (auto-provisioning)
+                if (!empty($result['site_token'])) {
+                    update_option('botwriter_site_token', sanitize_text_field($result['site_token']));
+                }
+
                 botwriter_logs_register($data, $data["id"]);             
                 botwriter_log('Phase 1 request accepted', [
                     'log_id' => $data['id'] ?? null,
@@ -2511,12 +2451,42 @@ function botwriter_send1_data_to_server($data) {
                     'id_task_server' => $result['id_task_server'],
                 ]);
                 return $result['id_task_server'];                 
-            } else { // error                
+            } else { // error — id_task_server is 0 or missing
                 $data["task_status"]="error";
+                // Use full error_message (may include reset link) when available
+                $data["error"] = !empty($result['error_message']) ? $result['error_message'] : ($result['error'] ?? '');
+
+                // Generic terminal flag — server says stop retrying
+                if (!empty($result['terminal'])) {
+                    $data['intentosfase1'] = 8;
+                }
+                // Show server-provided admin notice
+                if (!empty($result['error_message']) && (int)($result['error_level'] ?? 0) === 1) {
+                    botwriter_announcements_add(
+                        __('Service notice', 'botwriter'),
+                        wp_kses_post($result['error_message'])
+                    );
+                }
+
+                // Handle known server errors (same logic as Phase 2)
+                if ($data["error"] == "Maximum monthly posts limit reached") {
+                    botwriter_announcements_add("Maximum monthly posts limit reached", "You have reached the maximum monthly posts limit. Please upgrade your plan to continue using the plugin. <a href='https://wpbotwriter.com' target='_blank'>Go to upgrade</a>");
+                    $data["intentosfase1"] = 8;
+                }
+                if ($data["error"] == "Payment date exceeded") {
+                    botwriter_announcements_add("Payment date exceeded", "Your subscription payment date has exceeded. Please renew your subscription to continue using the plugin. <a href='https://wpbotwriter.com' target='_blank'>Go to renew</a>");
+                    $data["intentosfase1"] = 8;
+                }
+                if ($data["error"] == "API Key error") {
+                    botwriter_announcements_add("API Key error", "Your API Key is invalid. Please check your API Key in the plugin settings. <a href='admin.php?page=botwriter_settings'>Go to Settings</a>");
+                    $data["intentosfase1"] = 8;
+                }
+
                 botwriter_logs_register($data, $data["id"]);                
                 botwriter_log('Phase 1 request rejected', [
                     'log_id' => $data['id'] ?? null,
                     'task_id' => $data['id_task'] ?? null,
+                    'error' => $data['error'],
                     'response_length' => isset($body) ? strlen($body) : null,
                 ]);
                 return false;
@@ -2536,236 +2506,13 @@ function botwriter_send1_data_to_server($data) {
     
 }
 
-/**
- * Dispatch task to direct mode (self-hosted processing)
- * 
- * Uses Action Scheduler to process tasks directly without going through botwriter.com
- * 
- * @since 2.1.0
- * @param array $data Task/log data
- * @return mixed Task ID on success, false on failure
- */
-function botwriter_direct_mode_dispatch($data) {
-    // Ensure Action Scheduler is available
-    if (!BotWriter_Action_Scheduler_Loader::is_available()) {
-        botwriter_log('Direct mode: Action Scheduler not available', [], 'error');
-        $data['task_status'] = 'error';
-        $data['error'] = 'Action Scheduler library is not available. Please reinstall the plugin.';
-        botwriter_logs_register($data, $data['id']);
-        return false;
-    }
-    
-    // Build prompt from template if not super1
-    $website_type = $data['website_type'] ?? '';
-    if ($website_type !== 'super1' && empty($data['client_prompt'])) {
-        $data['client_prompt'] = botwriter_build_client_prompt($data);
-    }
-    
-    // Add custom text provider settings to data
-    $data['selfhosted_url'] = get_option('botwriter_custom_text_url', '');
-    $data['selfhosted_model'] = get_option('botwriter_custom_text_model', '');
-    $data['selfhosted_api_key'] = botwriter_decrypt_api_key(get_option('botwriter_custom_text_api_key', ''));
-    $data['selfhosted_timeout'] = intval(get_option('botwriter_custom_text_timeout', 400));
-    
-    // Check if image provider is also custom
-    $image_provider = get_option('botwriter_image_provider', 'dalle');
-    if ($image_provider === 'custom') {
-        $data['selfhosted_image_url'] = get_option('botwriter_custom_image_url', '');
-        $data['selfhosted_image_type'] = get_option('botwriter_custom_image_type', 'openai');
-        $data['selfhosted_image_model'] = get_option('botwriter_custom_image_model', '');
-        $data['selfhosted_image_api_key'] = ''; // Local servers typically don't need auth
-        $data['selfhosted_image_timeout'] = intval(get_option('botwriter_custom_image_timeout', 400));
-        
-        // Provider-specific settings for Automatic1111/ComfyUI
-        $data['negative_prompt'] = get_option('botwriter_negative_prompt', 'blurry, low quality, distorted, deformed');
-        $data['a1111_steps'] = get_option('botwriter_a1111_steps', 20);
-        $data['a1111_cfg_scale'] = get_option('botwriter_a1111_cfg_scale', 7.0);
-        $data['a1111_sampler'] = get_option('botwriter_a1111_sampler', 'DPM++ 2M Karras');
-        $data['comfyui_workflow'] = get_option('botwriter_comfyui_workflow', '');
-    }
-    
-    // Add common settings
-    $data['ai_image_size'] = get_option('botwriter_ai_image_size', '1024x1024');
-    $data['ai_image_quality'] = get_option('botwriter_ai_image_quality', 'standard');
-    
-    // Update task status
-    $current_time = gmdate('Y-m-d H:i:s', current_time('timestamp'));
-    $data['last_execution_time'] = $current_time;
-    $data['task_status'] = 'direct_queued';
-    $data['intentosfase1'] = isset($data['intentosfase1']) ? $data['intentosfase1'] + 1 : 1;
-    
-    // Save to logs table (standard BotWriter flow)
-    botwriter_logs_register($data, $data['id']);
-    
-    // Also create a record in the direct tasks table for detailed tracking
-    if (class_exists('BotWriter_Direct_Database')) {
-        $direct_task_id = BotWriter_Direct_Database::create_from_log($data['id'], $data);
-        if ($direct_task_id) {
-            $data['direct_task_id'] = $direct_task_id;
-            botwriter_log('Direct mode: Created direct task record', [
-                'direct_task_id' => $direct_task_id,
-                'log_id' => $data['id'],
-            ]);
-        }
-    }
-    
-    // Enqueue for Action Scheduler processing
-    $result = BotWriter_Action_Scheduler_Loader::enqueue_direct_task($data['id'], $data);
-    
-    if ($result) {
-        botwriter_log('Direct mode: Task enqueued', [
-            'log_id' => $data['id'],
-            'task_id' => $data['id_task'] ?? null,
-            'action_id' => $result,
-        ]);
-        
-        // Return the log ID as a "server ID" equivalent
-        return $data['id'];
-    } else {
-        botwriter_log('Direct mode: Failed to enqueue task', [
-            'log_id' => $data['id'],
-        ], 'error');
-        
-        $data['task_status'] = 'error';
-        $data['error'] = 'Failed to enqueue task for direct processing.';
-        botwriter_logs_register($data, $data['id']);
-        return false;
-    }
-}
-
-/**
- * Check status of a direct mode task (Custom Provider via Action Scheduler)
- * Simulates the server's phase 2 response behavior
- * 
- * @since 2.1.0
- * @param array $data Task/log data
- * @return mixed Result array on completion, false if still processing
- */
-function botwriter_direct_mode_check_status($data) {
-    global $wpdb;
-    
-    $log_id = $data['id'] ?? 0;
-    if (!$log_id) {
-        return false;
-    }
-    
-    // Reload the log to get the latest status (Action Scheduler may have updated it)
-    $log = botwriter_logs_get($log_id);
-    if (!$log) {
-        return false;
-    }
-    
-    $task_status = $log['task_status'] ?? '';
-    
-    botwriter_log('Direct mode: Checking status', [
-        'log_id' => $log_id,
-        'task_status' => $task_status,
-    ]);
-    
-    // If completed, the Action Scheduler has already created the post
-    if ($task_status === 'completed') {
-        botwriter_log('Direct mode: Task completed', [
-            'log_id' => $log_id,
-            'post_id' => $log['id_post_published'] ?? 0,
-        ]);
-        
-        // Return success - post was already created by Action Scheduler
-        return [
-            'success' => true,
-            'task_status' => 'completed',
-            'id_post_published' => $log['id_post_published'] ?? 0,
-        ];
-    }
-    
-    // If error, return the error
-    if ($task_status === 'error') {
-        botwriter_log('Direct mode: Task error', [
-            'log_id' => $log_id,
-            'error' => $log['error'] ?? 'Unknown error',
-        ]);
-        return false;
-    }
-    
-    // Still processing (direct_queued or processing)
-    // Check if Action Scheduler action is still pending/running
-    if (function_exists('as_get_scheduled_actions')) {
-        $actions = as_get_scheduled_actions([
-            'hook' => 'botwriter_direct_process_task',
-            'status' => ActionScheduler_Store::STATUS_PENDING,
-            'args' => ['log_id' => $log_id],
-            'per_page' => 1,
-        ]);
-        
-        if (!empty($actions)) {
-            // Action is still pending, update status to show progress
-            if ($task_status === 'direct_queued') {
-                $data['task_status'] = 'processing';
-                botwriter_logs_register($data, $log_id);
-            }
-            botwriter_log('Direct mode: Still processing', [
-                'log_id' => $log_id,
-            ]);
-            return false;
-        }
-        
-        // Check running actions
-        $running_actions = as_get_scheduled_actions([
-            'hook' => 'botwriter_direct_process_task',
-            'status' => ActionScheduler_Store::STATUS_RUNNING,
-            'args' => ['log_id' => $log_id],
-            'per_page' => 1,
-        ]);
-        
-        if (!empty($running_actions)) {
-            if ($task_status !== 'processing') {
-                $data['task_status'] = 'processing';
-                botwriter_logs_register($data, $log_id);
-            }
-            botwriter_log('Direct mode: Currently running', [
-                'log_id' => $log_id,
-            ]);
-            return false;
-        }
-    }
-    
-    // Action not found and not completed/error - might have failed silently
-    // Check how long it's been since last execution
-    $last_execution = strtotime($log['last_execution_time'] ?? '');
-    $now = current_time('timestamp');
-    $elapsed = $now - $last_execution;
-    
-    // If more than 10 minutes have passed, mark as error
-    if ($elapsed > 600) {
-        $data['task_status'] = 'error';
-        $data['error'] = 'Task processing timed out. Please check Action Scheduler status.';
-        botwriter_logs_register($data, $log_id);
-        botwriter_log('Direct mode: Timeout', [
-            'log_id' => $log_id,
-            'elapsed' => $elapsed,
-        ]);
-        return false;
-    }
-    
-    // Still waiting
-    return false;
-}
-
 // Function to send data to the server pass2
 function botwriter_send2_data_to_server($data) {  
     Global $wpdb;    
     
-    // ========================================
-    // CHECK FOR DIRECT MODE (CUSTOM PROVIDER)
-    // ========================================
-    // If task_status is 'direct_queued' or 'processing', check Action Scheduler status
-    $task_status = $data['task_status'] ?? '';
-    if (in_array($task_status, ['direct_queued', 'processing'], true)) {
-        return botwriter_direct_mode_check_status($data);
-    }
-    // ========================================
-    
     $data['api_key'] = get_option('botwriter_api_key');
     $data["user_domainname"] = esc_url(get_site_url());
+    $data['site_token'] = get_option('botwriter_site_token', '');
 
     $remote_url =  BOTWRITER_API_URL . 'redis_api_finish.php';
             
@@ -2814,13 +2561,27 @@ function botwriter_send2_data_to_server($data) {
             // results errors
             if (isset($result["task_status"]) && $result["task_status"] == "error") {
                 $data["task_status"]="error";
-                $data["error"]=$result["error"];                                
+                // Use full error_message (may include reset link) when available
+                $data["error"] = !empty($result['error_message']) ? $result['error_message'] : ($result['error'] ?? '');
                 botwriter_log('Phase 2 reported error', [
                     'log_id' => $data['id'] ?? null,
                     'task_id' => $data['id_task'] ?? null,
                     'id_task_server' => $data['id_task_server'] ?? null,
-                    'error' => $result['error'] ?? null,
+                    'error' => $data['error'],
                 ]);
+
+                // Generic terminal flag — server says stop retrying
+                if (!empty($result['terminal'])) {
+                    $data['intentosfase1'] = 8;
+                }
+                // Show server-provided admin notice
+                if (!empty($result['error_message']) && (int)($result['error_level'] ?? 0) === 1) {
+                    botwriter_announcements_add(
+                        __('Service notice', 'botwriter'),
+                        wp_kses_post($result['error_message'])
+                    );
+                }
+
                 if ($data["error"]=="Maximum monthly posts limit reached") {
                     botwriter_announcements_add("Maximum monthly posts limit reached", "You have reached the maximum monthly posts limit. Please upgrade your plan to continue using the plugin. <a href='https://wpbotwriter.com' target='_blank'>Go to upgrade</a>");
                     $data["intentosfase1"]=8;
@@ -2864,6 +2625,16 @@ function botwriter_send2_data_to_server($data) {
                 ]);
                 
                 $result=botwriter_logs_get($data["id"]);  // merge the result with the log
+
+                // ── Guard: prevent duplicate post creation ──
+                // If this log already has a published post, skip generation.
+                if (!empty($result['id_post_published']) && intval($result['id_post_published']) > 0) {
+                    botwriter_log('Phase 2 skipped — post already published', [
+                        'log_id' => $data['id'],
+                        'post_id' => $result['id_post_published'],
+                    ]);
+                    return $result;
+                }
 
                 if ($result["website_type"] == "super1") {                                                            
                     botwriter_super1_log_to_bd($result,$data["id"]);                    
@@ -3423,6 +3194,27 @@ function botwriter_process_image($file_path) {
             
             // Insert default templates if none exist (for updates from older versions)
             botwriter_insert_all_default_templates();
+
+            // Migration: reset 'custom' provider to defaults (removed in this version)
+            if (get_option('botwriter_text_provider') === 'custom') {
+                update_option('botwriter_text_provider', 'openai');
+            }
+            if (get_option('botwriter_image_provider') === 'custom') {
+                update_option('botwriter_image_provider', 'dalle');
+            }
+            // Clean up custom provider options
+            delete_option('botwriter_custom_text_url');
+            delete_option('botwriter_custom_text_api_key');
+            delete_option('botwriter_custom_text_model');
+            delete_option('botwriter_custom_text_timeout');
+            delete_option('botwriter_custom_image_url');
+            delete_option('botwriter_custom_image_type');
+            delete_option('botwriter_custom_image_model');
+            delete_option('botwriter_custom_image_timeout');
+
+            // Drop direct mode table if it exists
+            global $wpdb;
+            $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}botwriter_direct_tasks");
             
             update_option('botwriter_version', $plugin_version); // Update version in database
         }

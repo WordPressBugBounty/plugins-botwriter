@@ -56,6 +56,7 @@ class botwriter_Logs_Table extends WP_List_Table {
 
     public function get_columns() {
         return array(
+            'cb'                 => '<input type="checkbox" />',
             'created_at'         => __('Created At', 'botwriter'),
             'writer'             => __('Writer', 'botwriter'),
             'task_name'          => __('Task Name', 'botwriter'),
@@ -65,6 +66,37 @@ class botwriter_Logs_Table extends WP_List_Table {
             'id_post_published' => __('Post Published', 'botwriter'),
             'actions'            => __('Actions', 'botwriter'),
         );
+    }
+
+    public function column_cb($item) {
+        return sprintf(
+            '<input type="checkbox" name="log_ids[]" value="%d" />',
+            intval($item['id'])
+        );
+    }
+
+    public function get_bulk_actions() {
+        return array(
+            'bulk_delete' => __('Delete', 'botwriter'),
+        );
+    }
+
+    public function process_bulk_action() {
+        if ('bulk_delete' === $this->current_action()) {
+            if ( ! isset($_POST['botwriter_logs_nonce']) || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['botwriter_logs_nonce'])), 'botwriter_logs_action') ) {
+                return;
+            }
+            if ( ! current_user_can('manage_options') ) {
+                return;
+            }
+            $log_ids = isset($_POST['log_ids']) ? array_map('intval', $_POST['log_ids']) : array();
+            if ( ! empty($log_ids) ) {
+                global $wpdb;
+                $table_name = $wpdb->prefix . 'botwriter_logs';
+                $placeholders = implode(',', array_fill(0, count($log_ids), '%d'));
+                $wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE id IN ({$placeholders})", $log_ids));
+            }
+        }
     }
 
     public function column_actions($item) {
@@ -133,7 +165,6 @@ class botwriter_Logs_Table extends WP_List_Table {
         $this->table_data = $this->get_table_data();
 
         usort($this->table_data, array($this, 'usort_reorder'));
-																											  
 
         /* pagination */ 
         $per_page = $this->get_items_per_page('elements_per_page', 10);
@@ -233,7 +264,7 @@ class botwriter_Logs_Table extends WP_List_Table {
                 $id_task_server = $item['id_task_server'];
                 $txt= '<span style="color:red;">Error (id server:' . $id_task_server . ')</span>';
                 if ($item["error"]!='') {
-                    $txt.= '<br>' . esc_html($item["error"]) . "<br>";
+                    $txt.= '<br>' . wp_kses_post($item["error"]) . "<br>";
                 }
                 // writenow tasks don't retry, so don't show retry info
                 $task_type = isset($item['task_type']) ? $item['task_type'] : '';

@@ -30,7 +30,7 @@ require_once $botwriter_settings_dir . 'fal.php';
 require_once $botwriter_settings_dir . 'replicate.php';
 require_once $botwriter_settings_dir . 'stability.php';
 require_once $botwriter_settings_dir . 'cloudflare.php';
-require_once $botwriter_settings_dir . 'custom.php';
+require_once $botwriter_settings_dir . 'none.php';
 
 // Global notice accumulator for settings-related warnings
 $botwriter_notice = '';
@@ -40,7 +40,6 @@ add_action('wp_ajax_botwriter_save_settings', 'botwriter_ajax_save_settings');
 add_action('wp_ajax_botwriter_test_api_key', 'botwriter_ajax_test_api_key');
 add_action('wp_ajax_botwriter_test_model', 'botwriter_ajax_test_model');
 add_action('wp_ajax_botwriter_reset_models', 'botwriter_ajax_reset_models');
-add_action('wp_ajax_botwriter_test_custom_provider', 'botwriter_ajax_test_custom_provider');
 
 /**
  * AJAX handler to test API key connectivity
@@ -544,174 +543,6 @@ function botwriter_ajax_reset_models() {
 }
 
 /**
- * AJAX handler to test custom provider connections
- */
-function botwriter_ajax_test_custom_provider() {
-    // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'botwriter_settings_nonce')) {
-        wp_send_json_error(array('message' => __('Security check failed.', 'botwriter')));
-    }
-
-    // Verify permissions
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
-    }
-
-    $url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
-    $api_key = isset($_POST['api_key']) ? sanitize_text_field(wp_unslash($_POST['api_key'])) : '';
-    $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : 'text';
-    $image_type = isset($_POST['image_type']) ? sanitize_text_field(wp_unslash($_POST['image_type'])) : '';
-
-    if (empty($url)) {
-        wp_send_json_error(array('message' => __('Please enter a URL.', 'botwriter')));
-    }
-
-    $ssl_verify = get_option('botwriter_sslverify', 'yes') === 'yes';
-    $headers = array('Content-Type' => 'application/json');
-    
-    if (!empty($api_key)) {
-        $headers['Authorization'] = 'Bearer ' . $api_key;
-    }
-
-    if ($type === 'text') {
-        // Test text provider by fetching models list
-        $models_url = rtrim($url, '/') . '/models';
-        
-        $response = wp_remote_get($models_url, array(
-            'timeout' => 15,
-            'sslverify' => $ssl_verify,
-            'headers' => $headers,
-        ));
-
-        if (is_wp_error($response)) {
-            wp_send_json_error(array(
-                'message' => sprintf(
-                    /* translators: %s: Error message */
-                    __('Connection failed: %s', 'botwriter'),
-                    $response->get_error_message()
-                ),
-            ));
-        }
-
-        $code = wp_remote_retrieve_response_code($response);
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-
-        if ($code === 200) {
-            $models = array();
-            
-            // Extract model IDs from response
-            if (isset($data['data']) && is_array($data['data'])) {
-                foreach ($data['data'] as $model) {
-                    if (isset($model['id'])) {
-                        $models[] = $model['id'];
-                    }
-                }
-            } elseif (isset($data['models']) && is_array($data['models'])) {
-                // Ollama format
-                foreach ($data['models'] as $model) {
-                    if (isset($model['name'])) {
-                        $models[] = $model['name'];
-                    }
-                }
-            }
-
-            wp_send_json_success(array(
-                'message' => __('Connection successful!', 'botwriter'),
-                'models' => $models,
-            ));
-        }
-
-        // Handle errors
-        $error_msg = __('Connection failed.', 'botwriter');
-        if ($code === 401 || $code === 403) {
-            $error_msg = __('Authentication failed. Check your API key.', 'botwriter');
-        } elseif ($code === 404) {
-            // Try alternative endpoint for Ollama
-            $alt_url = rtrim($url, '/') . '/api/tags';
-            $alt_response = wp_remote_get($alt_url, array(
-                'timeout' => 15,
-                'sslverify' => $ssl_verify,
-                'headers' => $headers,
-            ));
-            
-            if (!is_wp_error($alt_response) && wp_remote_retrieve_response_code($alt_response) === 200) {
-                $alt_data = json_decode(wp_remote_retrieve_body($alt_response), true);
-                $models = array();
-                if (isset($alt_data['models'])) {
-                    foreach ($alt_data['models'] as $model) {
-                        $models[] = $model['name'] ?? $model['model'] ?? '';
-                    }
-                }
-                wp_send_json_success(array(
-                    'message' => __('Connection successful! (Ollama detected)', 'botwriter'),
-                    'models' => array_filter($models),
-                ));
-            }
-            $error_msg = __('Endpoint not found. Check the URL.', 'botwriter');
-        } elseif (isset($data['error']['message'])) {
-            $error_msg = sanitize_text_field($data['error']['message']);
-        }
-
-        wp_send_json_error(array('message' => $error_msg));
-
-    } else {
-        // Test image provider
-        if ($image_type === 'automatic1111') {
-            // Test A1111 by checking options endpoint
-            $test_url = rtrim($url, '/') . '/sdapi/v1/options';
-        } elseif ($image_type === 'comfyui') {
-            // Test ComfyUI by checking system stats
-            $test_url = rtrim($url, '/') . '/system_stats';
-        } else {
-            // Generic OpenAI-compatible
-            $test_url = rtrim($url, '/') . '/models';
-        }
-
-        $response = wp_remote_get($test_url, array(
-            'timeout' => 15,
-            'sslverify' => $ssl_verify,
-            'headers' => $headers,
-        ));
-
-        if (is_wp_error($response)) {
-            wp_send_json_error(array(
-                'message' => sprintf(
-                    /* translators: %s: Error message */
-                    __('Connection failed: %s', 'botwriter'),
-                    $response->get_error_message()
-                ),
-            ));
-        }
-
-        $code = wp_remote_retrieve_response_code($response);
-
-        if ($code === 200) {
-            $type_names = array(
-                'automatic1111' => 'Automatic1111',
-                'comfyui' => 'ComfyUI',
-                'openai' => __('OpenAI-compatible server', 'botwriter'),
-            );
-            wp_send_json_success(array(
-                'message' => sprintf(
-                    /* translators: %s: Server type name */
-                    __('%s detected! Connection successful.', 'botwriter'),
-                    $type_names[$image_type] ?? __('Server', 'botwriter')
-                ),
-            ));
-        }
-
-        wp_send_json_error(array(
-            'message' => sprintf(
-                /* translators: %d: HTTP status code */
-                __('Connection failed. HTTP %d', 'botwriter'),
-                $code
-            ),
-        ));
-    }
-}
-
-/**
  * AJAX handler to save individual settings
  */
 function botwriter_ajax_save_settings() {
@@ -773,14 +604,7 @@ function botwriter_ajax_save_settings() {
         'botwriter_paused_tasks',
         'botwriter_tags_disabled',
         'botwriter_meta_disabled',
-        // Custom provider fields (text)
-        'botwriter_custom_text_url',
-        'botwriter_custom_text_api_key',
-        'botwriter_custom_text_model',
-        // Custom provider fields (image)
-        'botwriter_custom_image_type',
-        'botwriter_custom_image_url',
-        'botwriter_custom_image_model',
+        'botwriter_image_error_continue',
         // SEO Translation fields
         'botwriter_seo_translation_enabled',
         'botwriter_seo_target_language',
@@ -805,14 +629,6 @@ function botwriter_ajax_save_settings() {
         'botwriter_replicate_api_key',
         'botwriter_stability_api_key',
         'botwriter_cloudflare_api_key',
-        'botwriter_custom_text_api_key',
-    ];
-
-    // Process the value
-    // URL fields that need esc_url_raw sanitization
-    $url_fields = [
-        'botwriter_custom_text_url',
-        'botwriter_custom_image_url',
     ];
 
     if (in_array($field, $api_key_fields)) {
@@ -826,10 +642,6 @@ function botwriter_ajax_save_settings() {
             }
             $value = botwriter_encrypt_api_key_generic($value);
         }
-    } elseif (in_array($field, $url_fields)) {
-        $value = esc_url_raw($value);
-    } elseif ($field === 'botwriter_email') {
-        $value = sanitize_email($value);
     } elseif ($field === 'botwriter_paused_tasks') {
         $value = max(2, intval($value));
     } elseif ($field === 'botwriter_cron_active' || $field === 'botwriter_tags_disabled'
@@ -850,16 +662,6 @@ function botwriter_ajax_save_settings() {
             botwriter_scheduled_events_plugin_activate();
         } else {
             botwriter_scheduled_events_plugin_deactivate();
-        }
-    }
-
-    // Enforce image provider coherence when text provider changes to 'custom'
-    if ($field === 'botwriter_text_provider' && $value === 'custom') {
-        $current_image_provider = get_option('botwriter_image_provider', 'dalle');
-        $allowed_image_providers = ['custom', 'none'];
-        
-        if (!in_array($current_image_provider, $allowed_image_providers)) {
-            update_option('botwriter_image_provider', 'none');
         }
     }
 
@@ -903,8 +705,6 @@ function botwriter_settings_page_handler() {
                 </div>
             </div>
         </div>
-        <div id='subscription'></div>
-        <div id="response_div" class="bw-response-area"></div>
     </div>
     <?php
 }
@@ -927,7 +727,6 @@ function botwriter_settings_meta_box_handler() {
         'mistral' => 'Mistral AI - FREE TIER',
         'groq' => 'Groq (Ultra Fast) - FREE TIER',
         'openrouter' => 'OpenRouter (Multiple) - FREE TIER',
-        'custom' => '⚡ Custom Provider or Self-Hosting',
     ];
     
     $image_providers = [
@@ -937,7 +736,6 @@ function botwriter_settings_meta_box_handler() {
         'replicate' => 'Replicate',
         'stability' => 'Stability AI',
         'cloudflare' => 'Cloudflare AI (FREE)',
-        'custom' => '⚡ Custom Provider or Self-Hosting',
         'none' => '🚫 No Image Generation',
     ];
 
@@ -1016,12 +814,7 @@ function botwriter_settings_meta_box_handler() {
         <?php 
         foreach ($image_providers as $id => $name):
             $is_active = ($id === $image_provider);
-            // Special case: custom provider uses different function for images
-            if ($id === 'custom') {
-                $render_func = 'botwriter_render_custom_image_settings';
-            } else {
-                $render_func = 'botwriter_render_' . $id . '_settings';
-            }
+            $render_func = 'botwriter_render_' . $id . '_settings';
         ?>
         <div class="provider-content <?php echo $is_active ? 'active' : ''; ?>" 
              id="image-provider-<?php echo esc_attr($id); ?>" data-provider="<?php echo esc_attr($id); ?>">
@@ -1296,13 +1089,16 @@ function botwriter_settings_meta_box_handler() {
                 </label>
                 <p class="description"><?php esc_html_e('When enabled, BotWriter will NOT auto-generate an SEO meta description for new posts. The meta is generated using a fast AI call after each post is created and is saved to the post excerpt and to popular SEO plugins (Yoast, Rank Math, AIOSEO, SEOPress, The SEO Framework).', 'botwriter'); ?></p>
             </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_image_error_continue" value="1" <?php checked(get_option('botwriter_image_error_continue', '0'), '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Publish without image if image generation fails', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, if the AI image generation fails (quota exceeded, API error, etc.), the post will still be published without a featured image instead of being marked as an error. Useful if you prefer to never lose a post due to image issues.', 'botwriter'); ?></p>
+            </div>
         </div>
 
-        <!-- Hidden fields -->
-        <div style="display:none;">
-            <input id="botwriter_email" type="text" name="botwriter_email" value="<?php echo esc_attr(get_option('botwriter_email')); ?>">
-            <input id="botwriter_api_key" type="text" name="botwriter_api_key" value="<?php echo esc_attr(get_option('botwriter_api_key')); ?>">
-        </div>
     </div>
 
     <!-- Tab: SEO Translation -->

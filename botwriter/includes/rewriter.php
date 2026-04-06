@@ -143,10 +143,11 @@ function botwriter_rewriter_extract_content($url, $prefetched_html = null) {
     $referer = (isset($parsed['scheme']) ? $parsed['scheme'] : 'https') . '://' . ($parsed['host'] ?? '');
 
     // Fetch the page with realistic browser headers to avoid 403 blocks
+    $ssl_verify = get_option('botwriter_sslverify', 'yes') === 'yes';
     $response = wp_remote_get($url, array(
         'timeout'    => 30,
         'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'sslverify'  => false,
+        'sslverify'  => $ssl_verify,
         'redirection' => 5,
         'headers' => array(
             'Accept'            => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',

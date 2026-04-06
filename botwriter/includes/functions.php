@@ -485,11 +485,6 @@ function botwriter_translate_slugs($title, $tags = '', $language = 'en') {
 
     // Determine which provider to use
     $provider = get_option('botwriter_text_provider', 'openai');
-    
-    // Custom/self-hosted provider uses direct mode
-    if ($provider === 'custom') {
-        return botwriter_translate_slugs_custom($prompt);
-    }
 
     $api_key = botwriter_get_provider_api_key($provider);
     if (empty($api_key)) {
@@ -499,28 +494,12 @@ function botwriter_translate_slugs($title, $tags = '', $language = 'en') {
 
     // Use a fast/cheap model for translations
     $model = botwriter_get_seo_translation_model($provider);
-    $ssl_verify = get_option('botwriter_sslverify', 'yes') === 'yes';
 
-    // Make the API call based on provider
-    $response = botwriter_translate_api_call($provider, $api_key, $model, $prompt, $ssl_verify);
+    // Route through Cloudflare Worker (no usage count)
+    $text = botwriter_call_worker_nocount($provider, $api_key, $model, $prompt, 200, 0.3);
 
-    if (is_wp_error($response)) {
-        botwriter_log('SEO Translation API error', ['provider' => $provider, 'error' => $response->get_error_message()], 'error');
-        return false;
-    }
-
-    $body = wp_remote_retrieve_body($response);
-    $http_code = wp_remote_retrieve_response_code($response);
-
-    if ($http_code !== 200) {
-        botwriter_log('SEO Translation HTTP error', ['provider' => $provider, 'http_code' => $http_code], 'error');
-        return false;
-    }
-
-    // Extract text content from provider-specific response format
-    $text = botwriter_extract_translation_text($provider, $body);
-    if (empty($text)) {
-        botwriter_log('SEO Translation: Empty response from provider', ['provider' => $provider], 'error');
+    if (is_wp_error($text)) {
+        botwriter_log('SEO Translation API error', ['provider' => $provider, 'error' => $text->get_error_message()], 'error');
         return false;
     }
 
@@ -556,123 +535,82 @@ function botwriter_get_seo_translation_model($provider) {
 }
 
 /**
- * Make API call for slug translation to the appropriate provider
+ * Call the Cloudflare Worker /woo endpoint without counting usage.
+ *
+ * Used by SEO slug translation and meta description generation to
+ * leverage the Worker's provider abstraction (handles max_tokens vs
+ * max_completion_tokens, Responses API, etc.) while keeping quota
+ * reserved for actual WooCommerce / post generation operations.
+ *
+ * @param string $provider   Provider key (openai, anthropic, google, etc.).
+ * @param string $api_key    The user's API key for this provider.
+ * @param string $model      Model name to use.
+ * @param string $prompt     The prompt text.
+ * @param int    $max_tokens Maximum output tokens.
+ * @param float  $temperature Sampling temperature.
+ * @return string|WP_Error   Generated text content on success.
  */
-function botwriter_translate_api_call($provider, $api_key, $model, $prompt, $ssl_verify) {
-    $timeout = 30;
+function botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, $max_tokens = 200, $temperature = 0.3 ) {
+    $ssl_verify = get_option( 'botwriter_sslverify', 'yes' ) === 'yes';
 
-    switch ($provider) {
-        case 'openai':
-            return wp_remote_post('https://api.openai.com/v1/chat/completions', array(
-                'timeout' => $timeout, 'sslverify' => $ssl_verify,
-                'headers' => array('Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json'),
-                'body' => wp_json_encode(array(
-                    'model' => $model,
-                    'messages' => array(array('role' => 'user', 'content' => $prompt)),
-                    'max_tokens' => 200, 'temperature' => 0.3,
-                )),
-            ));
+    // Map provider names: PHP uses 'google', Worker uses 'gemini'
+    $provider_map   = array( 'google' => 'gemini' );
+    $worker_provider = isset( $provider_map[ $provider ] ) ? $provider_map[ $provider ] : $provider;
 
-        case 'anthropic':
-            return wp_remote_post('https://api.anthropic.com/v1/messages', array(
-                'timeout' => $timeout, 'sslverify' => $ssl_verify,
-                'headers' => array('x-api-key' => $api_key, 'anthropic-version' => '2023-06-01', 'Content-Type' => 'application/json'),
-                'body' => wp_json_encode(array(
-                    'model' => $model, 'max_tokens' => 200,
-                    'messages' => array(array('role' => 'user', 'content' => $prompt)),
-                )),
-            ));
+    // Map provider key → Worker body field
+    $key_field_map = array(
+        'openai'     => 'openai_api_key',
+        'anthropic'  => 'anthropic_api_key',
+        'google'     => 'google_api_key',
+        'mistral'    => 'mistral_api_key',
+        'groq'       => 'groq_api_key',
+        'openrouter' => 'openrouter_api_key',
+    );
 
-        case 'google':
-            $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key=' . $api_key;
-            return wp_remote_post($url, array(
-                'timeout' => $timeout, 'sslverify' => $ssl_verify,
-                'headers' => array('Content-Type' => 'application/json'),
-                'body' => wp_json_encode(array(
-                    'contents' => array(array('parts' => array(array('text' => $prompt)))),
-                    'generationConfig' => array('maxOutputTokens' => 200, 'temperature' => 0.3),
-                )),
-            ));
+    $domain = preg_replace( '#^https?://#', '', home_url() );
+    $domain = rtrim( $domain, '/' );
 
-        case 'mistral':
-            return wp_remote_post('https://api.mistral.ai/v1/chat/completions', array(
-                'timeout' => $timeout, 'sslverify' => $ssl_verify,
-                'headers' => array('Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json'),
-                'body' => wp_json_encode(array(
-                    'model' => $model,
-                    'messages' => array(array('role' => 'user', 'content' => $prompt)),
-                    'max_tokens' => 200, 'temperature' => 0.3,
-                )),
-            ));
+    $payload = array(
+        'prompt'         => $prompt,
+        'domain'         => $domain,
+        'provider'       => $worker_provider,
+        'model'          => $model,
+        'max_tokens'     => $max_tokens,
+        'temperature'    => $temperature,
+        'no_count'       => true,
+        'site_token'     => get_option( 'botwriter_site_token', '' ),
+    );
 
-        case 'groq':
-            return wp_remote_post('https://api.groq.com/openai/v1/chat/completions', array(
-                'timeout' => $timeout, 'sslverify' => $ssl_verify,
-                'headers' => array('Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json'),
-                'body' => wp_json_encode(array(
-                    'model' => $model,
-                    'messages' => array(array('role' => 'user', 'content' => $prompt)),
-                    'max_tokens' => 200, 'temperature' => 0.3,
-                )),
-            ));
-
-        case 'openrouter':
-            return wp_remote_post('https://openrouter.ai/api/v1/chat/completions', array(
-                'timeout' => $timeout, 'sslverify' => $ssl_verify,
-                'headers' => array(
-                    'Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json',
-                    'HTTP-Referer' => home_url(), 'X-Title' => 'BotWriter',
-                ),
-                'body' => wp_json_encode(array(
-                    'model' => $model,
-                    'messages' => array(array('role' => 'user', 'content' => $prompt)),
-                    'max_tokens' => 200, 'temperature' => 0.3,
-                )),
-            ));
-
-        default:
-            return new WP_Error('unknown_provider', 'Unknown text provider for translation: ' . $provider);
-    }
-}
-
-/**
- * Handle translation via custom/self-hosted provider
- */
-function botwriter_translate_slugs_custom($prompt) {
-    $url     = get_option('botwriter_custom_text_url', '');
-    $api_key = botwriter_get_provider_api_key('custom_text');
-    $model   = get_option('botwriter_custom_text_model', '');
-
-    if (empty($url)) {
-        botwriter_log('SEO Translation: Custom provider URL not configured', [], 'warning');
-        return false;
+    if ( ! empty( $api_key ) && isset( $key_field_map[ $provider ] ) ) {
+        $payload[ $key_field_map[ $provider ] ] = $api_key;
     }
 
-    $endpoint = rtrim($url, '/') . '/v1/chat/completions';
-    $headers = array('Content-Type' => 'application/json');
-    if (!empty($api_key)) {
-        $headers['Authorization'] = 'Bearer ' . $api_key;
+    $response = wp_remote_post( BOTWRITER_API_URL . 'woo', array(
+        'timeout'   => 30,
+        'sslverify' => $ssl_verify,
+        'headers'   => array( 'Content-Type' => 'application/json' ),
+        'body'      => wp_json_encode( $payload ),
+    ) );
+
+    if ( is_wp_error( $response ) ) {
+        return $response;
     }
 
-    $response = wp_remote_post($endpoint, array(
-        'timeout' => 30, 'sslverify' => false,
-        'headers' => $headers,
-        'body' => wp_json_encode(array(
-            'model' => $model ?: 'default',
-            'messages' => array(array('role' => 'user', 'content' => $prompt)),
-            'max_tokens' => 200, 'temperature' => 0.3,
-        )),
-    ));
+    $http_code = wp_remote_retrieve_response_code( $response );
+    $body      = wp_remote_retrieve_body( $response );
+    $data      = json_decode( $body, true );
 
-    if (is_wp_error($response)) {
-        botwriter_log('SEO Translation custom error', ['error' => $response->get_error_message()], 'error');
-        return false;
+    if ( $http_code !== 200 || ( isset( $data['status'] ) && $data['status'] === 'error' ) ) {
+        $msg = $data['error'] ?? "HTTP {$http_code}";
+        return new WP_Error( 'worker_error', $msg );
     }
 
-    $body = wp_remote_retrieve_body($response);
-    $text = botwriter_extract_translation_text('openai', $body); // Custom uses OpenAI-compatible format
-    if (empty($text)) { return false; }
-    return botwriter_parse_slug_json($text);
+    $content = $data['content'] ?? '';
+    if ( empty( $content ) ) {
+        return new WP_Error( 'empty_response', 'AI returned an empty response.' );
+    }
+
+    return $content;
 }
 
 /**
@@ -806,8 +744,7 @@ function botwriter_apply_translated_slugs($post_id, $title, $tags_string = '') {
 /**
  * Fetch and parse an RSS/Atom feed from the client side using wp_remote_get.
  *
- * Inspired by the server-side leerRSSFuente() in api_rss.php and the
- * direct-mode class-direct-content-sources.php implementation.
+ * Inspired by the server-side leerRSSFuente() in api_rss.php.
  *
  * @param string $rss_url         The RSS feed URL.
  * @param string $published_links Comma-separated list of already-published links.
@@ -1151,11 +1088,6 @@ function botwriter_generate_seo_meta( $title, $content, $language_code = '' ) {
     // Determine provider
     $provider = get_option( 'botwriter_text_provider', 'openai' );
 
-    // Custom provider path
-    if ( $provider === 'custom' ) {
-        return botwriter_generate_meta_custom( $prompt );
-    }
-
     $api_key = botwriter_get_provider_api_key( $provider );
     if ( empty( $api_key ) ) {
         botwriter_log( 'SEO Meta: No API key for provider ' . $provider, [], 'warning' );
@@ -1163,26 +1095,12 @@ function botwriter_generate_seo_meta( $title, $content, $language_code = '' ) {
     }
 
     $model      = botwriter_get_seo_translation_model( $provider ); // fast & cheap model
-    $ssl_verify = get_option( 'botwriter_sslverify', 'yes' ) === 'yes';
 
-    $response = botwriter_translate_api_call( $provider, $api_key, $model, $prompt, $ssl_verify );
+    // Route through Cloudflare Worker (no usage count)
+    $text = botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, 100, 0.4 );
 
-    if ( is_wp_error( $response ) ) {
-        botwriter_log( 'SEO Meta API error', [ 'provider' => $provider, 'error' => $response->get_error_message() ], 'error' );
-        return false;
-    }
-
-    $http_code = wp_remote_retrieve_response_code( $response );
-    if ( $http_code !== 200 ) {
-        botwriter_log( 'SEO Meta HTTP error', [ 'provider' => $provider, 'http_code' => $http_code ], 'error' );
-        return false;
-    }
-
-    $body = wp_remote_retrieve_body( $response );
-    $text = botwriter_extract_translation_text( $provider, $body );
-
-    if ( empty( $text ) ) {
-        botwriter_log( 'SEO Meta: Empty response', [ 'provider' => $provider ], 'error' );
+    if ( is_wp_error( $text ) ) {
+        botwriter_log( 'SEO Meta API error', [ 'provider' => $provider, 'error' => $text->get_error_message() ], 'error' );
         return false;
     }
 
@@ -1194,55 +1112,6 @@ function botwriter_generate_seo_meta( $title, $content, $language_code = '' ) {
     ] );
 
     return $meta;
-}
-
-/**
- * Generate meta description via custom/self-hosted provider.
- *
- * @param string $prompt The prompt to send.
- * @return string|false
- */
-function botwriter_generate_meta_custom( $prompt ) {
-    $url     = get_option( 'botwriter_custom_text_url', '' );
-    $api_key = botwriter_get_provider_api_key( 'custom_text' );
-    $model   = get_option( 'botwriter_custom_text_model', '' );
-
-    if ( empty( $url ) ) {
-        botwriter_log( 'SEO Meta: Custom provider URL not configured', [], 'warning' );
-        return false;
-    }
-
-    $endpoint = rtrim( $url, '/' ) . '/v1/chat/completions';
-    $headers  = [ 'Content-Type' => 'application/json' ];
-    if ( ! empty( $api_key ) ) {
-        $headers['Authorization'] = 'Bearer ' . $api_key;
-    }
-
-    $response = wp_remote_post( $endpoint, [
-        'timeout'   => 30,
-        'sslverify' => false,
-        'headers'   => $headers,
-        'body'      => wp_json_encode( [
-            'model'       => $model ?: 'default',
-            'messages'    => [ [ 'role' => 'user', 'content' => $prompt ] ],
-            'max_tokens'  => 100,
-            'temperature' => 0.4,
-        ] ),
-    ] );
-
-    if ( is_wp_error( $response ) ) {
-        botwriter_log( 'SEO Meta custom error', [ 'error' => $response->get_error_message() ], 'error' );
-        return false;
-    }
-
-    $body = wp_remote_retrieve_body( $response );
-    $text = botwriter_extract_translation_text( 'openai', $body );
-
-    if ( empty( $text ) ) {
-        return false;
-    }
-
-    return botwriter_sanitize_meta_description( $text );
 }
 
 /**

@@ -25,15 +25,6 @@ function botwriter_super_page_handler(){
 
 
 
-  $api_key=get_option('botwriter_api_key'); 
-  // si las 2 primers letras son PK es que es una clave de pago
-  $user_pro=false;
-  if (substr($api_key, 0, 2) == 'PK') {
-   $user_pro=true;
-  } 
-
-  
-   
     $table_name = $wpdb->prefix . 'botwriter_tasks'; 
     $dir_images = plugin_dir_url(dirname(__FILE__)) . '/assets/images/';
   
@@ -346,16 +337,16 @@ function botwriter_super_page_handler(){
                 <br>
               <button id="super1button_createtask" name="super1button_createtask">Create Titles</button>
               
-              <!-- Free tier warning for Super Tasks -->
+              <!-- Rate-limit advisory for Super Tasks -->
               <div class="bw-supertask-tier-warning">
-                <span class="dashicons dashicons-warning"></span>
+                <span class="dashicons dashicons-info"></span>
                 <div>
-                  <strong><?php esc_html_e('Free Tier Limitations', 'botwriter'); ?></strong>
-                  <p><?php esc_html_e('Super Tasks require generating multiple articles in sequence. Free tier API plans (Google, Mistral, Groq, OpenRouter) may have rate limits or quotas that cause failures.', 'botwriter'); ?></p>
+                  <strong><?php esc_html_e('Super Tasks Advisory', 'botwriter'); ?></strong>
+                  <p><?php esc_html_e('Super Tasks generate multiple articles in sequence, which sends many requests to your AI provider in a short time. Some providers enforce rate limits that may interrupt the batch.', 'botwriter'); ?></p>
                   <p><?php esc_html_e('For best results:', 'botwriter'); ?></p>
                   <ul>
-                    <li><?php esc_html_e('Use a paid API plan for your text provider', 'botwriter'); ?></li>
-                    <li><?php esc_html_e('Or use regular scheduled tasks instead of Super Tasks', 'botwriter'); ?></li>
+                    <li><?php esc_html_e('Ensure your API key has sufficient rate allowance for your provider', 'botwriter'); ?></li>
+                    <li><?php esc_html_e('Or use regular scheduled tasks to spread requests over time', 'botwriter'); ?></li>
                   </ul>
                 </div>
               </div>
@@ -775,7 +766,6 @@ $data = array(
     'rss_source'              => '',
     'ai_keywords'             => '',
     'version'                 => '',
-    'api_key'                 => '', 
     'user_domainname'         => '',
     'ai_image_size'           => '',
     'titles'                  => '',
