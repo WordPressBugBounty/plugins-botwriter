@@ -30,6 +30,7 @@ require_once $botwriter_settings_dir . 'fal.php';
 require_once $botwriter_settings_dir . 'replicate.php';
 require_once $botwriter_settings_dir . 'stability.php';
 require_once $botwriter_settings_dir . 'cloudflare.php';
+require_once $botwriter_settings_dir . 'stockphoto.php';
 require_once $botwriter_settings_dir . 'none.php';
 
 // Global notice accumulator for settings-related warnings
@@ -611,6 +612,10 @@ function botwriter_ajax_save_settings() {
         'botwriter_seo_translate_title',
         'botwriter_seo_translate_tags',
         'botwriter_seo_translate_image',
+        // Stock photo fields
+        'botwriter_stockphoto_preferred',
+        'botwriter_stockphoto_selection',
+        'botwriter_stockphoto_attribution',
     ];
 
     if (!in_array($field, $allowed_fields)) {
@@ -736,6 +741,7 @@ function botwriter_settings_meta_box_handler() {
         'replicate' => 'Replicate',
         'stability' => 'Stability AI',
         'cloudflare' => 'Cloudflare AI (FREE)',
+        'stockphoto' => '📷 [FREE] Stock Images',
         'none' => '🚫 No Image Generation',
     ];
 
@@ -832,6 +838,9 @@ function botwriter_settings_meta_box_handler() {
     <!-- Tab: Image Settings -->
     <div id="main-tab-imagesettings" class="botwriter-main-tab-content">
         <div class="image-settings-section">
+            <div id="stockphoto_notice_imagesettings" class="notice notice-info inline bw-notice-info-inline" style="margin-bottom: 20px; <?php echo $image_provider === 'stockphoto' ? '' : 'display:none;'; ?>">
+                <p><span class="dashicons dashicons-info"></span> <?php esc_html_e('Stock photo mode: Style and quality settings do not apply. Image Format is used to set the search orientation (landscape/portrait/square).', 'botwriter'); ?></p>
+            </div>
             <h4 class="section-title">
                 <span class="dashicons dashicons-format-image"></span>
                 <?php esc_html_e('Image Generation Settings', 'botwriter'); ?>
@@ -1259,6 +1268,10 @@ function botwriter_get_all_settings() {
         'botwriter_stability_model' => get_option('botwriter_stability_model', 'sd3.5-large-turbo'),
         'botwriter_cloudflare_model' => get_option('botwriter_cloudflare_model', 'flux-1-schnell'),
         'botwriter_cloudflare_account_id' => get_option('botwriter_cloudflare_account_id', ''),
+        // Stock photo settings
+        'botwriter_stockphoto_preferred' => get_option('botwriter_stockphoto_preferred', 'pixabay'),
+        'botwriter_stockphoto_selection' => get_option('botwriter_stockphoto_selection', 'random_top10'),
+        'botwriter_stockphoto_attribution' => get_option('botwriter_stockphoto_attribution', 'caption'),
     );
 }
 

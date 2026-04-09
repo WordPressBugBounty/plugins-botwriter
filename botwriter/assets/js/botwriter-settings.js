@@ -129,6 +129,22 @@ jQuery(document).ready(function($) {
         var provider = $(this).val();
         $('#main-tab-images .provider-content').removeClass('active');
         $('#image-provider-' + provider).addClass('active');
+        // Toggle image settings visibility based on provider type
+        if (provider === 'stockphoto' || provider === 'none') {
+            $('.image-settings-section .setting-card').each(function() {
+                var $card = $(this);
+                // Keep Image Format visible (used as orientation for stock), hide style/quality
+                if ($card.find('#image_quality_select, #image_style_select, #custom_style_row').length) {
+                    $card.closest('.settings-grid-2col').hide();
+                }
+            });
+            $('.cost-comparison').hide();
+            $('#stockphoto_notice_imagesettings').show();
+        } else {
+            $('.image-settings-section .settings-grid-2col').show();
+            $('.cost-comparison').show();
+            $('#stockphoto_notice_imagesettings').hide();
+        }
     });
 
     // Image Size/Format Preview

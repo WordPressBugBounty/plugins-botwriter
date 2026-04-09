@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.2.4
+Version: 3.2.5
 Author: estebandezafra
 Requires PHP: 7.0
 License:           GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.2.4');
+    define('BOTWRITER_VERSION', '3.2.5');
 }
 
 // Plugin directory path (with trailing slash)
@@ -185,6 +185,7 @@ function botwriter_enqueue_scripts() {
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('botwriter_logs_delete_nonce'),
             'confirm_delete' => __('Are you sure you want to delete this log entry? This action cannot be undone.', 'botwriter'),
+            'confirm_bulk_delete' => __('Are you sure you want to delete the selected log entries? This action cannot be undone.', 'botwriter'),
             'error_delete' => __('Error deleting log. Please try again.', 'botwriter'),
         ));
     }
@@ -2128,7 +2129,46 @@ function botwriter_generate_post($data){
     // Add image to the post only if image URL is provided and images are not disabled for this task
     $task_disable_images = isset($data['disable_ai_images']) ? intval($data['disable_ai_images']) : 0;
     if (!empty($data['aigenerated_image']) && $task_disable_images !== 1) {
-        botwriter_attach_image_to_post($post_id, $data['aigenerated_image'], $data['aigenerated_title'], $translated_image_slug);
+        // Pass attribution data for stock photos
+        $image_attribution = isset($data['image_attribution']) ? $data['image_attribution'] : null;
+        botwriter_attach_image_to_post($post_id, $data['aigenerated_image'], $data['aigenerated_title'], $translated_image_slug, $image_attribution);
+
+        // Handle stock photo attribution in post content (footer mode)
+        if (!empty($image_attribution) && is_array($image_attribution)) {
+            $attribution_mode = get_option('botwriter_stockphoto_attribution', 'caption');
+            if ($attribution_mode === 'content_footer') {
+                $author = sanitize_text_field($image_attribution['author'] ?? '');
+                $source = sanitize_text_field($image_attribution['source'] ?? '');
+                $source_url = esc_url($image_attribution['source_url'] ?? '');
+                $author_url = esc_url($image_attribution['author_url'] ?? '');
+
+                if ($author || $source) {
+                    $credit_parts = array();
+                    if ($author) {
+                        $credit_parts[] = $author_url
+                            ? sprintf('<a href="%s" rel="nofollow noopener" target="_blank">%s</a>', $author_url, esc_html($author))
+                            : esc_html($author);
+                    }
+                    if ($source) {
+                        $credit_parts[] = $source_url
+                            ? sprintf('<a href="%s" rel="nofollow noopener" target="_blank">%s</a>', $source_url, esc_html($source))
+                            : esc_html($source);
+                    }
+                    $credit_html = '<p class="botwriter-image-attribution"><small>'
+                        . sprintf(
+                            /* translators: %s: attribution credit (author / source) */
+                            esc_html__('Photo by %s', 'botwriter'),
+                            implode(' / ', $credit_parts)
+                        )
+                        . '</small></p>';
+
+                    wp_update_post(array(
+                        'ID' => $post_id,
+                        'post_content' => get_post_field('post_content', $post_id) . "\n" . $credit_html,
+                    ));
+                }
+            }
+        }
     } else {
         $skip_reason = '';
         if (empty($data['aigenerated_image'])) {
@@ -2196,6 +2236,11 @@ function botwriter_send1_data_to_server($data) {
     // Provider selections
     $data['text_provider'] = get_option('botwriter_text_provider', 'openai');
     $data['image_provider'] = get_option('botwriter_image_provider', 'dalle');
+    
+    // Stock photo settings (sent always, used only when image_provider=stockphoto)
+    $data['stockphoto_preferred'] = get_option('botwriter_stockphoto_preferred', 'pixabay');
+    $data['stockphoto_selection'] = get_option('botwriter_stockphoto_selection', 'random_top10');
+    $data['stockphoto_attribution'] = get_option('botwriter_stockphoto_attribution', 'caption');
     
     // Get current text model based on provider
     $text_provider = $data['text_provider'];
@@ -2617,6 +2662,9 @@ function botwriter_send2_data_to_server($data) {
                 'task_status' => $result['task_status'] ?? null,
             ]);
             if (isset($result["task_status"]) && $result["task_status"] == "completed") {
+                // Preserve image_attribution from server response (not stored in DB)
+                $image_attribution = isset($result['image_attribution']) ? $result['image_attribution'] : null;
+
                 botwriter_logs_register($result, $data["id"]);                          
                 botwriter_log('Phase 2 completed event', [
                     'log_id' => $data['id'] ?? null,
@@ -2625,6 +2673,11 @@ function botwriter_send2_data_to_server($data) {
                 ]);
                 
                 $result=botwriter_logs_get($data["id"]);  // merge the result with the log
+
+                // Re-attach image_attribution (not persisted in logs table)
+                if ($image_attribution) {
+                    $result['image_attribution'] = $image_attribution;
+                }
 
                 // ── Guard: prevent duplicate post creation ──
                 // If this log already has a published post, skip generation.
@@ -2818,6 +2871,36 @@ function botwriter_delete_log_ajax() {
     wp_die();
 }
 
+// AJAX handler for bulk deleting log entries
+add_action('wp_ajax_botwriter_bulk_delete_logs', 'botwriter_bulk_delete_logs_ajax');
+function botwriter_bulk_delete_logs_ajax() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Permission denied']);
+    }
+
+    check_ajax_referer('botwriter_logs_delete_nonce', 'nonce');
+
+    $log_ids = isset($_POST['log_ids']) ? array_map('intval', $_POST['log_ids']) : array();
+    $log_ids = array_filter($log_ids, function($id) { return $id > 0; });
+
+    if (empty($log_ids)) {
+        wp_send_json_error(['message' => __('No logs selected', 'botwriter')]);
+    }
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'botwriter_logs';
+    $placeholders = implode(',', array_fill(0, count($log_ids), '%d'));
+    $deleted = $wpdb->query($wpdb->prepare("DELETE FROM $table_name WHERE id IN ($placeholders)", $log_ids));
+
+    if ($deleted !== false) {
+        wp_send_json_success(['message' => sprintf(__('%d log(s) deleted successfully', 'botwriter'), $deleted)]);
+    } else {
+        wp_send_json_error(['message' => __('Error deleting logs', 'botwriter')]);
+    }
+
+    wp_die();
+}
+
 // AJAX handler for getting taxonomies and terms for a post type
 add_action('wp_ajax_botwriter_get_taxonomies', 'botwriter_get_taxonomies_ajax');
 function botwriter_get_taxonomies_ajax() {
@@ -2881,7 +2964,7 @@ function botwriter_get_taxonomies_ajax() {
 }
 
 
-function botwriter_attach_image_to_post($post_id, $image_url, $post_title, $translated_image_slug = '') {
+function botwriter_attach_image_to_post($post_id, $image_url, $post_title, $translated_image_slug = '', $image_attribution = null) {
         if (!$image_url || !$post_id || empty(trim($image_url))) {
             botwriter_log('Image attachment skipped', [
                 'post_id' => $post_id,
@@ -2963,6 +3046,41 @@ function botwriter_attach_image_to_post($post_id, $image_url, $post_title, $tran
             $attach_data = wp_generate_attachment_metadata($attach_id, $file);
             wp_update_attachment_metadata($attach_id, $attach_data);
             set_post_thumbnail($post_id, $attach_id);
+
+            // Apply stock photo attribution as image caption and alt text
+            if (!empty($image_attribution) && is_array($image_attribution)) {
+                $attribution_mode = get_option('botwriter_stockphoto_attribution', 'caption');
+                if ($attribution_mode !== 'disabled') {
+                    $author = sanitize_text_field($image_attribution['author'] ?? '');
+                    $source = sanitize_text_field($image_attribution['source'] ?? '');
+
+                    // Build caption: "Photo by Author on Source"
+                    $caption = '';
+                    if ($author && $source) {
+                        $caption = sprintf(
+                            /* translators: 1: photographer name, 2: image source name */
+                            esc_html__('Photo by %1$s on %2$s', 'botwriter'),
+                            $author,
+                            $source
+                        );
+                    } elseif ($source) {
+                        $caption = sprintf(esc_html__('Photo from %s', 'botwriter'), $source);
+                    }
+
+                    if ($caption && $attribution_mode === 'caption') {
+                        wp_update_post(array(
+                            'ID' => $attach_id,
+                            'post_excerpt' => $caption,
+                        ));
+                    }
+
+                    // Always set a descriptive alt text from the post title
+                    update_post_meta($attach_id, '_wp_attachment_image_alt', sanitize_text_field($post_title));
+
+                    // Store full attribution data as post meta for later use
+                    update_post_meta($attach_id, '_botwriter_image_attribution', $image_attribution);
+                }
+            }
     
             
         }

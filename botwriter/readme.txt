@@ -3,8 +3,8 @@ Contributors: estebandezafra
 Donate link: https://wpbotwriter.com
 Tags: ai content generator, ai writer, auto blogging, wordpress ai, woocommerce ai
 Requires at least: 4.0
-Tested up to: 6.9
-Stable tag: 3.2.4
+Tested up to: 7.0
+Stable tag: 3.2.5
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -15,12 +15,12 @@ AI content generator for WordPress & WooCommerce. Auto blogging, AI writing plug
 
 BotWriter is the most complete **AI content plugin for WordPress**. It works as an **AI auto blogging** tool that automatically generates and publishes SEO-optimized articles, and as a **WooCommerce AI content optimizer** that bulk-improves your entire product catalog.
 
-Whether you need an **AI writing plugin** to keep your blog updated on autopilot, or an **AI-powered SEO content creator** for your online store, BotWriter handles it all with support for 7+ AI text providers and 8 image generators.
+Whether you need an **AI writing plugin** to keep your blog updated on autopilot, or an **AI-powered SEO content creator** for your online store, BotWriter handles it all with support for 7+ AI text providers and 9 image generators (including free stock photo banks).
 
 🔹 Automatically publish content every day / every week
 🔹 Generate 100% original articles with AI images
 🔹 **NEW:** Choose from 7+ AI text providers (OpenAI, Claude, Gemini, Mistral, Groq...)
-🔹 **NEW:** 8 image providers including Flux 2, Nano Banana Pro, Gemini & DALL-E 3
+🔹 **NEW:** 9 image providers including free stock photo banks, Flux 2, Nano Banana Pro, Gemini & DALL-E 3
 🔹 **NEW:** Article templates for consistent, professional content
 🔹 **NEW:** Image style presets (realistic, cartoon, anime, 3D, watercolor...)
 🔹 **NEW:** Smart image optimization for Google Discover (WebP, resize, compress)
@@ -58,7 +58,8 @@ Choose from 7 different AI providers for text generation:
 * **DeepSeek:** Cost-effective alternatives
 
 **⛽ Multi-Provider AI Image Generation**
-6 image providers with 50+ models:
+7 image providers with 50+ models:
+* **📷 [FREE] Stock Images:** Search Pixabay, Pexels, Unsplash & Openverse — $0.00 per image, no API generation cost
 * **OpenAI DALL-E:** GPT-Image-1, DALL-E 3
 * **Google Gemini:** gemini-2.5-flash-image, gemini-3-pro-image-preview
 * **Fal.ai:** Flux 2 Pro/Dev, Nano Banana Pro (Google Gemini), Seedream 4.5
@@ -139,7 +140,7 @@ Unlike other AI WordPress plugins, BotWriter supports **multiple AI providers** 
 
 Looking for the **best AI WordPress plugin**? Here's what sets BotWriter apart:
 
-* **Multi-provider freedom:** switch between 7+ AI text providers and 8 image generators—no vendor lock-in
+* **Multi-provider freedom:** switch between 7+ AI text providers and 9 image generators (including free stock photo banks)—no vendor lock-in
 * **WooCommerce native:** the only AI writer for WordPress with a dedicated WooCommerce product optimizer, review generator, and category description tool
 * **True automation:** schedule posts daily or weekly, generate bulk content series, or publish instantly with Write Now
 * **Full SEO stack:** AI-generated meta descriptions, SEO titles, slug translation, image optimization for Core Web Vitals
@@ -202,7 +203,7 @@ You bring your own API keys for each AI provider and pay them directly. BotWrite
 
 = Which AI providers does BotWriter support? =
 **Text Generation:** OpenAI (GPT-5, GPT-4o), Anthropic (Claude), Google (Gemini), Mistral, Groq, OpenRouter, DeepSeek
-**Image Generation:** OpenAI DALL-E, Fal.ai, Replicate, Stability AI, Cloudflare Workers AI
+**Image Generation:** Stock Photo Banks (Pixabay, Pexels, Unsplash, Openverse — free), OpenAI DALL-E, Fal.ai, Replicate, Stability AI, Cloudflare Workers AI
 
 = What are the newest image models supported? =
 BotWriter 2.0 supports the latest 2025 image models:
@@ -246,7 +247,7 @@ Super Tasks let you generate entire content series in bulk. Configure it once wi
 Yes! Each task can use a different text provider and image provider. Use GPT-5 for one task, Claude for another, and Gemini for a third. Same flexibility applies to image generation.
 
 = Does BotWriter generate images automatically? =
-Yes, BotWriter creates AI-generated featured images using your chosen provider. Options include DALL-E 3, Flux 2 Pro, Nano Banana Pro, Stable Diffusion, and more. Configure size (landscape, square, portrait) and quality per task.
+Yes, BotWriter creates featured images using your chosen provider. Options include AI generation (DALL-E 3, Flux 2 Pro, Nano Banana Pro, Stable Diffusion, and more) or free stock photo banks (Pixabay, Pexels, Unsplash, Openverse) at $0.00 per image. Configure size (landscape, square, portrait) and quality per task.
 
 = What are image style presets? =
 Image style presets let you define the artistic style of generated images. Choose from 12 built-in styles (Realistic, Cartoon, Anime, 3D Render, Watercolor, etc.) or create your own custom style. The style is automatically applied to all image prompts for consistent visual branding.
@@ -259,7 +260,7 @@ BotWriter 2.0.7 introduces automatic image post-processing. After an image is ge
 This is ideal for Google Discover optimization and fast page loading. A 2MB image can be reduced to under 120KB automatically!
 
 = Can I disable image generation to save costs? =
-Absolutely! Each task has a "Disable AI Images" option. When enabled, BotWriter generates text-only posts, reducing your API costs and speeding up content creation.
+Absolutely! Each task has a "Disable AI Images" option. When enabled, BotWriter generates text-only posts. Alternatively, select the free Stock Images provider to get real photos from Pixabay, Pexels, Unsplash or Openverse at zero cost — no API image generation fees.
 
 = Is the generated content SEO-friendly? =
 Yes! As an AI content plugin for WordPress built with SEO in mind, BotWriter creates optimized content with relevant titles, meta descriptions, tags, and well-structured articles designed to rank in search engines. It integrates with Yoast SEO, Rank Math, SEOPress, All in One SEO, and The SEO Framework for both blog posts and WooCommerce products.
@@ -342,6 +343,17 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.2.5 =
+📷 **Free Stock Image Banks**
+* NEW: Stock photo banks as a free image provider — no API generation costs
+* Search Pixabay, Pexels, Unsplash, and Openverse for relevant featured images
+* AI generates short keyword phrases to find the best matching photo
+* Automatic fallback: if preferred bank has no results, tries the next one
+* Selection modes: first result, random from top 5, or random from top 10
+* Configurable attribution: image caption, post footer, or disabled
+* Orientation auto-detected from image size setting (landscape, square, portrait)
+* All four banks are completely free to use ($0.00 per image)
+
 = 3.1.0 =
 🏗️ **Architecture Refactor — Pure SaaS Client**
 * Refactored plugin to act purely as a client/interface to the BotWriter cloud service
@@ -594,6 +606,13 @@ When configured, the cloud service connects to these AI providers for image gene
 - **Replicate** - [Terms](https://replicate.com/terms) | [Privacy](https://replicate.com/privacy)
 - **Stability AI** - [Terms](https://stability.ai/terms-of-service) | [Privacy](https://stability.ai/privacy-policy)
 - **Cloudflare Workers AI** - [Terms](https://www.cloudflare.com/terms/) | [Privacy](https://www.cloudflare.com/privacypolicy/)
+
+**4. Stock Photo Banks** *(called by the cloud service on your behalf)*
+When the Stock Images provider is selected, the cloud service searches these photo banks for relevant featured images. No user data beyond the search query is transmitted. Images are licensed for free use (see each service's license terms):
+- **Pixabay** - [Terms](https://pixabay.com/service/terms/) | [Privacy](https://pixabay.com/service/privacy/) | [License](https://pixabay.com/service/license-summary/)
+- **Pexels** - [Terms](https://www.pexels.com/terms-of-service/) | [Privacy](https://www.pexels.com/privacy-policy/) | [License](https://www.pexels.com/license/)
+- **Unsplash** - [Terms](https://unsplash.com/terms) | [Privacy](https://unsplash.com/privacy) | [License](https://unsplash.com/license)
+- **Openverse** - [Terms](https://wordpress.org/about/tos/) | [Privacy](https://wordpress.org/about/privacy/) | Creative Commons licensed content (license varies per image)
 
 By using this plugin, you acknowledge that it communicates with these third-party and external services, and that data is transmitted as described above. Please review the respective Terms of Service and Privacy Policies for each service.
 
