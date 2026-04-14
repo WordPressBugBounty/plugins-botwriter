@@ -391,14 +391,14 @@ function botwriter_get_image_providers() {
 function botwriter_get_current_text_model() {
     $provider = get_option('botwriter_text_provider', 'openai');
     $defaults = [
-        'openai' => 'gpt-5-mini',
-        'anthropic' => 'claude-sonnet-4-5-20250929',
+        'openai' => 'gpt-5.4-mini',
+        'anthropic' => 'claude-sonnet-4-6',
         'google' => 'gemini-2.5-flash',
         'mistral' => 'mistral-large-latest',
         'groq' => 'llama-3.3-70b-versatile',
-        'openrouter' => 'anthropic/claude-sonnet-4',
+        'openrouter' => 'anthropic/claude-sonnet-4.6',
     ];
-    return get_option("botwriter_{$provider}_model", $defaults[$provider] ?? 'gpt-5-mini');
+    return get_option("botwriter_{$provider}_model", $defaults[$provider] ?? 'gpt-5.4-mini');
 }
 
 /**

@@ -1,9 +1,9 @@
 <?php
 /* 
-Plugin Name: BotWriter – AI Content Generator
+Plugin Name: BotWriter – AI Writer & Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.2.5
+Version: 3.2.6
 Author: estebandezafra
 Requires PHP: 7.0
 License:           GPL v2 or later
@@ -95,8 +95,8 @@ function botwriter_plugin_row_meta($links, $file) {
     if (plugin_basename(__FILE__) === $file) {
         $row_meta = array(
             'website' => '<a href="https://www.wpbotwriter.com" target="_blank" rel="noopener">' . __('Website', 'botwriter') . '</a>',
-            'faq'     => '<a href="https://wpbotwriter.com/faq-frequently-asked-questions/" target="_blank" rel="noopener">' . __('FAQ', 'botwriter') . '</a>',
-            'support' => '<a href="https://wpbotwriter.com/support" target="_blank" rel="noopener">' . __('Support', 'botwriter') . '</a>',
+            'faq'     => '<a href="https://www.wpbotwriter.com/faq.html" target="_blank" rel="noopener">' . __('FAQ', 'botwriter') . '</a>',
+            'support' => '<a href="https://wordpress.org/support/plugin/botwriter/" target="_blank" rel="noopener">' . __('Support', 'botwriter') . '</a>',
         );
         return array_merge($links, $row_meta);
     }
@@ -633,9 +633,9 @@ function botwriter_admin_page() {
                 <br>
                 <a href="https://www.wpbotwriter.com" target="_blank" style="color: #667eea; text-decoration: none;"><?php echo esc_html__('Website', 'botwriter'); ?></a>
                 &nbsp;•&nbsp;
-                <a href="https://wpbotwriter.com/faq-frequently-asked-questions/" target="_blank" style="color: #667eea; text-decoration: none;">FAQ</a>
+                <a href="https://www.wpbotwriter.com/faq.html" target="_blank" style="color: #667eea; text-decoration: none;">FAQ</a>
                 &nbsp;•&nbsp;
-                <a href="https://wpbotwriter.com/support" target="_blank" style="color: #667eea; text-decoration: none;"><?php echo esc_html__('Support', 'botwriter'); ?></a>
+                <a href="https://wordpress.org/support/plugin/botwriter/" target="_blank" style="color: #667eea; text-decoration: none;"><?php echo esc_html__('Support', 'botwriter'); ?></a>
             </div>
 
         </div>
@@ -686,7 +686,7 @@ function botwriter_activate_apikey_and_defaults() {
     }
 
     if (get_option('botwriter_openai_model') === false) {
-        update_option('botwriter_openai_model', 'gpt-5-mini');
+        update_option('botwriter_openai_model', 'gpt-5.4-mini');
     }
     if (get_option('botwriter_ai_image_quality') === false) {
         update_option('botwriter_ai_image_quality', 'medium');
@@ -2245,14 +2245,14 @@ function botwriter_send1_data_to_server($data) {
     // Get current text model based on provider
     $text_provider = $data['text_provider'];
     $text_model_defaults = [
-        'openai' => 'gpt-5-mini',
-        'anthropic' => 'claude-sonnet-4-5-20250929',
+        'openai' => 'gpt-5.4-mini',
+        'anthropic' => 'claude-sonnet-4-6',
         'google' => 'gemini-2.5-flash',
         'mistral' => 'mistral-large-latest',
         'groq' => 'llama-3.3-70b-versatile',
-        'openrouter' => 'anthropic/claude-sonnet-4',
+        'openrouter' => 'anthropic/claude-sonnet-4.6',
     ];
-    $data['text_model'] = get_option("botwriter_{$text_provider}_model", $text_model_defaults[$text_provider] ?? 'gpt-5-mini');
+    $data['text_model'] = get_option("botwriter_{$text_provider}_model", $text_model_defaults[$text_provider] ?? 'gpt-5.4-mini');
     
     // Get current image model based on provider
     $image_provider = $data['image_provider'];

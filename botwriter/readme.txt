@@ -1,21 +1,21 @@
-=== BotWriter – AI Content Generator ===
+=== BotWriter – AI Writer & Content Generator ===
 Contributors: estebandezafra
 Donate link: https://wpbotwriter.com
-Tags: ai content generator, ai writer, auto blogging, wordpress ai, woocommerce ai
+Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.2.5
+Stable tag: 3.2.6
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AI content generator for WordPress & WooCommerce. Auto blogging, AI writing plugin, product descriptions and SEO content with GPT, Claude, Gemini.
+AI Writer & content generator for WordPress & WooCommerce. Auto blogging, AI writing plugin, product descriptions and SEO content.
 
 == Description ==
 
-BotWriter is the most complete **AI content plugin for WordPress**. It works as an **AI auto blogging** tool that automatically generates and publishes SEO-optimized articles, and as a **WooCommerce AI content optimizer** that bulk-improves your entire product catalog.
+BotWriter is the most complete **AI writer plugin for WordPress**. It works as an **AI auto blogging** tool that automatically generates and publishes SEO-optimized articles, and as a **WooCommerce AI content optimizer** that bulk-improves your entire product catalog.
 
-Whether you need an **AI writing plugin** to keep your blog updated on autopilot, or an **AI-powered SEO content creator** for your online store, BotWriter handles it all with support for 7+ AI text providers and 9 image generators (including free stock photo banks).
+Whether you need an **AI writer** to keep your blog updated on autopilot, or an **AI-powered SEO content creator** for your online store, BotWriter handles it all with support for 7+ AI text providers and 9 image generators (including free stock photo banks).
 
 🔹 Automatically publish content every day / every week
 🔹 Generate 100% original articles with AI images
@@ -32,11 +32,11 @@ Whether you need an **AI writing plugin** to keep your blog updated on autopilot
 In this video, we'll show you how to set up BotWriter in just a few steps so your blog stays active effortlessly. Take advantage of AI-powered automation and streamline your content strategy! 🚀
 [youtube https://www.youtube.com/watch?v=PatljFLDNwI]
 
-BotWriter has been designed to simplify content creation for blogs, websites, and online stores. As a **WordPress AI plugin** with multi-provider architecture, you can choose the best AI for each job. Use GPT-5 for creative writing, Claude for technical content, or Gemini for multilingual articles. Pair them with cutting-edge image models like Flux 2 Pro, Google's Nano Banana, or Stable Diffusion.
+BotWriter has been designed to simplify content creation for blogs, websites, and online stores. As a **WordPress AI writer** with multi-provider architecture, you can choose the best AI for each job. Use GPT-5 for creative writing, Claude for technical content, or Gemini for multilingual articles. Pair them with cutting-edge image models like Flux 2 Pro, Google's Nano Banana, or Stable Diffusion.
 
 For **WooCommerce** store owners, BotWriter includes a dedicated AI Content Optimizer that bulk-optimizes product titles, descriptions, tags, image ALT text, SEO metadata and more—all from a single dashboard. It also generates AI-powered product reviews and SEO-optimized category descriptions to help your store rank higher.
 
-BotWriter is also an **AI blogging plugin** that can automatically generate and publish blog posts based on keywords, RSS feeds, or news sources—making it the ideal tool for AI-powered SEO content creation.
+BotWriter is also an **AI writer for blogs** that can automatically generate and publish posts based on keywords, RSS feeds, or news sources—making it the ideal tool for AI-powered SEO content creation.
 
 BotWriter is capable of creating entire blog content in minutes! Check out the example:
 [youtube https://www.youtube.com/watch?v=MpJ0KHKRYi8]
@@ -68,19 +68,10 @@ Choose from 7 different AI providers for text generation:
 * **Cloudflare Workers AI:** Flux Schnell (fast & affordable)
 
 **🎨 Image Style Presets** *(NEW in 2.0.7)*
-Choose from 12 artistic styles for your AI images:
-* Realistic / Photographic, Digital Art, Illustration
-* Cartoon, Comic Book, Anime / Manga
-* 3D Render, Watercolor, Oil Painting
-* Minimalist, Vintage / Retro, Cinematic
-* Or define your own custom style!
+Choose from 12 artistic styles for your AI images
 
 **⚡ Smart Image Optimization** *(NEW in 2.0.7)*
-Automatic post-processing for web-ready images:
-* Convert to WebP format (up to 95% smaller files)
-* Resize to optimal dimensions (configurable max width)
-* Compress to target file size (default: 120KB for Google Discover)
-* Works with any image provider
+Automatic post-processing for web-ready images
 
 **🛒 WooCommerce AI Content Optimizer** *(NEW in 3.0)*
 Bulk-optimize your entire product catalog with AI:
@@ -100,15 +91,13 @@ Create professional, consistent content with reusable templates:
 * Pre-configured prompts for different content types
 * SEO-optimized structures
 * Custom style guidelines
-* One-click template application to any task
 
 **Scheduled Content Automation**
-BotWriter automates your content creation workflow. Schedule tasks to publish AI-generated articles on specific days and times—daily, weekly, or custom schedules. Perfect for maintaining a consistent publishing calendar without manual intervention.
+BotWriter works as an AI writer that automates your content creation workflow. Schedule tasks to publish AI-generated articles on specific days and times—daily, weekly, or custom schedules. Perfect for maintaining a consistent publishing calendar without manual intervention.
 
 **Multiple Content Sources**
 * **AI-Generated Content:** Create 100% original articles from scratch using custom prompts and AI keywords
 * **RSS Feed Integration:** Transform RSS feeds into unique, rewritten articles automatically
-* **News Aggregation:** Pull trending news stories and rewrite them for your niche
 * **Super Tasks:** Generate entire content series—create multiple related articles in bulk with a single configuration
 
 **Smart Content Generation**
@@ -138,18 +127,17 @@ All AI requests are routed through the BotWriter cloud service at api.wpbotwrite
 
 Unlike other AI WordPress plugins, BotWriter supports **multiple AI providers** instead of locking you into a single API. You can choose between GPT, Claude, Gemini, Mistral, Groq and more—depending on cost, speed, or quality.
 
-Looking for the **best AI WordPress plugin**? Here's what sets BotWriter apart:
+Looking for the **best AI writer for WordPress**? Here's what sets BotWriter apart:
 
 * **Multi-provider freedom:** switch between 7+ AI text providers and 9 image generators (including free stock photo banks)—no vendor lock-in
 * **WooCommerce native:** the only AI writer for WordPress with a dedicated WooCommerce product optimizer, review generator, and category description tool
 * **True automation:** schedule posts daily or weekly, generate bulk content series, or publish instantly with Write Now
 * **Full SEO stack:** AI-generated meta descriptions, SEO titles, slug translation, image optimization for Core Web Vitals
-* **Your keys, your cost:** BotWriter doesn't mark up API costs—you pay providers directly at their published rates
 
 
 == Who Is BotWriter For? ==
 
-BotWriter is the ideal AI content plugin for WordPress for:
+BotWriter is the ideal AI writer for WordPress for:
 
 * **Bloggers** who want to publish consistently without writing every post by hand
 * **SEO agencies** that need to produce high-volume, optimized content for client sites
@@ -343,6 +331,15 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.2.6 =
+**Updated AI Model Defaults**
+* OpenAI: Updated to GPT-5.4 series (gpt-5.4, gpt-5.4-mini, gpt-5.4-nano). Removed deprecated GPT-4.1 models
+* Anthropic: Added Claude 4.6 (Opus 4.6, Sonnet 4.6). Removed legacy Claude 3.x models
+* Google: Added Gemini 3.1 Pro/Flash-Lite Preview. Removed deprecated Gemini 2.0 and shut-down Gemini 3 Pro Preview
+* Mistral: Updated to Mistral Large 3, Medium 3.1, Small 4. Added Magistral reasoning models. Removed deprecated Mixtral, Codestral, Ministral
+* Groq: Added OpenAI GPT-OSS (120B, 20B) and Qwen3 32B. Removed deprecated Mixtral, Gemma 2, Llama 4 Maverick
+* OpenRouter: Updated top models to Claude 4.6 and GPT-5.4. Added Gemma 4 26B free model
+
 = 3.2.5 =
 📷 **Free Stock Image Banks**
 * NEW: Stock photo banks as a free image provider — no API generation costs
