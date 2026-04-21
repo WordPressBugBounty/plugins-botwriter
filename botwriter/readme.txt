@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.2.6
+Stable tag: 3.2.7
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -12,7 +12,6 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 AI Writer & content generator for WordPress & WooCommerce. Auto blogging, AI writing plugin, product descriptions and SEO content.
 
 == Description ==
-
 BotWriter is the most complete **AI writer plugin for WordPress**. It works as an **AI auto blogging** tool that automatically generates and publishes SEO-optimized articles, and as a **WooCommerce AI content optimizer** that bulk-improves your entire product catalog.
 
 Whether you need an **AI writer** to keep your blog updated on autopilot, or an **AI-powered SEO content creator** for your online store, BotWriter handles it all with support for 7+ AI text providers and 9 image generators (including free stock photo banks).
@@ -283,7 +282,7 @@ Yes! Create as many tasks as you need. BotWriter's cron engine processes them in
 = What is the best AI content plugin for WordPress? =
 BotWriter is one of the most advanced AI content generators for WordPress. Unlike single-provider plugins, BotWriter lets you choose from 7+ text AI providers (GPT-5, Claude, Gemini, Mistral, Groq, OpenRouter, DeepSeek) and 8 image generators — so you can pick the best model for each task based on cost, speed, or quality. It also includes a dedicated WooCommerce AI optimizer, article templates, image style presets, smart image optimization, and full SEO plugin integration — features most AI writing plugins don't offer.
 
-= Can AI write blog posts in WordPress automatically? =
+= Can AI writer blog posts in WordPress automatically? =
 Yes. BotWriter is an AI auto blogging plugin that can generate and publish posts automatically on a schedule you define. Set the days, frequency, AI provider, and content preferences — then BotWriter's cron engine creates and publishes SEO-optimized articles with AI-generated images, tags, and meta descriptions, all without manual intervention. You can also generate instant posts with the "Write Now" feature.
 
 = Can AI generate WooCommerce product descriptions? =
@@ -331,6 +330,9 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.2.7 =
+* Fixed WooCommerce AI product descriptions being applied as plain text instead of HTML in some providers like Gemini.
+
 = 3.2.6 =
 **Updated AI Model Defaults**
 * OpenAI: Updated to GPT-5.4 series (gpt-5.4, gpt-5.4-mini, gpt-5.4-nano). Removed deprecated GPT-4.1 models

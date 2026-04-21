@@ -29,7 +29,7 @@ class BW_Woo_AI_Preview {
         BW_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
-        $items = isset( $_POST['items'] ) ? map_deep( wp_unslash( $_POST['items'] ), 'sanitize_text_field' ) : [];
+        $items = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : [];
 
         if ( empty( $items ) || ! is_array( $items ) ) {
             wp_send_json_error( 'No items to apply.' );
@@ -40,7 +40,17 @@ class BW_Woo_AI_Preview {
 
         foreach ( $items as $item ) {
             $product_id = isset( $item['product_id'] ) ? absint( $item['product_id'] ) : 0;
-            $fields     = isset( $item['fields'] ) && is_array( $item['fields'] ) ? $item['fields'] : [];
+            $fields     = [];
+
+            if ( isset( $item['fields'] ) && is_array( $item['fields'] ) ) {
+                foreach ( $item['fields'] as $field_key => $field_value ) {
+                    if ( ! is_string( $field_key ) ) {
+                        continue;
+                    }
+
+                    $fields[ sanitize_key( $field_key ) ] = is_scalar( $field_value ) ? (string) $field_value : '';
+                }
+            }
 
             if ( ! $product_id || empty( $fields ) ) {
                 continue;
@@ -354,7 +364,7 @@ class BW_Woo_AI_Preview {
         BW_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
-        $items = isset( $_POST['items'] ) ? map_deep( wp_unslash( $_POST['items'] ), 'sanitize_text_field' ) : [];
+        $items = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : [];
 
         if ( empty( $items ) || ! is_array( $items ) ) {
             wp_send_json_error( 'No items to apply.' );
@@ -365,7 +375,7 @@ class BW_Woo_AI_Preview {
 
         foreach ( $items as $item ) {
             $cat_id      = isset( $item['category_id'] ) ? absint( $item['category_id'] ) : 0;
-            $description = isset( $item['description'] ) ? wp_kses_post( wp_unslash( $item['description'] ) ) : '';
+            $description = isset( $item['description'] ) ? wp_kses_post( $item['description'] ) : '';
 
             if ( ! $cat_id ) {
                 continue;

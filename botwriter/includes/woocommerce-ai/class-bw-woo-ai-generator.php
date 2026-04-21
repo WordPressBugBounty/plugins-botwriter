@@ -332,6 +332,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         // Strip markdown code fences if the model wrapped output.
         $result = preg_replace( '/^```(?:html|json)?\s*/i', '', trim( $result ) );
         $result = preg_replace( '/\s*```$/', '', $result );
+        $result = $this->normalize_generated_response( $result, $field );
 
         botwriter_log( '[Woo AI] generate_field SUCCESS', [
             'provider' => $provider,
@@ -341,6 +342,60 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         ] );
 
         return trim( $result );
+    }
+
+    /**
+     * Extract usable content when a provider returns a JSON wrapper instead of raw text.
+     *
+     * Gemini may return objects like {"html":"..."} when JSON output is enabled.
+     *
+     * @param string $result Raw provider result.
+     * @param string $field  Woo AI field being generated.
+     * @return string
+     */
+    private function normalize_generated_response( $result, $field ) {
+        $trimmed = trim( $result );
+        if ( $trimmed === '' ) {
+            return '';
+        }
+
+        $decoded = json_decode( $trimmed, true );
+        if ( ! is_array( $decoded ) ) {
+            return $trimmed;
+        }
+
+        $preferred_keys = [
+            'description'          => [ 'html', 'description', 'content', 'text' ],
+            'category_description' => [ 'html', 'description', 'content', 'text' ],
+            'review_summary'       => [ 'html', 'content', 'summary', 'text' ],
+            'short_description'    => [ 'short_description', 'summary', 'content', 'text', 'html' ],
+            'title'                => [ 'title', 'name', 'text', 'content' ],
+            'seo_title'            => [ 'seo_title', 'title', 'text', 'content' ],
+            'seo_meta'             => [ 'seo_meta', 'meta_description', 'description', 'text', 'content' ],
+            'alt_tags'             => [ 'alt_tags', 'alt_text', 'text', 'content' ],
+            'tags'                 => [ 'tags', 'keywords', 'text', 'content' ],
+        ];
+
+        $keys = isset( $preferred_keys[ $field ] ) ? $preferred_keys[ $field ] : [ 'content', 'text', 'html' ];
+        foreach ( $keys as $key ) {
+            if ( ! array_key_exists( $key, $decoded ) ) {
+                continue;
+            }
+
+            if ( is_string( $decoded[ $key ] ) ) {
+                return trim( $decoded[ $key ] );
+            }
+
+            if ( $field === 'tags' && is_array( $decoded[ $key ] ) ) {
+                return implode( ', ', array_map( 'strval', $decoded[ $key ] ) );
+            }
+        }
+
+        if ( $field === 'tags' && array_values( $decoded ) === $decoded ) {
+            return implode( ', ', array_map( 'strval', $decoded ) );
+        }
+
+        return $trimmed;
     }
 
     /* ------------------------------------------------------------------
