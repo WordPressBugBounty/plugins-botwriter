@@ -345,7 +345,7 @@ function botwriter_form_page_handler(){
                 <div id="post-body-content">
                     
                     <?php do_meta_boxes('botwriter_automatic_post_new', 'normal', $item); ?>
-                    <input type="submit" value="<?php esc_attr_e('Save', 'botwriter')?>" id="submit" class="button-primary" name="submit" onclick="preSelectedOptions()">
+                    <input type="submit" value="<?php esc_attr_e('Save', 'botwriter')?>" id="submit" class="button-primary" name="submit">
                 </div>
             </div>
         </div>
@@ -482,7 +482,7 @@ function botwriter_post_form_meta_box_handler($item)
       <div class="writer-info">
         <strong><?php echo esc_html__('Custom, the User-Selected Style Bot', 'botwriter'); ?></strong>
         <p><?php echo esc_html__('Allows the user to choose a specific narrative style..', 'botwriter'); ?></p>
-        <select class="form-select" id="narration" name="narration" onchange="toggleCustomStyleInput()">
+        <select class="form-select" id="narration" name="narration">
         <?php
         $styles = [
             "Descriptive" => "Descriptive",
@@ -803,7 +803,7 @@ function botwriter_post_form_meta_box_handler($item)
         
         ?>
       </select>
-      <button type="button" class="btn btn-primary" onclick="refreshWebsiteCategories()">
+      <button type="button" class="btn btn-primary" id="refresh_website_categories_btn">
         <i class="bi bi-arrow-clockwise"></i>
         <?php
         $category_button_name = 'Get Categories';
@@ -903,7 +903,7 @@ $default_language_code = substr($locale, 0, 2); // Obtiene el código del idioma
   <label class="form-label">RSS Feed URL:</label>
   <input id="rss_source" name="rss_source" type="text" class="form-control" value="<?php echo esc_attr($item['rss_source']); ?>" >
   <p class="form-text">Enter the URL of the RSS feed. View <a href="https://github.com/plenaryapp/awesome-rss-feeds" target="_blank">awesome RSS feeds</a></p>
-  <button type="button" class="btn btn-primary" onclick="fetchRSSFeed()">Check RSS Feed</button>
+  <button type="button" class="btn btn-primary" id="check_rss_feed_btn">Check RSS Feed</button>
   <div id="rss_response"></div>
 </div>
 <!-- End RSS -->
@@ -954,7 +954,7 @@ $default_language_code = substr($locale, 0, 2); // Obtiene el código del idioma
 <!-- Post Length -->
 <div class="col-md-6">
   <label class="form-label">Post Length:</label>
-  <select id="post_length" name="post_length" class="form-select" onchange="toggleCustomLengthInput()">
+  <select id="post_length" name="post_length" class="form-select">
     <option value="400" <?php echo ($item['post_length'] == 400) ? 'selected' : ''; ?>>Short (400 words)</option>
     <option value="800" <?php echo ($item['post_length'] == 800) ? 'selected' : ''; ?>>Medium (800 words)</option>
     <option value="1600" <?php echo ($item['post_length'] == 1600) ? 'selected' : ''; ?>>Long (1600 words)</option>
@@ -969,7 +969,7 @@ $default_language_code = substr($locale, 0, 2); // Obtiene el código del idioma
 <!-- Custom Length Input -->
 <div class="col-md-6" id="customLengthInput" style="display: <?php echo (!in_array($item['post_length'], [400, 800, 1600])) ? 'block' : 'none'; ?>;">
   <label class="form-label">Custom Length (max 4000):</label>
-  <input id="custom_post_length"  name="custom_post_length" type="number" class="form-control" value="<?php echo esc_html($item['custom_post_length']) ?>" onchange="updatePostLength()">
+  <input id="custom_post_length"  name="custom_post_length" type="number" class="form-control" value="<?php echo esc_html($item['custom_post_length']) ?>">
   <p class="form-text">Enter the number of words you want the post to have.</p>
 </div>
 <br>

@@ -1,6 +1,23 @@
 document.addEventListener("DOMContentLoaded", () => {
   onDomContentLoaded();
 
+  var superPromptSelect = document.getElementById('super1_prompt');
+  if (superPromptSelect) {
+    superPromptSelect.addEventListener('change', toggleCustomPromptInput);
+    toggleCustomPromptInput();
+  }
+
+  document.addEventListener('click', function(event) {
+    var resetButton = event.target.closest('.botwriter-reset-super1');
+    if (!resetButton) {
+      return;
+    }
+    event.preventDefault();
+    if (typeof botwriter_reset_super1 === 'function') {
+      botwriter_reset_super1();
+    }
+  });
+
   // Toggle ASI tip when disable_ai_images checkbox changes
   var disableImagesCheckbox = document.getElementById('disable_ai_images_checkbox');
   var asiTip = document.getElementById('bw_asi_tip');

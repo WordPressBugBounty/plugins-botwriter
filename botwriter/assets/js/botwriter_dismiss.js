@@ -1,4 +1,16 @@
 jQuery(document).ready(function($) {
+    // Dismiss welcome banner
+    $(document).on('click', '#botwriter-welcome-dismiss', function() {
+        var nonce = $(this).data('nonce');
+        $('#botwriter-welcome-banner').fadeOut(300, function() {
+            $(this).remove();
+        });
+        $.post(botwriterData.ajaxurl, {
+            action: 'botwriter_dismiss_welcome',
+            security: nonce
+        });
+    });
+
     // Dismiss review notice
     $(document).on('click', '.botwriter-review-notice .notice-dismiss', function() {
         var data = {
@@ -31,6 +43,50 @@ jQuery(document).ready(function($) {
             if (response.success) {
                 location.reload();  
             }
+        });
+    });
+
+    // Reset STOPFORMANY state
+    $(document).on('click', '#botwriter-stopformany-reset', function() {
+        var btn = $(this);
+        var spinner = $('#botwriter-stopformany-spinner');
+        var successMessage = btn.data('success-message') || 'Tasks resumed!';
+        var errorMessage = btn.data('error-message') || 'Error resetting. Please try again.';
+        var networkError = btn.data('network-error') || 'Network error. Please try again.';
+
+        btn.prop('disabled', true);
+        spinner.addClass('is-active');
+
+        $.post(botwriterData.ajaxurl, {
+            action: 'botwriter_stopformany_reset',
+            security: btn.data('nonce')
+        }, function(r) {
+            spinner.removeClass('is-active');
+            if (r.success) {
+                $('#botwriter-stopformany-notice')
+                    .removeClass('notice-error').addClass('notice-success')
+                    .html('<p><strong>✅ ' + successMessage + '</strong></p>');
+                $('a[href*="botwriter_logs"] .update-plugins').remove();
+            } else {
+                btn.prop('disabled', false);
+                alert((r && r.data) ? r.data : errorMessage);
+            }
+        }).fail(function() {
+            spinner.removeClass('is-active');
+            btn.prop('disabled', false);
+            alert(networkError);
+        });
+    });
+
+    // Dismiss consecutive errors notice
+    $(document).on('click', '.botwriter-dismiss-errors', function() {
+        var nonce = $(this).data('nonce');
+        $('#botwriter-errors-notice').fadeOut(300, function() {
+            $(this).remove();
+        });
+        $.post(botwriterData.ajaxurl, {
+            action: 'botwriter_dismiss_errors_notice',
+            security: nonce
         });
     });
 });

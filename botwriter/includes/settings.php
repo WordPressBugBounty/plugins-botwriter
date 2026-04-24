@@ -721,6 +721,10 @@ function botwriter_settings_meta_box_handler() {
     // Get current values with defaults
     $text_provider = get_option('botwriter_text_provider', 'openai');
     $image_provider = get_option('botwriter_image_provider', 'dalle');
+    $show_wp_cron_disabled_warning = function_exists('botwriter_should_show_wp_cron_disabled_warning') && botwriter_should_show_wp_cron_disabled_warning();
+    $active_tasks_count = $show_wp_cron_disabled_warning && function_exists('botwriter_get_enabled_tasks_count')
+        ? (int) botwriter_get_enabled_tasks_count()
+        : 0;
     
     $settings = botwriter_get_all_settings();
     
@@ -1022,6 +1026,28 @@ function botwriter_settings_meta_box_handler() {
                 <?php esc_html_e('Task Scheduling', 'botwriter'); ?>
             </h4>
 
+            <?php if ($show_wp_cron_disabled_warning): ?>
+            <div class="notice notice-warning inline bw-notice-info-inline" style="margin-bottom: 15px;">
+                <p>
+                    <strong><?php esc_html_e('WordPress cron is disabled (DISABLE_WP_CRON).', 'botwriter'); ?></strong>
+                    <?php
+                    echo esc_html(sprintf(
+                        /* translators: %d: number of active tasks */
+                        _n(
+                            'BotWriter currently has %d active task.',
+                            'BotWriter currently has %d active tasks.',
+                            $active_tasks_count,
+                            'botwriter'
+                        ),
+                        $active_tasks_count
+                    ));
+                    ?>
+                    <?php esc_html_e('Automatic task execution will not run unless your hosting administrator configures a server cron for wp-cron.php.', 'botwriter'); ?>
+                </p>
+                <p><?php esc_html_e('Please enable WP-Cron or contact your hosting administrator.', 'botwriter'); ?></p>
+            </div>
+            <?php endif; ?>
+
             <div class="form-row">
                 <label><?php esc_html_e('Pause between daily posts of the same task:', 'botwriter'); ?></label>
                 <div class="input-with-suffix">
@@ -1060,10 +1086,10 @@ function botwriter_settings_meta_box_handler() {
             </h4>
 
             <div class="form-row">
-                <a href="javascript:void(0);" onclick="botwriter_reset_super1();" class="button button-secondary">
+                <button type="button" id="botwriter-reset-super-task-settings" class="button button-secondary">
                     <span class="dashicons dashicons-update" style="vertical-align: middle; margin-right: 5px;"></span>
                     <?php esc_html_e('Reset Super Task', 'botwriter'); ?>
-                </a>
+                </button>
                 <p class="description"><?php esc_html_e('Use this to reset a stuck Super Task and start fresh.', 'botwriter'); ?></p>
             </div>
 

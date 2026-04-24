@@ -165,4 +165,11 @@ function botwriter_reset_super1() {
   });
 };
 
+jQuery(document).on('click', '.botwriter-template-delete', function(e) {
+    var msg = jQuery(this).data('confirm') || 'Are you sure?';
+    if (!window.confirm(msg)) {
+        e.preventDefault();
+    }
+});
+
 

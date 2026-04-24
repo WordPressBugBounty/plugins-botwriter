@@ -510,4 +510,12 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // Reset Super Task button (moved from inline onclick)
+    $(document).on('click', '#botwriter-reset-super-task-settings', function(e) {
+        e.preventDefault();
+        if (typeof botwriter_reset_super1 === 'function') {
+            botwriter_reset_super1();
+        }
+    });
 });

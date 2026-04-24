@@ -15,64 +15,6 @@ function botwriter_siterewriter_page_handler() {
     $dir_images = plugin_dir_url(dirname(__FILE__)) . '/assets/images/';
 ?>
 
-<style>
-.siterewriter-page-row {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 6px;
-    transition: background 0.15s;
-}
-.siterewriter-page-row:hover {
-    background: #f7f7ff;
-}
-.siterewriter-page-label {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    flex-wrap: wrap;
-}
-.siterewriter-page-label input[type="checkbox"] {
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-}
-.siterewriter-page-title {
-    font-weight: 600;
-    color: #1d2327;
-    flex: 1 1 250px;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.siterewriter-page-url {
-    flex: 1 1 300px;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12px;
-}
-.siterewriter-page-url a {
-    color: #2271b1;
-    text-decoration: none;
-}
-.siterewriter-page-url a:hover {
-    text-decoration: underline;
-}
-.siterewriter-page-depth {
-    flex-shrink: 0;
-    background: #f0f0f1;
-    color: #666;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 10px;
-}
-</style>
-
 <div class="wrap">
     <h1><?php esc_html_e('Site Rewriter', 'botwriter'); ?></h1>
     <p><?php esc_html_e('Crawl an entire website, select the pages you want, and rewrite them all with AI.', 'botwriter'); ?></p>
@@ -91,12 +33,12 @@ function botwriter_siterewriter_page_handler() {
 
         <div class="col-md-6">
             <label for="siterewriter_root_url"><?php esc_html_e('Website URL:', 'botwriter'); ?></label>
-            <input type="url" id="siterewriter_root_url" name="siterewriter_root_url"
-                   placeholder="https://example.com" style="width: 100%;" />
+                 <input type="url" id="siterewriter_root_url" name="siterewriter_root_url"
+                     placeholder="https://example.com" class="siterewriter-root-url" />
         </div>
         <br>
 
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div class="siterewriter-settings-row">
             <div>
                 <label for="siterewriter_depth"><?php esc_html_e('Crawl Depth:', 'botwriter'); ?></label>
                 <select id="siterewriter_depth" name="siterewriter_depth">
@@ -108,8 +50,8 @@ function botwriter_siterewriter_page_handler() {
             </div>
             <div>
                 <label for="siterewriter_max_urls"><?php esc_html_e('Max Pages:', 'botwriter'); ?></label>
-                <input type="number" id="siterewriter_max_urls" name="siterewriter_max_urls"
-                       value="20" min="1" max="200" style="width: 80px;" />
+                  <input type="number" id="siterewriter_max_urls" name="siterewriter_max_urls"
+                      value="20" min="1" max="200" class="siterewriter-max-urls" />
                 <p class="form-text"><?php esc_html_e('Maximum number of pages to discover (1–200).', 'botwriter'); ?></p>
             </div>
         </div>
@@ -117,21 +59,21 @@ function botwriter_siterewriter_page_handler() {
 
         <div>
             <button id="siterewriter_crawl_btn" class="button-primary"><?php esc_html_e('Crawl Website', 'botwriter'); ?></button>
-            <button id="siterewriter_stop_btn" class="button" style="display:none; margin-left:8px;"><?php esc_html_e('Stop', 'botwriter'); ?></button>
+            <button id="siterewriter_stop_btn" class="button siterewriter-stop-btn"><?php esc_html_e('Stop', 'botwriter'); ?></button>
         </div>
         <div id="siterewriter_crawl_status" class="bw-mt-10"></div>
-        <div id="siterewriter_crawl_live" style="display:none; margin-top:12px; max-height:350px; overflow-y:auto; border:1px solid #ddd; border-radius:6px; padding:8px 12px; background:#fafafa;"></div>
+        <div id="siterewriter_crawl_live" class="siterewriter-crawl-live"></div>
     </div>
 
     <!-- Step 2: Select Pages & Fetch Content -->
-    <div id="siterewriter_step2" style="display: none;" class="bw-mt-20">
+    <div id="siterewriter_step2" class="bw-mt-20 siterewriter-step-hidden">
         <div class="super-ia bw-flex-col">
             <h2 class="super-title"><?php esc_html_e('Step 2: Select Pages', 'botwriter'); ?></h2>
             <p class="super-text"><?php esc_html_e('Select which pages to rewrite, then click "Fetch Content" to extract the article text.', 'botwriter'); ?></p>
 
-            <div style="margin-bottom: 10px;">
-                <label style="cursor:pointer;"><input type="checkbox" id="siterewriter_select_all" checked> <?php esc_html_e('Select / Deselect All', 'botwriter'); ?></label>
-                <span id="siterewriter_selected_count" style="margin-left: 15px; color: #666;"></span>
+            <div class="siterewriter-select-row">
+                <label class="siterewriter-select-all-label"><input type="checkbox" id="siterewriter_select_all" checked> <?php esc_html_e('Select / Deselect All', 'botwriter'); ?></label>
+                <span id="siterewriter_selected_count" class="siterewriter-selected-count"></span>
             </div>
 
             <div id="siterewriter_pages_list"></div>
@@ -144,7 +86,7 @@ function botwriter_siterewriter_page_handler() {
     </div>
 
     <!-- Step 3: Review Content & Create Task -->
-    <div id="siterewriter_step3" style="display: none;" class="bw-mt-20">
+    <div id="siterewriter_step3" class="bw-mt-20 siterewriter-step-hidden">
         <div class="super-ia bw-flex-col">
             <h2 class="super-title"><?php esc_html_e('Step 3: Review & Create Task', 'botwriter'); ?></h2>
             <p class="super-text"><?php esc_html_e('Review extracted content, set rewrite instructions, and configure the task.', 'botwriter'); ?></p>

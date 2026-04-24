@@ -269,8 +269,8 @@ function botwriter_render_templates_list($templates) {
                                     <?php esc_html_e('Set as Default', 'botwriter'); ?>
                                 </a>
                                 <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin.php?page=botwriter_templates&action=delete&template_id=' . $template['id']), 'botwriter_delete_template')); ?>" 
-                                   class="button button-small button-link-delete"
-                                   onclick="return confirm('<?php esc_attr_e('Are you sure you want to delete this template?', 'botwriter'); ?>');">
+                                              class="button button-small button-link-delete botwriter-template-delete"
+                                              data-confirm="<?php esc_attr_e('Are you sure you want to delete this template?', 'botwriter'); ?>">
                                     <?php esc_html_e('Delete', 'botwriter'); ?>
                                 </a>
                             <?php endif; ?>

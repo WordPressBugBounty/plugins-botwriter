@@ -259,6 +259,15 @@ ol.example li.placeholder:before {
   border-radius: 5px;
 }
 
+.botwriter-quick-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.botwriter-quick-link-highlight:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
 .super-content {
   flex-grow: 1;
 }
@@ -1108,11 +1117,6 @@ ol.example li.placeholder:before {
 .bw-select-wide {
   width: 100%;
   max-width: 400px;
-}
-
-/* Custom length input container */
-.bw-custom-length-container {
-  /* Controlled via JavaScript visibility */
 }
 
 /* Disabled images warning message */

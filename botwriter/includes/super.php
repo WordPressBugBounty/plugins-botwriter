@@ -275,7 +275,7 @@ function botwriter_super_page_handler(){
             <form id="form_super1" name="form_super1">
             <div class="col-md-6">
               <label for="super1">Select the type of article pack:</label> 
-              <select id="super1_prompt" name="super1_prompt" onchange="toggleCustomPromptInput()">
+              <select id="super1_prompt" name="super1_prompt">
                 <option value="Pack of Blog Improvement Articles">Pack of Blog Improvement Articles</option>
                 <option value="Pack of Tutorial/Step-by-Step Articles">Pack of Tutorial/Step-by-Step Articles</option>
                 <option value="Pack of Tips, Tricks, and Recommendations Articles">Pack of Tips, Tricks, and Recommendations Articles</option>
@@ -394,7 +394,7 @@ function botwriter_super_page_handler(){
               <div id="post-body">
                   <div id="post-body-content">                    
                       <?php do_meta_boxes('botwriter_super_post_new', 'normal', $item); ?>
-                      <input type="submit" value="<?php esc_attr_e('Save', 'botwriter')?>" id="submit" class="button-primary" name="submit" onclick="preSelectedOptions()">
+                      <input type="submit" value="<?php esc_attr_e('Save', 'botwriter')?>" id="submit" class="button-primary" name="submit">
                   </div>
               </div>
           </div>
@@ -520,7 +520,7 @@ function botwriter_super_form_meta_box_handler($item)
                 <!-- Post Length -->
                 <div class="col-md-6">
                     <label class="form-label">Post Length:</label>
-                    <select id="post_length" name="post_length" class="form-select" onchange="toggleCustomLengthInput()">
+                    <select id="post_length" name="post_length" class="form-select">
                         <option value="400" <?php selected($item['post_length'], 400); ?>>Short (400 words)</option>
                         <option value="800" <?php selected($item['post_length'], 800); ?>>Medium (800 words)</option>
                         <option value="1600" <?php selected($item['post_length'], 1600); ?>>Long (1600 words)</option>
@@ -533,7 +533,7 @@ function botwriter_super_form_meta_box_handler($item)
                 <!-- Custom Length Input -->
                 <div class="col-md-6" id="customLengthInput" style="display: <?php echo (!in_array($item['post_length'], [400, 800, 1600])) ? 'block' : 'none'; ?>;">
                     <label class="form-label">Custom Length (max 4000):</label>
-                    <input id="custom_post_length" name="custom_post_length" type="number" class="form-control" value="<?php echo esc_html($item['custom_post_length']); ?>" onchange="updatePostLength()">
+                    <input id="custom_post_length" name="custom_post_length" type="number" class="form-control" value="<?php echo esc_html($item['custom_post_length']); ?>">
                     <p class="form-text">Enter the number of words you want the post to have.</p>
                 </div>
                 <br>
@@ -874,7 +874,7 @@ function botwriter_super1_view_articles_html($id_task=0) {
   $posts = $wpdb->get_results($wpdb->prepare("SELECT * FROM $table_name WHERE id_task = %d ORDER BY category_id", $id_task), ARRAY_A);
   //
 
-  $html = '<a href="javascript:void(0);" onclick="botwriter_reset_super1();" class="button-primary">Reset Task and Try Again</a>';
+  $html = '<button type="button" class="button-primary botwriter-reset-super1">Reset Task and Try Again</button>';
   $contador = 0;
   $auxcategoria = "";
 

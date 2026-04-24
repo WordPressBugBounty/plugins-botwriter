@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.2.7
+Stable tag: 3.2.8
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -18,13 +18,14 @@ Whether you need an **AI writer** to keep your blog updated on autopilot, or an 
 
 🔹 Automatically publish content every day / every week
 🔹 Generate 100% original articles with AI images
-🔹 **NEW:** Choose from 7+ AI text providers (OpenAI, Claude, Gemini, Mistral, Groq...)
-🔹 **NEW:** 9 image providers including free stock photo banks, Flux 2, Nano Banana Pro, Gemini & DALL-E 3
-🔹 **NEW:** Article templates for consistent, professional content
-🔹 **NEW:** Image style presets (realistic, cartoon, anime, 3D, watercolor...)
-🔹 **NEW:** Smart image optimization for Google Discover (WebP, resize, compress)
-🔹 **NEW:** WooCommerce AI Content Optimizer — bulk-optimize product titles, descriptions, tags, SEO & more
-🔹 **NEW:** AI Review Generator for WooCommerce products
+🔹 Choose from 7+ AI text providers (OpenAI, Claude, Gemini, Mistral, Groq...)
+🔹 9 image providers including free stock photo banks, Flux 2, Nano Banana Pro, Gemini & DALL-E 3
+🔹 Article templates for consistent, professional content
+🔹 Image style presets (realistic, cartoon, anime, 3D, watercolor...)
+🔹 Smart image optimization for Google Discover (WebP, resize, compress)
+🔹 WooCommerce AI Content Optimizer — bulk-optimize product titles, descriptions, tags, SEO & more
+🔹 AI Review Generator for WooCommerce products
+🔹 **NEW:** Regenerate featured images on existing posts for better SEO and ai writer workflows
 🔹 Optimize your blog to rank higher on Google
 🔹 Set it up in minutes and let AI do the rest
 
@@ -46,7 +47,7 @@ How to Auto-Generate Articles from an RSS Feed | BotWriter + NASA RSS
 
 == Key Features ==
 
-**🆕 Multi-Provider AI Text Generation**
+**Multi-Provider AI Text Generation**
 Choose from 7 different AI providers for text generation:
 * **OpenAI:** GPT-5, GPT-4.1, GPT-4o series
 * **Anthropic:** Claude Sonnet 4.5, Claude Haiku
@@ -66,13 +67,13 @@ Choose from 7 different AI providers for text generation:
 * **Stability AI:** Stable Diffusion 3.5, SDXL
 * **Cloudflare Workers AI:** Flux Schnell (fast & affordable)
 
-**🎨 Image Style Presets** *(NEW in 2.0.7)*
+**🎨 Image Style Presets**
 Choose from 12 artistic styles for your AI images
 
-**⚡ Smart Image Optimization** *(NEW in 2.0.7)*
+**⚡ Smart Image Optimization**
 Automatic post-processing for web-ready images
 
-**🛒 WooCommerce AI Content Optimizer** *(NEW in 3.0)*
+**🛒 WooCommerce AI Content Optimizer**
 Bulk-optimize your entire product catalog with AI:
 * **9 content fields:** titles, descriptions, short descriptions, tags, image ALT text, review summaries, SEO meta descriptions, SEO titles and category descriptions
 * **Bulk Optimizer:** select products, choose fields and AI provider, preview all changes before applying
@@ -330,6 +331,10 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.2.8 =
+* NEW: Added featured image regeneration for published posts to improve SEO and ai writer workflows.
+
+
 = 3.2.7 =
 * Fixed WooCommerce AI product descriptions being applied as plain text instead of HTML in some providers like Gemini.
 
@@ -344,7 +349,7 @@ All external service usage is detailed in the "External Services" section below.
 
 = 3.2.5 =
 📷 **Free Stock Image Banks**
-* NEW: Stock photo banks as a free image provider — no API generation costs
+* Stock photo banks as a free image provider — no API generation costs
 * Search Pixabay, Pexels, Unsplash, and Openverse for relevant featured images
 * AI generates short keyword phrases to find the best matching photo
 * Automatic fallback: if preferred bank has no results, tries the next one
@@ -367,7 +372,7 @@ All external service usage is detailed in the "External Services" section below.
 
 = 3.0.1 =
 🌟 **AI Review Generator for WooCommerce**
-* NEW: Generate realistic AI-powered product reviews with configurable settings
+* Generate realistic AI-powered product reviews with configurable settings
 * Configurable star rating distribution (1★–5★ percentages)
 * Review length options: short, medium, long, or mixed with custom percentages
 * Content style/tone selection: natural, enthusiastic, professional, casual
@@ -379,7 +384,7 @@ All external service usage is detailed in the "External Services" section below.
 * Product filter by review count, rating, and category
 
 📊 **Optimization History**
-* NEW: Full history of all WooCommerce AI optimizations
+* Full history of all WooCommerce AI optimizations
 * Visual before/after diff for every field
 * Per-field revert or full product revert
 * Search, filter by date, category, and pagination
@@ -392,7 +397,7 @@ All external service usage is detailed in the "External Services" section below.
 
 = 3.0.0 =
 🛒 **WooCommerce AI Content Optimizer**
-* NEW: Dedicated WooCommerce AI Content Optimizer dashboard
+* Dedicated WooCommerce AI Content Optimizer dashboard
 * Bulk-optimize product titles, descriptions, short descriptions, tags, and image ALT text
 * AI-generated SEO meta descriptions and SEO titles
 * AI-powered review summaries (sentiment analysis of existing reviews)
@@ -407,20 +412,20 @@ All external service usage is detailed in the "External Services" section below.
 
 = 2.2.0 =
 ✏️ **Content Rewriter**
-* NEW: Rewrite existing articles from any URL using AI
+* Rewrite existing articles from any URL using AI
 * Add articles by URL or paste content manually
 
 🌐 **Site Rewriter**
-* NEW: Crawl an entire website and rewrite all its pages with AI
+* Crawl an entire website and rewrite all its pages with AI
 * Select which pages to rewrite with checkbox UI
 * Content warnings for pages with missing or short content
 
 📋 **Manual Titles for Articles**
-* NEW: Paste your list of titles and the AI will write the articles
+* Paste your list of titles and the AI will write the articles
 * Quick way to plan and generate content in bulk
 
 🔍 **SEO Meta Description**
-* NEW: AI-generated meta descriptions for every published post
+* AI-generated meta descriptions for every published post
 * Compatible with Yoast SEO, Rank Math, All in One SEO, SEOPress, and The SEO Framework
 * Falls back to a standard meta tag if no SEO plugin is detected
 
@@ -428,15 +433,15 @@ All external service usage is detailed in the "External Services" section below.
 
 = 2.1.0 =
 🌐 **SEO Slug Translation**
-* NEW: Automatically translate post URL slugs, tag slugs, and image filenames to your target language
-* NEW: "SEO Translation" settings tab with master enable/disable toggle
-* NEW: Choose what to translate independently — post slugs, tag slugs, image filenames
-* NEW: 28 target languages supported (English, Spanish, French, German, Chinese, Japanese, Arabic, and more)
+* Automatically translate post URL slugs, tag slugs, and image filenames to your target language
+* "SEO Translation" settings tab with master enable/disable toggle
+* Choose what to translate independently — post slugs, tag slugs, image filenames
+* 28 target languages supported (English, Spanish, French, German, Chinese, Japanese, Arabic, and more)
 
 = 2.0.9 =
 📝 **Post Type & Taxonomy Selector**
-* NEW: Choose any post type for your tasks — Posts, Pages, Products (WooCommerce) or any custom post type
-* NEW: Dynamic taxonomy selector — automatically loads available taxonomies and terms for the selected post type
+* Choose any post type for your tasks — Posts, Pages, Products (WooCommerce) or any custom post type
+* Dynamic taxonomy selector — automatically loads available taxonomies and terms for the selected post type
 * Tasks now store full taxonomy data for precise content categorization
 * Backward compatible with existing category-based tasks
 
@@ -447,13 +452,13 @@ All external service usage is detailed in the "External Services" section below.
 
 = 2.0.7 =
 🎨 **Image Style Presets**
-* NEW: Choose from 12 artistic styles for AI-generated images
+* Choose from 12 artistic styles for AI-generated images
 * Styles: Realistic, Digital Art, Illustration, Cartoon, Comic, Anime, 3D Render, Watercolor, Oil Painting, Minimalist, Vintage, Cinematic
-* NEW: Custom style option - define your own style with free text
+* Custom style option - define your own style with free text
 * Style is automatically applied as a prefix to image prompts
 
 ⚡ **Smart Image Optimization**
-* NEW: Automatic image post-processing for web optimization
+* Automatic image post-processing for web optimization
 * Convert images to WebP format (typically 90%+ size reduction)
 * Resize images to configurable max width (default: 1200px)
 * Compress to target file size (default: 120KB - ideal for Google Discover)
@@ -465,14 +470,14 @@ All external service usage is detailed in the "External Services" section below.
 
 = 2.0.6 =
 � **No Image Generation Option**
-* NEW: "No Image Generation" option in Image Provider dropdown
+* "No Image Generation" option in Image Provider dropdown
 * Useful for text-only workflows where images are not needed
 * Automatically forces "Disable AI Images" in task creation when selected
 
 
 = 2.0.5 =
-**New Image Provider: Google Gemini + JSON Parsing Improvements**
-* NEW: Google Gemini as native image provider (gemini-2.5-flash-preview-image-generation)
+**Google Gemini Image Provider + JSON Parsing Improvements**
+* Google Gemini as native image provider (gemini-2.5-flash-preview-image-generation)
 * Improved JSON parsing for AI responses
 * Better error handling across all providers
 
@@ -480,14 +485,14 @@ All external service usage is detailed in the "External Services" section below.
 **Models Management & Testing**
 
 🔧 **API Testing**
-* NEW: "Test API Key & Update Models" button for all text AI providers
-* NEW: "Test Model" button to verify model connectivity before use
+* "Test API Key & Update Models" button for all text AI providers
+* "Test Model" button to verify model connectivity before use
 * Automatic model discovery - fetches all available models from provider APIs
 * Smart filtering: excludes non-text models (DALL-E, TTS, embeddings from OpenAI; non-generateContent from Google)
 
 📋 **Centralized Models System**
-* NEW: JSON-based models configuration for easier updates
-* NEW: "Reset Models to Default" button in Settings > General > Tools
+* JSON-based models configuration for easier updates
+* "Reset Models to Default" button in Settings > General > Tools
 * Models are now stored in database and can be updated dynamically
 * Updated model lists: Claude 4.5, Gemini 3.0 Preview, GPT-5 series
 
@@ -500,7 +505,7 @@ All external service usage is detailed in the "External Services" section below.
 **Major Release: Multi-Provider Architecture**
 
 🚀 **Multi-Provider Text Generation**
-* NEW: Support for 7 AI text providers
+* Support for 7 AI text providers
 * OpenAI: GPT-5, GPT-5-mini, GPT-4.1, GPT-4o series
 * Anthropic: Claude Sonnet 4.5, Claude Haiku
 * Google: Gemini 2.5 Pro, Gemini 2.5 Flash
@@ -511,7 +516,7 @@ All external service usage is detailed in the "External Services" section below.
 * Each task can use a different text provider
 
 🎨 **Multi-Provider Image Generation**
-* NEW: Support for 5 AI image providers with 50+ models
+* Support for 5 AI image providers with 50+ models
 * OpenAI DALL-E: GPT-Image-1, DALL-E 3
 * Fal.ai: Flux 2 Pro/Dev, Nano Banana Pro, Seedream 4.5, Recraft V3
 * Replicate: Flux 1.1 Pro, Ideogram V3, Imagen 4, Nano Banana Pro
@@ -520,7 +525,7 @@ All external service usage is detailed in the "External Services" section below.
 * Each task can use a different image provider and model
 
 📝 **Article Templates**
-* NEW: Create and save reusable article templates
+* Create and save reusable article templates
 * Pre-configured prompts, styles, and structures
 * One-click template application to any task
 * Ensures consistent, professional content
@@ -539,7 +544,7 @@ All external service usage is detailed in the "External Services" section below.
 
 = 1.4.2 =
 Major: Write now (one-off post, runs immediately)
-* New: "Write now" screen to create a single post instantly
+* "Write now" screen to create a single post instantly
 * UX: Live progress with timeline messages and progress bar
 * Error handling: Friendly error details with Retry and Cancel options
 * Security: Stricter nonce/capability checks

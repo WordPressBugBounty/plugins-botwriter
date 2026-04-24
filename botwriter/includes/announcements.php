@@ -66,7 +66,7 @@ function botwriter_create_alert() {
         $random_tip = $tips[array_rand($tips)];
         ?>
         <div class="botwriter-welcome-banner" id="botwriter-welcome-banner">
-            <button type="button" class="botwriter-welcome-dismiss" id="botwriter-welcome-dismiss" title="<?php esc_attr_e('Dismiss', 'botwriter'); ?>">
+            <button type="button" class="botwriter-welcome-dismiss" id="botwriter-welcome-dismiss" data-nonce="<?php echo esc_attr( wp_create_nonce( 'botwriter_dismiss_welcome_nonce' ) ); ?>" title="<?php esc_attr_e('Dismiss', 'botwriter'); ?>">
                 <span class="dashicons dashicons-no-alt"></span>
             </button>
             
@@ -113,22 +113,6 @@ function botwriter_create_alert() {
             </div>
         </div>
         
-        <!-- CSS is now in assets/css/welcome-banner.css -->
-        
-        <script>
-        jQuery(document).ready(function($) {
-            $('#botwriter-welcome-dismiss').on('click', function() {
-                $('#botwriter-welcome-banner').fadeOut(300, function() {
-                    $(this).remove();
-                });
-                // Save dismissal via AJAX
-                $.post(ajaxurl, {
-                    action: 'botwriter_dismiss_welcome',
-                    security: '<?php echo esc_attr( wp_create_nonce( 'botwriter_dismiss_welcome_nonce' ) ); ?>'
-                });
-            });
-        });
-        </script>
         <?php
     }
 
@@ -241,42 +225,12 @@ function botwriter_stopformany_notice() {
                 <span class="dashicons dashicons-warning" style="vertical-align:middle; margin-right:4px;"></span>
                 <?php esc_html_e('View Logs', 'botwriter'); ?>
             </a>
-            <button type="button" class="button" id="botwriter-stopformany-reset" data-nonce="<?php echo esc_attr($nonce); ?>" style="margin-left:8px;">
+            <button type="button" class="button" id="botwriter-stopformany-reset" data-nonce="<?php echo esc_attr($nonce); ?>" data-success-message="<?php echo esc_attr(__('Tasks resumed! The error counter has been reset.', 'botwriter')); ?>" data-error-message="<?php echo esc_attr(__('Error resetting. Please try again.', 'botwriter')); ?>" data-network-error="<?php echo esc_attr(__('Network error. Please try again.', 'botwriter')); ?>" style="margin-left:8px;">
                 <?php esc_html_e('Reset & Resume Tasks', 'botwriter'); ?>
             </button>
             <span id="botwriter-stopformany-spinner" class="spinner" style="float:none; margin-top:0;"></span>
         </p>
     </div>
-    <script>
-    jQuery(document).ready(function($) {
-        $('#botwriter-stopformany-reset').on('click', function() {
-            var btn = $(this);
-            var spinner = $('#botwriter-stopformany-spinner');
-            btn.prop('disabled', true);
-            spinner.addClass('is-active');
-            $.post(ajaxurl, {
-                action: 'botwriter_stopformany_reset',
-                security: btn.data('nonce')
-            }, function(r) {
-                spinner.removeClass('is-active');
-                if (r.success) {
-                    $('#botwriter-stopformany-notice')
-                        .removeClass('notice-error').addClass('notice-success')
-                        .html('<p><strong>✅ <?php echo esc_js(__('Tasks resumed! The error counter has been reset.', 'botwriter')); ?></strong></p>');
-                    // Remove badge from Logs menu item
-                    $('a[href*="botwriter_logs"] .update-plugins').remove();
-                } else {
-                    btn.prop('disabled', false);
-                    alert(r.data || 'Error resetting. Please try again.');
-                }
-            }).fail(function() {
-                spinner.removeClass('is-active');
-                btn.prop('disabled', false);
-                alert('Network error. Please try again.');
-            });
-        });
-    });
-    </script>
     <?php
 }
 
@@ -373,23 +327,6 @@ function botwriter_consecutive_errors_notice() {
     echo '</p>';
     echo '</div>';
     
-    // Inline script for dismiss
-    ?>
-    <script>
-    jQuery(document).ready(function($) {
-        $('.botwriter-dismiss-errors').on('click', function() {
-            var nonce = $(this).data('nonce');
-            $('#botwriter-errors-notice').fadeOut(300, function() {
-                $(this).remove();
-            });
-            $.post(ajaxurl, {
-                action: 'botwriter_dismiss_errors_notice',
-                security: nonce
-            });
-        });
-    });
-    </script>
-    <?php
 }
 
 /**
@@ -446,6 +383,40 @@ function botwriter_dismiss_errors_notice_handler() {
  */
 function botwriter_reset_errors_notice_dismissed() {
     delete_option('botwriter_errors_notice_dismissed');
+}
+
+/**
+ * Show a warning when WordPress cron is disabled and BotWriter has active tasks.
+ */
+add_action('admin_notices', 'botwriter_wp_cron_disabled_notice');
+function botwriter_wp_cron_disabled_notice() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    if (!function_exists('botwriter_should_show_wp_cron_disabled_warning') || !botwriter_should_show_wp_cron_disabled_warning()) {
+        return;
+    }
+
+    $active_tasks = function_exists('botwriter_get_enabled_tasks_count') ? (int) botwriter_get_enabled_tasks_count() : 0;
+    $settings_url = admin_url('admin.php?page=botwriter_settings');
+
+    echo '<div class="notice notice-warning">';
+    echo '<p><strong>' . esc_html__('BotWriter scheduling warning:', 'botwriter') . '</strong> ';
+    echo esc_html(sprintf(
+        /* translators: %d: number of active tasks */
+        _n(
+            'WordPress cron is disabled (DISABLE_WP_CRON) and BotWriter has %d active task.',
+            'WordPress cron is disabled (DISABLE_WP_CRON) and BotWriter has %d active tasks.',
+            $active_tasks,
+            'botwriter'
+        ),
+        $active_tasks
+    ));
+    echo ' ' . esc_html__('Automatic task execution will not run unless a real server cron triggers wp-cron.php.', 'botwriter') . '</p>';
+    echo '<p>' . esc_html__('Please enable WP-Cron or ask your hosting administrator to configure server cron.', 'botwriter') . ' ';
+    echo '<a href="' . esc_url($settings_url) . '">' . esc_html__('Open BotWriter Settings', 'botwriter') . '</a>.</p>';
+    echo '</div>';
 }
 
 ?>

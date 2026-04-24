@@ -34,6 +34,31 @@ function updatePostLength() {
   
     toggleCustomStyleInput();
 
+  const narrationSelect = document.getElementById('narration');
+  if (narrationSelect) {
+    narrationSelect.addEventListener('change', toggleCustomStyleInput);
+  }
+
+  const refreshWebsiteCategoriesBtn = document.getElementById('refresh_website_categories_btn');
+  if (refreshWebsiteCategoriesBtn) {
+    refreshWebsiteCategoriesBtn.addEventListener('click', refreshWebsiteCategories);
+  }
+
+  const checkRssFeedBtn = document.getElementById('check_rss_feed_btn');
+  if (checkRssFeedBtn) {
+    checkRssFeedBtn.addEventListener('click', fetchRSSFeed);
+  }
+
+  const postLengthSelect = document.getElementById('post_length');
+  if (postLengthSelect) {
+    postLengthSelect.addEventListener('change', toggleCustomLengthInput);
+  }
+
+  const customPostLengthInput = document.getElementById('custom_post_length');
+  if (customPostLengthInput) {
+    customPostLengthInput.addEventListener('change', updatePostLength);
+  }
+
   
   const website_type = document.querySelectorAll('input[name="website_type"]');
   const div_website_domainname = document.getElementById('div_website_domainname');
@@ -251,6 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var form = document.getElementById('form') || document.querySelector('form');
   if (form) {
     form.addEventListener('submit', function(e) {
+      preSelectedOptions();
       buildTaxonomyData();
     });
   }

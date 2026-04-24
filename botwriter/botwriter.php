@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.2.7
+Version: 3.2.8
 Author: estebandezafra
 Requires PHP: 7.0
 License:           GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.2.7');
+    define('BOTWRITER_VERSION', '3.2.8');
 }
 
 // Plugin directory path (with trailing slash)
@@ -37,7 +37,7 @@ define('BOTWRITER_API_URL', "https://api.wpbotwriter.com/");
 
 // Debugging constant for development
 if (!defined('BOTWRITER_DEBUG')) {
-    define('BOTWRITER_DEBUG', true);
+    define('BOTWRITER_DEBUG', false);
 }
 
 
@@ -157,15 +157,13 @@ function botwriter_enqueue_scripts() {
     ]);
 
 
-    if (strpos((string)$slug, 'botwriter') !== false) {
-        wp_enqueue_script('botwriter-dismiss-script', $my_plugin_dir .  '/assets/js/botwriter_dismiss.js', array('jquery'), null, true);    
-        wp_localize_script('botwriter-dismiss-script','botwriterData',
-            array(
-                'nonce'   => wp_create_nonce('botwriter_dismiss_nonce'),
-                'ajaxurl' => admin_url('admin-ajax.php')
-            )
-        );
-    }
+    wp_enqueue_script('botwriter-dismiss-script', $my_plugin_dir .  '/assets/js/botwriter_dismiss.js', array('jquery'), null, true);
+    wp_localize_script('botwriter-dismiss-script','botwriterData',
+        array(
+            'nonce'   => wp_create_nonce('botwriter_dismiss_nonce'),
+            'ajaxurl' => admin_url('admin-ajax.php')
+        )
+    );
 
 						
     if ($slug=="botwriter_page_botwriter_automatic_post_new" || $slug === 'botwriter_page_botwriter_super_page' || $slug === 'botwriter_page_botwriter_write_now' || $slug === 'botwriter_page_botwriter_rewriter_page' || $slug === 'botwriter_page_botwriter_siterewriter_page') {
@@ -255,10 +253,820 @@ function botwriter_enqueue_scripts() {
         ));
     }
 
+    // Regenerate featured image modal (post editor)
+    if ($screen && $screen->base === 'post' && current_user_can('manage_options')) {
+        wp_register_script('botwriter_post_image_regeneration', $my_plugin_dir . 'assets/js/post-image-regeneration.js', array('jquery'), BOTWRITER_VERSION, true);
+        wp_enqueue_script('botwriter_post_image_regeneration');
+        wp_localize_script('botwriter_post_image_regeneration', 'botwriter_post_image_regeneration', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('botwriter_regenerate_image_nonce'),
+            'i18n'     => array(
+                'link_text'      => __('Regenerate', 'botwriter'),
+                'modal_title'    => __('BotWriter Image Regeneration', 'botwriter'),
+                'modal_subtitle' => __('Generate and preview a featured image before applying it.', 'botwriter'),
+                'provider'       => __('Current provider', 'botwriter'),
+                'model'          => __('Current model', 'botwriter'),
+                'prompt_label'   => __('Image Prompt', 'botwriter'),
+                'cleanup_label'  => __('Previous featured image', 'botwriter'),
+                'cleanup_keep'   => __('Keep in media library', 'botwriter'),
+                'cleanup_delete' => __('Delete permanently (if not used elsewhere)', 'botwriter'),
+                'btn_regenerate' => __('Regenerate', 'botwriter'),
+                'btn_accept'     => __('Accept', 'botwriter'),
+                'btn_close'      => __('Close', 'botwriter'),
+                'loading_context'=> __('Loading data...', 'botwriter'),
+                'generating'     => __('Generating image preview...', 'botwriter'),
+                'applying'       => __('Applying featured image...', 'botwriter'),
+                'missing_log'    => __('No saved image prompt was found for this post. Please write your prompt manually.', 'botwriter'),
+                'provider_none'  => __('Image provider is currently set to "none" in settings. Select an image provider first.', 'botwriter'),
+                'empty_prompt' => __('Please enter an image prompt before regenerating.', 'botwriter'),
+                'working'      => __('Regenerating image...', 'botwriter'),
+                'generic_error'=> __('Could not regenerate the image. Please try again.', 'botwriter'),
+            ),
+        ));
+    }
+
     
 
 }
 add_action('admin_enqueue_scripts','botwriter_enqueue_scripts');
+
+/**
+ * Retrieve the latest BotWriter log associated with a published post.
+ *
+ * @param int $post_id Post ID.
+ * @return array|null
+ */
+function botwriter_get_latest_log_by_post_id($post_id) {
+    global $wpdb;
+
+    $post_id = intval($post_id);
+    if ($post_id <= 0) {
+        return null;
+    }
+
+    $table_name = $wpdb->prefix . 'botwriter_logs';
+    $log = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM {$table_name} WHERE id_post_published = %d ORDER BY id DESC LIMIT 1",
+            $post_id
+        ),
+        ARRAY_A
+    );
+
+    botwriter_log('Image prompt lookup: latest log by post', array(
+        'post_id' => $post_id,
+        'found' => is_array($log),
+        'log_id' => is_array($log) ? intval($log['id'] ?? 0) : 0,
+        'id_post_published' => is_array($log) ? intval($log['id_post_published'] ?? 0) : 0,
+        'image_prompt_len' => is_array($log) ? strlen(trim((string) ($log['image_prompt'] ?? ''))) : 0,
+    ));
+
+    return is_array($log) ? $log : null;
+}
+
+/**
+ * Retrieve the latest BotWriter log for a post that has a non-empty image_prompt.
+ *
+ * @param int $post_id Post ID.
+ * @return array|null
+ */
+function botwriter_get_latest_log_with_image_prompt_by_post_id($post_id) {
+    global $wpdb;
+
+    $post_id = intval($post_id);
+    if ($post_id <= 0) {
+        return null;
+    }
+
+    $table_name = $wpdb->prefix . 'botwriter_logs';
+    $log = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM {$table_name} WHERE id_post_published = %d AND image_prompt IS NOT NULL AND TRIM(image_prompt) <> '' ORDER BY id DESC LIMIT 1",
+            $post_id
+        ),
+        ARRAY_A
+    );
+
+    botwriter_log('Image prompt lookup: latest log WITH prompt by post', array(
+        'post_id' => $post_id,
+        'found' => is_array($log),
+        'log_id' => is_array($log) ? intval($log['id'] ?? 0) : 0,
+        'id_post_published' => is_array($log) ? intval($log['id_post_published'] ?? 0) : 0,
+        'image_prompt_len' => is_array($log) ? strlen(trim((string) ($log['image_prompt'] ?? ''))) : 0,
+    ));
+
+    return is_array($log) ? $log : null;
+}
+
+/**
+ * Resolve current image model from provider settings.
+ *
+ * @param string $provider Provider slug.
+ * @return string
+ */
+function botwriter_get_current_image_model_by_provider($provider) {
+    $provider = sanitize_key((string) $provider);
+
+    $image_model_defaults = array(
+        'dalle'      => 'gpt-image-1',
+        'gemini'     => 'gemini-2.5-flash-image',
+        'fal'        => 'fal-ai/flux-pro/v1.1',
+        'replicate'  => 'black-forest-labs/flux-1.1-pro',
+        'stability'  => 'sd3.5-large-turbo',
+        'cloudflare' => 'flux-1-schnell',
+        'stockphoto' => 'stockphoto',
+    );
+
+    if ($provider === 'gemini') {
+        return (string) get_option('botwriter_gemini_image_model', $image_model_defaults[$provider]);
+    }
+
+    return (string) get_option("botwriter_{$provider}_model", $image_model_defaults[$provider] ?? 'gpt-image-1');
+}
+
+/**
+ * Return current image settings used for regeneration.
+ * Uses active plugin settings at execution time.
+ *
+ * @return array
+ */
+function botwriter_get_current_image_generation_settings() {
+    $provider = (string) get_option('botwriter_image_provider', 'dalle');
+    $model = botwriter_get_current_image_model_by_provider($provider);
+
+    return array(
+        'provider' => $provider,
+        'model' => $model,
+        'size' => (string) get_option('botwriter_ai_image_size', 'square'),
+        'quality' => (string) get_option('botwriter_ai_image_quality', 'medium'),
+        'style' => (string) get_option('botwriter_ai_image_style', 'realistic'),
+        'style_custom' => (string) get_option('botwriter_ai_image_style_custom', ''),
+        'stockphoto_preferred' => (string) get_option('botwriter_stockphoto_preferred', 'pixabay'),
+        'stockphoto_selection' => (string) get_option('botwriter_stockphoto_selection', 'random_top10'),
+        'stockphoto_attribution' => (string) get_option('botwriter_stockphoto_attribution', 'caption'),
+    );
+}
+
+/**
+ * Return post meta keys used to persist image prompts.
+ *
+ * @return array
+ */
+function botwriter_get_image_prompt_meta_keys() {
+    return array(
+        'ai' => 'botwriter_image_prompt',
+        'stock' => 'botwriter_stockphoto_prompt',
+        'last' => 'botwriter_image_prompt_last',
+        'provider' => 'botwriter_image_prompt_last_provider',
+    );
+}
+
+/**
+ * Persist image prompt metadata on the post itself.
+ *
+ * @param int    $post_id Post ID.
+ * @param string $prompt Prompt text.
+ * @param string $provider Provider used for generation.
+ * @return bool
+ */
+function botwriter_save_post_image_prompt_meta($post_id, $prompt, $provider = '') {
+    $post_id = intval($post_id);
+    if ($post_id <= 0) {
+        botwriter_log('Image prompt meta save skipped: invalid post_id', array('post_id' => $post_id));
+        return false;
+    }
+
+    $prompt = trim(sanitize_textarea_field((string) $prompt));
+    if ($prompt === '') {
+        botwriter_log('Image prompt meta save skipped: empty prompt', array(
+            'post_id' => $post_id,
+            'provider' => $provider,
+        ));
+        return false;
+    }
+
+    $provider = sanitize_key((string) $provider);
+    $keys = botwriter_get_image_prompt_meta_keys();
+
+    update_post_meta($post_id, $keys['last'], $prompt);
+
+    if ($provider === 'stockphoto') {
+        update_post_meta($post_id, $keys['stock'], $prompt);
+    } else {
+        update_post_meta($post_id, $keys['ai'], $prompt);
+    }
+
+    if ($provider !== '') {
+        update_post_meta($post_id, $keys['provider'], $provider);
+    }
+
+    botwriter_log('Image prompt meta saved', array(
+        'post_id' => $post_id,
+        'provider' => $provider,
+        'prompt_len' => strlen($prompt),
+        'saved_ai_meta' => ($provider !== 'stockphoto'),
+        'saved_stock_meta' => ($provider === 'stockphoto'),
+        'meta_key_last' => $keys['last'],
+    ));
+
+    return true;
+}
+
+/**
+ * Resolve the best prompt saved on post meta for current provider context.
+ *
+ * @param int    $post_id Post ID.
+ * @param string $provider Current provider.
+ * @return array
+ */
+function botwriter_get_post_image_prompt_from_meta($post_id, $provider = '') {
+    $post_id = intval($post_id);
+    $provider = sanitize_key((string) $provider);
+    $keys = botwriter_get_image_prompt_meta_keys();
+
+    $ai_prompt = trim((string) get_post_meta($post_id, $keys['ai'], true));
+    $stock_prompt = trim((string) get_post_meta($post_id, $keys['stock'], true));
+    $last_prompt = trim((string) get_post_meta($post_id, $keys['last'], true));
+
+    botwriter_log('Image prompt lookup: post meta snapshot', array(
+        'post_id' => $post_id,
+        'provider' => $provider,
+        'ai_len' => strlen($ai_prompt),
+        'stock_len' => strlen($stock_prompt),
+        'last_len' => strlen($last_prompt),
+        'meta_ai_key' => $keys['ai'],
+        'meta_stock_key' => $keys['stock'],
+        'meta_last_key' => $keys['last'],
+    ));
+
+    if ($provider === 'stockphoto') {
+        if ($stock_prompt !== '') {
+            botwriter_log('Image prompt lookup: selected meta_stock', array('post_id' => $post_id, 'len' => strlen($stock_prompt)));
+            return array('prompt' => $stock_prompt, 'source' => 'meta_stock');
+        }
+        if ($ai_prompt !== '') {
+            botwriter_log('Image prompt lookup: selected meta_ai for stock provider', array('post_id' => $post_id, 'len' => strlen($ai_prompt)));
+            return array('prompt' => $ai_prompt, 'source' => 'meta_ai');
+        }
+    } else {
+        if ($ai_prompt !== '') {
+            botwriter_log('Image prompt lookup: selected meta_ai', array('post_id' => $post_id, 'len' => strlen($ai_prompt)));
+            return array('prompt' => $ai_prompt, 'source' => 'meta_ai');
+        }
+    }
+
+    if ($last_prompt !== '') {
+        botwriter_log('Image prompt lookup: selected meta_last', array('post_id' => $post_id, 'len' => strlen($last_prompt)));
+        return array('prompt' => $last_prompt, 'source' => 'meta_last');
+    }
+
+    if ($stock_prompt !== '') {
+        botwriter_log('Image prompt lookup: selected stock fallback', array('post_id' => $post_id, 'len' => strlen($stock_prompt)));
+        return array('prompt' => $stock_prompt, 'source' => 'meta_stock');
+    }
+
+    botwriter_log('Image prompt lookup: no prompt found in post meta', array('post_id' => $post_id));
+
+    return array('prompt' => '', 'source' => 'none');
+}
+
+/**
+ * Resolve the best available image prompt from generated post data.
+ *
+ * @param array $data Data used to generate/publish the post.
+ * @return string
+ */
+function botwriter_resolve_image_prompt_from_post_data($data) {
+    if (!is_array($data)) {
+        botwriter_log('Image prompt resolve from post data: invalid payload');
+        return '';
+    }
+
+    $explicit_prompt = isset($data['image_prompt']) ? trim(sanitize_textarea_field((string) $data['image_prompt'])) : '';
+    if ($explicit_prompt !== '') {
+        botwriter_log('Image prompt resolve from post data: using explicit image_prompt', array(
+            'len' => strlen($explicit_prompt),
+            'has_image_provider' => isset($data['image_provider']),
+        ));
+        return $explicit_prompt;
+    }
+
+    // Edge/legacy fallback: when image_prompt is not returned, the title is the usual fallback basis.
+    $title_based_prompt = isset($data['aigenerated_title']) ? trim(sanitize_text_field((string) $data['aigenerated_title'])) : '';
+    if ($title_based_prompt !== '') {
+        botwriter_log('Image prompt resolve from post data: fallback to generated title', array(
+            'title_len' => strlen($title_based_prompt),
+            'has_image_prompt_key' => array_key_exists('image_prompt', $data),
+        ));
+        return $title_based_prompt;
+    }
+
+    botwriter_log('Image prompt resolve from post data: fallback to hardcoded default');
+    return 'Blog post illustration';
+}
+
+/**
+ * Build UI context for image regeneration modal.
+ *
+ * @param int $post_id Post ID.
+ * @return array
+ */
+function botwriter_get_image_regeneration_context($post_id) {
+    $post_id = intval($post_id);
+    $settings = botwriter_get_current_image_generation_settings();
+    $provider = (string) ($settings['provider'] ?? '');
+
+    $prompt_context = botwriter_get_post_image_prompt_from_meta($post_id, $provider);
+    $prefill_prompt = (string) ($prompt_context['prompt'] ?? '');
+    $prompt_source = (string) ($prompt_context['source'] ?? 'none');
+
+    botwriter_log('Image regeneration context: after meta lookup', array(
+        'post_id' => $post_id,
+        'provider' => $provider,
+        'prompt_source' => $prompt_source,
+        'prompt_len' => strlen($prefill_prompt),
+    ));
+
+    $latest_log = null;
+    if ($prefill_prompt === '') {
+        // Prefer the newest log that actually contains an image prompt.
+        $latest_log = botwriter_get_latest_log_with_image_prompt_by_post_id($post_id);
+
+        // Backward-compat fallback: if no prompt-carrying log exists, inspect latest log anyway.
+        if (!is_array($latest_log)) {
+            $latest_log = botwriter_get_latest_log_by_post_id($post_id);
+        }
+
+        $prefill_prompt = is_array($latest_log) ? trim((string) ($latest_log['image_prompt'] ?? '')) : '';
+        if ($prefill_prompt !== '') {
+            $prompt_source = 'log';
+            // Legacy migration: if prompt exists in log but not in post meta, persist it now.
+            botwriter_save_post_image_prompt_meta($post_id, $prefill_prompt, $provider);
+            botwriter_log('Image regeneration context: prompt recovered from log and migrated to meta', array(
+                'post_id' => $post_id,
+                'log_id' => intval($latest_log['id'] ?? 0),
+                'prompt_len' => strlen($prefill_prompt),
+            ));
+        }
+    }
+
+    if ($prefill_prompt === '') {
+        $title_prompt = trim((string) get_the_title($post_id));
+        if ($title_prompt !== '') {
+            $prefill_prompt = $title_prompt;
+            $prompt_source = 'post_title';
+            botwriter_log('Image regeneration context: fallback to post title', array(
+                'post_id' => $post_id,
+                'title_len' => strlen($title_prompt),
+            ));
+        }
+    }
+
+    $has_meta_prompt = in_array($prompt_source, array('meta_ai', 'meta_stock', 'meta_last'), true);
+
+    botwriter_log('Image regeneration context resolved', array(
+        'post_id' => $post_id,
+        'provider' => $provider,
+        'prompt_source' => $prompt_source,
+        'prompt_len' => strlen($prefill_prompt),
+        'has_meta_prompt' => $has_meta_prompt,
+        'has_log' => is_array($latest_log),
+        'log_id' => is_array($latest_log) ? intval($latest_log['id'] ?? 0) : 0,
+    ));
+
+    return array(
+        'post_id' => $post_id,
+        'prompt' => $prefill_prompt,
+        'has_log' => is_array($latest_log),
+        'has_meta_prompt' => $has_meta_prompt,
+        'has_prompt' => ($prefill_prompt !== ''),
+        'prompt_source' => $prompt_source,
+        'provider' => $provider,
+        'model' => (string) ($settings['model'] ?? ''),
+        'provider_disabled' => ($provider === 'none'),
+    );
+}
+
+/**
+ * Generate an image URL using the direct backend endpoint (/images) with current settings.
+ *
+ * @param string $prompt Prompt text.
+ * @return array
+ */
+function botwriter_generate_image_with_current_settings($prompt) {
+    $prompt = trim((string) $prompt);
+    if ($prompt === '') {
+        return array('success' => false, 'message' => __('Image prompt is required.', 'botwriter'));
+    }
+
+    $settings = botwriter_get_current_image_generation_settings();
+    $provider = (string) $settings['provider'];
+    $model = (string) $settings['model'];
+
+    if ($provider === 'none') {
+        return array('success' => false, 'message' => __('Image provider is disabled in settings.', 'botwriter'));
+    }
+
+    $style_value = (string) ($settings['style_custom'] ?: $settings['style']);
+    if ($style_value === 'realistic' || $style_value === 'none') {
+        $style_value = '';
+    }
+
+    $payload = array(
+        'prompt' => $prompt,
+        'domain' => esc_url_raw(get_site_url()),
+        'api_key' => get_option('botwriter_api_key'),
+        'site_token' => get_option('botwriter_site_token', ''),
+        // Image regenerations are UX actions and should not consume license quota.
+        'no_count' => true,
+        'provider' => $provider,
+        'model' => $model,
+        'size' => (string) $settings['size'],
+        'quality' => (string) $settings['quality'],
+        'style' => $style_value,
+        'stockphoto_preferred' => (string) $settings['stockphoto_preferred'],
+        'stockphoto_selection' => (string) $settings['stockphoto_selection'],
+        'stockphoto_attribution' => (string) $settings['stockphoto_attribution'],
+        // Forward client keys (edge endpoint overlays provider keys from this payload)
+        'openai_api_key' => botwriter_decrypt_api_key(get_option('botwriter_openai_api_key')),
+        'google_api_key' => botwriter_decrypt_api_key(get_option('botwriter_google_api_key')),
+        'fal_api_key' => botwriter_decrypt_api_key(get_option('botwriter_fal_api_key')),
+        'replicate_api_key' => botwriter_decrypt_api_key(get_option('botwriter_replicate_api_key')),
+        'stability_api_key' => botwriter_decrypt_api_key(get_option('botwriter_stability_api_key')),
+        'cloudflare_api_key' => botwriter_decrypt_api_key(get_option('botwriter_cloudflare_api_key')),
+        'cloudflare_account_id' => get_option('botwriter_cloudflare_account_id'),
+    );
+
+    $ssl_verify = get_option('botwriter_sslverify');
+    $ssl_verify = ($ssl_verify !== 'no');
+
+    $remote_url = BOTWRITER_API_URL . 'images';
+    $response = wp_remote_post($remote_url, array(
+        'method' => 'POST',
+        'headers' => array(
+            'Content-Type' => 'application/json',
+        ),
+        'body' => wp_json_encode($payload),
+        'timeout' => 120,
+        'sslverify' => $ssl_verify,
+    ));
+
+    if (is_wp_error($response)) {
+        return array('success' => false, 'message' => $response->get_error_message());
+    }
+
+    $status_code = wp_remote_retrieve_response_code($response);
+    $body_raw = wp_remote_retrieve_body($response);
+    $result = json_decode($body_raw, true);
+
+    if ($status_code !== 200 || !is_array($result) || ($result['status'] ?? '') !== 'success' || empty($result['download_url'])) {
+        $error_message = '';
+        if (is_array($result)) {
+            $error_message = (string) ($result['error'] ?? $result['message'] ?? '');
+        }
+        if ($error_message === '') {
+            $error_message = __('Image generation failed on server.', 'botwriter');
+        }
+        return array('success' => false, 'message' => $error_message);
+    }
+
+    $download_url = (string) $result['download_url'];
+    $image_url = $download_url;
+    if (strpos($download_url, 'http://') !== 0 && strpos($download_url, 'https://') !== 0) {
+        $image_url = rtrim(BOTWRITER_API_URL, '/') . '/' . ltrim($download_url, '/');
+    }
+
+    return array(
+        'success' => true,
+        'image_url' => $image_url,
+        'provider' => $provider,
+        'model' => $model,
+    );
+}
+
+/**
+ * AJAX: fetch context for image regeneration modal.
+ */
+function botwriter_get_post_image_regeneration_context_ajax() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
+    }
+
+    check_ajax_referer('botwriter_regenerate_image_nonce', 'nonce');
+
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    if ($post_id <= 0 || !get_post($post_id)) {
+        wp_send_json_error(array('message' => __('Invalid post.', 'botwriter')));
+    }
+
+    if (!current_user_can('edit_post', $post_id)) {
+        wp_send_json_error(array('message' => __('You cannot edit this post.', 'botwriter')));
+    }
+
+    $context = botwriter_get_image_regeneration_context($post_id);
+    botwriter_log('AJAX context response for image regeneration', array(
+        'post_id' => $post_id,
+        'prompt_source' => $context['prompt_source'] ?? 'unknown',
+        'prompt_len' => strlen((string) ($context['prompt'] ?? '')),
+        'has_meta_prompt' => !empty($context['has_meta_prompt']),
+        'has_log' => !empty($context['has_log']),
+    ));
+    wp_send_json_success($context);
+}
+add_action('wp_ajax_botwriter_get_post_image_regeneration_context', 'botwriter_get_post_image_regeneration_context_ajax');
+
+/**
+ * AJAX: generate preview image only (does not apply to post yet).
+ */
+function botwriter_generate_post_image_preview_ajax() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
+    }
+
+    check_ajax_referer('botwriter_regenerate_image_nonce', 'nonce');
+
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    $prompt = isset($_POST['prompt']) ? sanitize_textarea_field(wp_unslash($_POST['prompt'])) : '';
+
+    if ($post_id <= 0 || !get_post($post_id)) {
+        wp_send_json_error(array('message' => __('Invalid post.', 'botwriter')));
+    }
+
+    if (!current_user_can('edit_post', $post_id)) {
+        wp_send_json_error(array('message' => __('You cannot edit this post.', 'botwriter')));
+    }
+
+    $generated = botwriter_generate_image_with_current_settings($prompt);
+    if (empty($generated['success'])) {
+        wp_send_json_error(array('message' => (string) ($generated['message'] ?? __('Image generation failed.', 'botwriter'))));
+    }
+
+    wp_send_json_success(array(
+        'post_id' => $post_id,
+        'prompt' => trim((string) $prompt),
+        'image_url' => (string) $generated['image_url'],
+        'provider' => (string) $generated['provider'],
+        'model' => (string) $generated['model'],
+    ));
+}
+add_action('wp_ajax_botwriter_generate_post_image_preview', 'botwriter_generate_post_image_preview_ajax');
+
+/**
+ * Check if an attachment is used as featured image by posts other than the current one.
+ *
+ * @param int $attachment_id Attachment ID.
+ * @param int $exclude_post_id Post ID to exclude.
+ * @return bool
+ */
+function botwriter_is_attachment_featured_elsewhere($attachment_id, $exclude_post_id = 0) {
+    global $wpdb;
+
+    $attachment_id = intval($attachment_id);
+    $exclude_post_id = intval($exclude_post_id);
+
+    if ($attachment_id <= 0) {
+        return false;
+    }
+
+    $query = "SELECT COUNT(1) FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id' AND meta_value = %d";
+    $params = array($attachment_id);
+
+    if ($exclude_post_id > 0) {
+        $query .= " AND post_id <> %d";
+        $params[] = $exclude_post_id;
+    }
+
+    $count = $wpdb->get_var($wpdb->prepare($query, $params));
+    return intval($count) > 0;
+}
+
+/**
+ * Register a lightweight image-only log entry for future prompt prefill.
+ *
+ * @param int        $post_id Post ID.
+ * @param string     $prompt Prompt used.
+ * @param string     $image_url Generated image URL.
+ * @param string     $provider Current provider.
+ * @param string     $model Current model.
+ * @param array|null $source_log Existing latest log for this post.
+ * @return int|false
+ */
+function botwriter_register_only_image_log($post_id, $prompt, $image_url, $provider, $model, $source_log = null) {
+    $post = get_post($post_id);
+    if (!($post instanceof WP_Post)) {
+        return false;
+    }
+
+    $base = array(
+        'id_task' => 0,
+        'id_task_server' => 0,
+        'post_status' => $post->post_status ?: 'draft',
+        'task_name' => sprintf(__('Image regeneration for post #%d', 'botwriter'), intval($post_id)),
+        'task_type' => 'only_image',
+        'writer' => 'orion',
+        'narration' => 'Descriptive',
+        'custom_style' => '',
+        'post_language' => substr(get_locale(), 0, 2),
+        'post_length' => '800',
+        'link_post_original' => get_permalink($post_id),
+        'id_post_published' => intval($post_id),
+        'task_status' => 'completed',
+        'error' => '',
+        'website_name' => '',
+        'website_type' => 'ai',
+        'domain_name' => esc_url_raw(get_site_url()),
+        'post_type' => $post->post_type ?: 'post',
+        'category_id' => '',
+        'taxonomy_data' => '',
+        'website_category_id' => '',
+        'aigenerated_title' => get_the_title($post_id),
+        'aigenerated_content' => '',
+        'aigenerated_tags' => '',
+        'aigenerated_image' => $image_url,
+        'post_count' => '1',
+        'post_order' => '',
+        'title_prompt' => '',
+        'content_prompt' => '',
+        'tags_prompt' => '',
+        'image_prompt' => $prompt,
+        'image_generating_status' => 'completed',
+        'author_selection' => strval($post->post_author ?: get_current_user_id()),
+        'news_time_published' => '',
+        'news_language' => '',
+        'news_country' => '',
+        'news_keyword' => '',
+        'news_source' => '',
+        'rss_source' => '',
+        'ai_keywords' => '',
+        'disable_ai_images' => 0,
+        'template_id' => null,
+        'intentosfase1' => 0,
+        'last_execution_time' => current_time('mysql'),
+    );
+
+    // Reuse as much context as possible from latest known log.
+    if (is_array($source_log) && !empty($source_log)) {
+        $inherit_keys = array(
+            'id_task',
+            'post_status',
+            'task_name',
+            'writer',
+            'narration',
+            'custom_style',
+            'post_language',
+            'post_length',
+            'website_name',
+            'website_type',
+            'domain_name',
+            'post_type',
+            'category_id',
+            'taxonomy_data',
+            'website_category_id',
+            'title_prompt',
+            'content_prompt',
+            'tags_prompt',
+            'author_selection',
+            'ai_keywords',
+            'template_id',
+        );
+
+        foreach ($inherit_keys as $key) {
+            if (array_key_exists($key, $source_log) && $source_log[$key] !== null && $source_log[$key] !== '') {
+                $base[$key] = $source_log[$key];
+            }
+        }
+    }
+
+    // Ensure this log is identifiable as image-only and references current settings context.
+    $base['task_type'] = 'only_image';
+    $base['task_status'] = 'completed';
+    $base['id_post_published'] = intval($post_id);
+    $base['image_prompt'] = $prompt;
+    $base['aigenerated_image'] = $image_url;
+    $base['error'] = '';
+    $base['last_execution_time'] = current_time('mysql');
+    $base['task_name'] = sprintf(
+        __('Only image regeneration (%1$s / %2$s) - Post #%3$d', 'botwriter'),
+        $provider,
+        $model,
+        intval($post_id)
+    );
+
+    return botwriter_logs_register($base);
+}
+
+/**
+ * AJAX: apply a regenerated image URL as featured image for an existing post.
+ * If no image_url is provided, it can generate one using current settings (legacy fallback).
+ */
+function botwriter_apply_post_regenerated_image_ajax() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
+    }
+
+    check_ajax_referer('botwriter_regenerate_image_nonce', 'nonce');
+
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    $prompt = isset($_POST['prompt']) ? sanitize_textarea_field(wp_unslash($_POST['prompt'])) : '';
+    $image_url = isset($_POST['image_url']) ? esc_url_raw(wp_unslash($_POST['image_url'])) : '';
+    $cleanup_policy = isset($_POST['cleanup_policy']) ? sanitize_key(wp_unslash($_POST['cleanup_policy'])) : 'keep_old';
+    $provider = isset($_POST['provider']) ? sanitize_key(wp_unslash($_POST['provider'])) : '';
+    $model = isset($_POST['model']) ? sanitize_text_field(wp_unslash($_POST['model'])) : '';
+
+    if ($post_id <= 0 || !get_post($post_id)) {
+        wp_send_json_error(array('message' => __('Invalid post.', 'botwriter')));
+    }
+
+    if (!current_user_can('edit_post', $post_id)) {
+        wp_send_json_error(array('message' => __('You cannot edit this post.', 'botwriter')));
+    }
+
+    if (trim($prompt) === '') {
+        wp_send_json_error(array('message' => __('Image prompt is required.', 'botwriter')));
+    }
+
+    if (!in_array($cleanup_policy, array('keep_old', 'delete_old'), true)) {
+        $cleanup_policy = 'keep_old';
+    }
+
+    if ($image_url === '') {
+        // Legacy fallback: if called without image_url, generate directly now.
+        $generated = botwriter_generate_image_with_current_settings($prompt);
+        if (empty($generated['success'])) {
+            wp_send_json_error(array('message' => (string) ($generated['message'] ?? __('Image generation failed.', 'botwriter'))));
+        }
+        $image_url = (string) $generated['image_url'];
+        $provider = (string) $generated['provider'];
+        $model = (string) $generated['model'];
+    }
+
+    if (strpos($image_url, 'http://') !== 0 && strpos($image_url, 'https://') !== 0) {
+        wp_send_json_error(array('message' => __('Invalid image URL.', 'botwriter')));
+    }
+
+    if ($provider === '' || $model === '') {
+        $settings = botwriter_get_current_image_generation_settings();
+        if ($provider === '') {
+            $provider = (string) ($settings['provider'] ?? 'dalle');
+        }
+        if ($model === '') {
+            $model = (string) ($settings['model'] ?? 'gpt-image-1');
+        }
+    }
+
+    $old_thumbnail_id = get_post_thumbnail_id($post_id);
+    $post_title = get_the_title($post_id);
+
+    botwriter_attach_image_to_post($post_id, $image_url, $post_title);
+    $new_thumbnail_id = get_post_thumbnail_id($post_id);
+
+    if (empty($new_thumbnail_id)) {
+        wp_send_json_error(array('message' => __('Image was generated but could not be attached as featured image.', 'botwriter')));
+    }
+
+    $deleted_old = false;
+    $delete_note = '';
+    if ($cleanup_policy === 'delete_old' && !empty($old_thumbnail_id) && intval($old_thumbnail_id) !== intval($new_thumbnail_id)) {
+        if (botwriter_is_attachment_featured_elsewhere(intval($old_thumbnail_id), $post_id)) {
+            $delete_note = __('Previous featured image was not deleted because it is used by other posts.', 'botwriter');
+        } else {
+            $deleted_old = (bool) wp_delete_attachment(intval($old_thumbnail_id), true);
+            if (!$deleted_old) {
+                $delete_note = __('Previous featured image could not be deleted automatically.', 'botwriter');
+            }
+        }
+    }
+
+    $latest_log = botwriter_get_latest_log_by_post_id($post_id);
+    botwriter_log('Apply regenerated image: persisting prompt to log/meta', array(
+        'post_id' => $post_id,
+        'provider' => $provider,
+        'model' => $model,
+        'prompt_len' => strlen((string) $prompt),
+        'latest_log_id' => is_array($latest_log) ? intval($latest_log['id'] ?? 0) : 0,
+    ));
+    $log_id = botwriter_register_only_image_log($post_id, $prompt, $image_url, $provider, $model, $latest_log);
+    botwriter_save_post_image_prompt_meta($post_id, $prompt, $provider);
+
+    $thumb_src = wp_get_attachment_image_src($new_thumbnail_id, 'medium');
+    $featured_src = is_array($thumb_src) ? $thumb_src[0] : '';
+
+    wp_send_json_success(array(
+        'message' => __('Featured image regenerated successfully.', 'botwriter'),
+        'post_id' => $post_id,
+        'image_url' => $image_url,
+        'featured_image_src' => $featured_src,
+        'attachment_id' => intval($new_thumbnail_id),
+        'provider' => $provider,
+        'model' => $model,
+        'deleted_old' => $deleted_old,
+        'delete_note' => $delete_note,
+        'log_id' => $log_id ?: 0,
+    ));
+}
+add_action('wp_ajax_botwriter_apply_post_regenerated_image', 'botwriter_apply_post_regenerated_image_ajax');
+// Backward-compatible alias for previous one-step endpoint name.
+add_action('wp_ajax_botwriter_regenerate_post_image', 'botwriter_apply_post_regenerated_image_ajax');
 
 
 
@@ -306,6 +1114,11 @@ function botwriter_enqueue_styles(){
         if (strpos((string)$slug, 'botwriter_settings') !== false) {
             wp_register_style('botwriter_settings', $my_plugin_dir . 'assets/css/settings.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/settings.css'));
             wp_enqueue_style('botwriter_settings');
+        }
+
+        if ($slug === 'botwriter_page_botwriter_siterewriter_page') {
+            wp_register_style('botwriter_siterewriter', $my_plugin_dir . 'assets/css/siterewriter.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/siterewriter.css'));
+            wp_enqueue_style('botwriter_siterewriter');
         }
     }
 }
@@ -605,23 +1418,23 @@ function botwriter_admin_page() {
 
             <!-- Quick Links -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-                <a href="<?php echo esc_url($settings_url); ?>" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';">
+                <a href="<?php echo esc_url($settings_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
                     <div style="font-size: 20px; margin-bottom: 6px;">⚙️</div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Settings', 'botwriter'); ?></div>
                 </a>
-                <a href="<?php echo esc_url($addnew_url); ?>" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';">
+                <a href="<?php echo esc_url($addnew_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
                     <div style="font-size: 20px; margin-bottom: 6px;">➕</div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Add New', 'botwriter'); ?></div>
                 </a>
-                <a href="<?php echo esc_url($tasks_url); ?>" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';">
+                <a href="<?php echo esc_url($tasks_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
                     <div style="font-size: 20px; margin-bottom: 6px;">📋</div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Tasks', 'botwriter'); ?></div>
                 </a>
-                <a href="<?php echo esc_url($logs_url); ?>" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';">
+                <a href="<?php echo esc_url($logs_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
                     <div style="font-size: 20px; margin-bottom: 6px;">📊</div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Logs', 'botwriter'); ?></div>
                 </a>
-                <a href="https://wpbotwriter.com/faq-frequently-asked-questions/" target="_blank" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: white; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';">
+                <a href="https://wpbotwriter.com/faq-frequently-asked-questions/" target="_blank" class="botwriter-quick-link botwriter-quick-link-highlight" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: white; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: transform 0.2s, box-shadow 0.2s;">
                     <div style="font-size: 20px; margin-bottom: 6px;">❓</div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Help & FAQ', 'botwriter'); ?></div>
                 </a>
@@ -2196,6 +3009,36 @@ function botwriter_generate_post($data){
         if ( $meta_description ) {
             botwriter_apply_seo_meta( $post_id, $meta_description );
         }
+    }
+
+    // Persist image prompt in post meta so regeneration never depends on logs.
+    $saved_image_prompt = botwriter_resolve_image_prompt_from_post_data($data);
+    botwriter_log('Post creation: image prompt resolution before meta save', array(
+        'post_id' => $post_id,
+        'resolved_prompt_len' => strlen((string) $saved_image_prompt),
+        'incoming_image_prompt_len' => strlen(trim((string) ($data['image_prompt'] ?? ''))),
+        'incoming_image_provider' => isset($data['image_provider']) ? sanitize_key((string) $data['image_provider']) : '',
+        'has_image_attribution' => !empty($data['image_attribution']),
+    ));
+    if ($saved_image_prompt !== '') {
+        $saved_provider = isset($data['image_provider']) ? sanitize_key((string) $data['image_provider']) : '';
+
+        if ($saved_provider === '' && !empty($data['image_attribution'])) {
+            $saved_provider = 'stockphoto';
+        }
+
+        if ($saved_provider === '') {
+            $settings = botwriter_get_current_image_generation_settings();
+            $saved_provider = (string) ($settings['provider'] ?? '');
+        }
+
+        botwriter_log('Post creation: saving image prompt meta', array(
+            'post_id' => $post_id,
+            'provider' => $saved_provider,
+            'prompt_len' => strlen((string) $saved_image_prompt),
+        ));
+
+        botwriter_save_post_image_prompt_meta($post_id, $saved_image_prompt, $saved_provider);
     }
 
     return $post_id;

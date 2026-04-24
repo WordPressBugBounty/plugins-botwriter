@@ -427,6 +427,49 @@ function botwriter_get_provider_api_key($provider) {
     return '';
 }
 
+/**
+ * Count active BotWriter tasks (status = 1).
+ *
+ * @return int
+ */
+function botwriter_get_enabled_tasks_count() {
+    static $enabled_tasks_count = null;
+
+    if ($enabled_tasks_count !== null) {
+        return $enabled_tasks_count;
+    }
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'botwriter_tasks';
+
+    $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name));
+    if ($table_exists !== $table_name) {
+        $enabled_tasks_count = 0;
+        return $enabled_tasks_count;
+    }
+
+    $enabled_tasks_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table_name} WHERE status = 1");
+    return $enabled_tasks_count;
+}
+
+/**
+ * Whether we should warn that WP-Cron is disabled while BotWriter has active tasks.
+ *
+ * @return bool
+ */
+function botwriter_should_show_wp_cron_disabled_warning() {
+    $wp_cron_disabled = defined('DISABLE_WP_CRON') ? (bool) constant('DISABLE_WP_CRON') : false;
+    if (!$wp_cron_disabled) {
+        return false;
+    }
+
+    if (get_option('botwriter_cron_active', '1') !== '1') {
+        return false;
+    }
+
+    return botwriter_get_enabled_tasks_count() > 0;
+}
+
 
 /**
  * SEO Slug Translation
@@ -496,7 +539,7 @@ function botwriter_translate_slugs($title, $tags = '', $language = 'en') {
     $model = botwriter_get_seo_translation_model($provider);
 
     // Route through Cloudflare Worker (no usage count)
-    $text = botwriter_call_worker_nocount($provider, $api_key, $model, $prompt, 200, 0.3);
+    $text = botwriter_call_worker_nocount($provider, $api_key, $model, $prompt, 5000, 0.3);
 
     if (is_wp_error($text)) {
         botwriter_log('SEO Translation API error', ['provider' => $provider, 'error' => $text->get_error_message()], 'error');
@@ -1097,14 +1140,32 @@ function botwriter_generate_seo_meta( $title, $content, $language_code = '' ) {
     $model      = botwriter_get_seo_translation_model( $provider ); // fast & cheap model
 
     // Route through Cloudflare Worker (no usage count)
-    $text = botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, 100, 0.4 );
+    $text = botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, 5000, 0.4 );
 
     if ( is_wp_error( $text ) ) {
         botwriter_log( 'SEO Meta API error', [ 'provider' => $provider, 'error' => $text->get_error_message() ], 'error' );
         return false;
     }
 
-    $meta = botwriter_sanitize_meta_description( $text );
+    $raw_text = (string) $text;
+    botwriter_log( 'SEO Meta raw response', [
+        'provider'                 => $provider,
+        'raw_length_bytes'         => strlen( $raw_text ),
+        'raw_length_chars'         => mb_strlen( $raw_text ),
+        'raw_response'             => $raw_text,
+        'contains_markdown_fence'  => strpos( $raw_text, '```' ) !== false,
+        'contains_html'            => preg_match( '/<[^>]+>/', $raw_text ) === 1,
+        'contains_html_entities'   => preg_match( '/&[A-Za-z0-9#]+;/', $raw_text ) === 1,
+    ] );
+
+    $meta = botwriter_sanitize_meta_description( $raw_text );
+
+    botwriter_log( 'SEO Meta sanitized response', [
+        'provider'            => $provider,
+        'sanitized_length'    => mb_strlen( $meta ),
+        'sanitized_response'  => $meta,
+        'was_modified'        => $meta !== trim( $raw_text, " \t\n\r\0\x0B\"'" ),
+    ] );
 
     botwriter_log( 'SEO Meta generated', [
         'provider' => $provider,

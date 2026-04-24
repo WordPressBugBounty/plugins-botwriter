@@ -1,0 +1,110 @@
+.siterewriter-page-row {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    transition: background 0.15s;
+}
+
+.siterewriter-page-row:hover {
+    background: #f7f7ff;
+}
+
+.siterewriter-page-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    flex-wrap: wrap;
+}
+
+.siterewriter-page-label input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.siterewriter-page-title {
+    font-weight: 600;
+    color: #1d2327;
+    flex: 1 1 250px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.siterewriter-page-url {
+    flex: 1 1 300px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.siterewriter-page-url a {
+    color: #2271b1;
+    text-decoration: none;
+}
+
+.siterewriter-page-url a:hover {
+    text-decoration: underline;
+}
+
+.siterewriter-page-depth {
+    flex-shrink: 0;
+    background: #f0f0f1;
+    color: #666;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.siterewriter-root-url {
+    width: 100%;
+}
+
+.siterewriter-settings-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.siterewriter-max-urls {
+    width: 80px;
+}
+
+.siterewriter-stop-btn {
+    display: none;
+    margin-left: 8px;
+}
+
+.siterewriter-crawl-live {
+    display: none;
+    margin-top: 12px;
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    background: #fafafa;
+}
+
+.siterewriter-step-hidden {
+    display: none;
+}
+
+.siterewriter-select-row {
+    margin-bottom: 10px;
+}
+
+.siterewriter-select-all-label {
+    cursor: pointer;
+}
+
+.siterewriter-selected-count {
+    margin-left: 15px;
+    color: #666;
+}
