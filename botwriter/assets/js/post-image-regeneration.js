@@ -4,7 +4,8 @@
   var state = {
     postId: 0,
     generated: null,
-    providerDisabled: false
+    providerDisabled: false,
+    screen: 'post'
   };
 
   function t(key, fallback) {
@@ -49,6 +50,10 @@
       '.bw-rg-warning{display:none;margin:10px 0;padding:10px 12px;border-radius:10px;background:#fff8db;border:1px solid #ffe6a8;color:#7a5c00;font-size:12px;}' +
       '.bw-rg-error{display:none;margin:10px 0;padding:10px 12px;border-radius:10px;background:#fff0f0;border:1px solid #ffcaca;color:#b42318;font-size:12px;}' +
       '.bw-rg-label{display:block;font-size:12px;color:#475569;font-weight:600;margin:14px 0 6px 0;}' +
+      '.bw-rg-current-wrap{margin-bottom:12px;}' +
+      '.bw-rg-current-box{width:250px;height:250px;border:1px solid #d7e1f0;border-radius:10px;background:#f8fbff;display:flex;align-items:center;justify-content:center;overflow:hidden;}' +
+      '.bw-rg-current-box img{width:100%;height:100%;object-fit:cover;background:#fff;}' +
+      '.bw-rg-current-empty{font-size:12px;color:#64748b;padding:10px;text-align:center;line-height:1.4;}' +
       '#bw-rg-prompt{width:100%;min-height:120px;border:1px solid #d7e1f0;border-radius:10px;padding:11px 12px;font-size:13px;line-height:1.5;resize:vertical;}' +
       '#bw-rg-cleanup{width:100%;border:1px solid #d7e1f0;border-radius:10px;padding:9px 11px;font-size:13px;}' +
       '.bw-rg-progress{display:none;margin-top:14px;border:1px solid #dbe7f9;border-radius:10px;padding:10px 12px;background:#f7fbff;}' +
@@ -97,6 +102,13 @@
       '      </div>' +
       '      <div id="bw-rg-warning" class="bw-rg-warning"></div>' +
       '      <div id="bw-rg-error" class="bw-rg-error"></div>' +
+      '      <div id="bw-rg-current-wrap" class="bw-rg-current-wrap">' +
+      '        <label class="bw-rg-label">' + t('current_image', 'Current featured image') + '</label>' +
+      '        <div class="bw-rg-current-box">' +
+      '          <img id="bw-rg-current-img" src="" alt="Current featured image" style="display:none;" />' +
+      '          <div id="bw-rg-current-empty" class="bw-rg-current-empty">' + t('no_current_image', 'This post has no featured image yet.') + '</div>' +
+      '        </div>' +
+      '      </div>' +
       '      <label class="bw-rg-label" for="bw-rg-prompt">' + t('prompt_label', 'Image Prompt') + '</label>' +
       '      <textarea id="bw-rg-prompt"></textarea>' +
       '      <label class="bw-rg-label" for="bw-rg-cleanup">' + t('cleanup_label', 'Previous featured image') + '</label>' +
@@ -172,12 +184,55 @@
     }
   }
 
+  function setCurrentImage(src) {
+    var cleanSrc = (src || '').trim();
+    if (cleanSrc) {
+      $('#bw-rg-current-img').attr('src', cleanSrc).show();
+      $('#bw-rg-current-empty').hide();
+      return;
+    }
+
+    $('#bw-rg-current-img').attr('src', '').hide();
+    $('#bw-rg-current-empty').show();
+  }
+
   function updateFeaturedImagePreview(newSrc) {
     if (!newSrc) {
       return;
     }
 
     $('#postimagediv img, #set-post-thumbnail img, .editor-post-featured-image img').attr('src', newSrc);
+  }
+
+  function updateLogsImagePreview(newSrc) {
+    if (!newSrc || state.screen !== 'logs' || !state.postId) {
+      return;
+    }
+
+    var selector = '.botwriter-regenerate-image-link[data-post-id="' + state.postId + '"]';
+    $(selector).each(function () {
+      var $link = $(this);
+      var $wrap = $link.closest('.botwriter-log-image-actions');
+      if (!$wrap.length) {
+        return;
+      }
+
+      // Bust cache so the thumbnail refreshes immediately.
+      var bust = (newSrc.indexOf('?') === -1 ? '?' : '&') + 'bwts=' + Date.now();
+      var updatedSrc = newSrc + bust;
+
+      var $img = $wrap.find('img').first();
+      if ($img.length) {
+        $img.attr('src', updatedSrc);
+      } else {
+        $wrap.find('span').first().remove();
+        $('<img>', {
+          src: updatedSrc,
+          alt: 'Post Image',
+          width: 50
+        }).prependTo($wrap);
+      }
+    });
   }
 
   function setEditorFeaturedMedia(attachmentId) {
@@ -192,12 +247,21 @@
     }
   }
 
-  function openModal() {
-    state.postId = getPostId();
+  function openModal(opts) {
+    opts = opts || {};
+    var explicitPostId = parseInt(opts.postId, 10) || 0;
+    state.postId = explicitPostId || getPostId();
     state.generated = null;
     state.providerDisabled = false;
+    state.screen = explicitPostId ? 'logs' : 'post';
+
+    $('#botwriter-regenerate-modal-overlay').css('display', 'flex');
 
     if (!state.postId) {
+      showErrorBox(t('invalid_post', 'No valid published post is linked to this log entry.'));
+      setStatus(t('invalid_post', 'No valid published post is linked to this log entry.'), 'error');
+      setCurrentImage('');
+      setButtonsState({ regenerateDisabled: true, acceptDisabled: true, cancelDisabled: false });
       return;
     }
 
@@ -207,13 +271,12 @@
     $('#bw-rg-prompt').val('');
     $('#bw-rg-provider').text('—');
     $('#bw-rg-model').text('—');
+    setCurrentImage('');
     showErrorBox('');
     showWarningBox('');
     setStatus(t('loading_context', 'Loading data...'), 'info');
     setProgress(false, '');
     setButtonsState({ regenerateDisabled: true, acceptDisabled: true, cancelDisabled: false });
-
-    $('#botwriter-regenerate-modal-overlay').css('display', 'flex');
 
     $.ajax({
       url: cfg.ajax_url,
@@ -236,6 +299,7 @@
       $('#bw-rg-provider').text(data.provider || '—');
       $('#bw-rg-model').text(data.model || '—');
       $('#bw-rg-prompt').val(data.prompt || '');
+      setCurrentImage(data.current_image_src || '');
 
       if (!data.has_prompt) {
         showWarningBox(t('missing_log', 'No BotWriter log with image prompt was found for this post. Please write your prompt manually.'));
@@ -374,7 +438,9 @@
       }
 
       var data = resp.data || {};
-      updateFeaturedImagePreview(data.featured_image_src || state.generated.image_url);
+      var appliedImage = data.featured_image_src || state.generated.image_url;
+      updateFeaturedImagePreview(appliedImage);
+      updateLogsImagePreview(appliedImage);
       setEditorFeaturedMedia(data.attachment_id || 0);
 
       var msg = data.message || 'Featured image regenerated successfully.';
@@ -441,9 +507,10 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
-  $(document).on('click', '.botwriter-regenerate-inline-link', function (e) {
+  $(document).on('click', '.botwriter-regenerate-inline-link, .botwriter-regenerate-image-link', function (e) {
     e.preventDefault();
-    openModal();
+    var postId = parseInt($(this).data('postId') || $(this).attr('data-post-id'), 10) || 0;
+    openModal({ postId: postId });
   });
 
   $(document).on('click', '#bw-rg-regenerate', function () {
@@ -467,7 +534,11 @@
   $(function () {
     ensureStyles();
     ensureModal();
-    ensureRegenerateLink();
-    initLinkWatcher();
+
+    // Only inject the inline Regenerate link automatically inside the post editor.
+    if (getPostId() > 0) {
+      ensureRegenerateLink();
+      initLinkWatcher();
+    }
   });
 })(jQuery);

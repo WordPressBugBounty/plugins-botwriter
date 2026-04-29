@@ -27,7 +27,7 @@ function botwriter_templates_page_handler() {
     // Handle set default action
     if (isset($_GET['action']) && sanitize_text_field(wp_unslash($_GET['action'])) === 'set_default' && isset($_GET['template_id'])) {
         if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'botwriter_set_default_template')) {
-            wp_die(__('Security check failed', 'botwriter'));
+            wp_die(esc_html__('Security check failed', 'botwriter'));
         }
         
         $template_id = intval($_GET['template_id']);
@@ -44,7 +44,7 @@ function botwriter_templates_page_handler() {
     // Handle delete action
     if (isset($_GET['action']) && sanitize_text_field(wp_unslash($_GET['action'])) === 'delete' && isset($_GET['template_id'])) {
         if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? '')), 'botwriter_delete_template')) {
-            wp_die(__('Security check failed', 'botwriter'));
+            wp_die(esc_html__('Security check failed', 'botwriter'));
         }
         
         $template_id = intval($_GET['template_id']);
@@ -61,7 +61,7 @@ function botwriter_templates_page_handler() {
     // Handle save action
     if (isset($_POST['botwriter_save_template']) && isset($_POST['_wpnonce'])) {
         if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'])), 'botwriter_save_template')) {
-            wp_die(__('Security check failed', 'botwriter'));
+            wp_die(esc_html__('Security check failed', 'botwriter'));
         }
         
         $template_data = [

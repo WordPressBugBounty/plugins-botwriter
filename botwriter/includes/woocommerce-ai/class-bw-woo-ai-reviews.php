@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class BW_Woo_AI_Reviews {
+class BotWriter_Woo_AI_Reviews {
 
     /** Option key for review generator settings. */
     const OPTION_KEY = 'bw_woo_ai_review_settings';
@@ -373,7 +373,7 @@ class BW_Woo_AI_Reviews {
      * ----------------------------------------------------------------*/
 
     public function ajax_save_review_settings() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $s = [];
@@ -420,7 +420,7 @@ class BW_Woo_AI_Reviews {
      * ----------------------------------------------------------------*/
 
     public function ajax_generate_reviews() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
@@ -448,14 +448,14 @@ class BW_Woo_AI_Reviews {
         $prompt = $this->build_review_prompt( $product, $settings, $count );
 
         // Call AI
-        $generator = new BW_Woo_AI_Generator();
+        $generator = new BotWriter_Woo_AI_Generator();
         $api_key   = botwriter_get_provider_api_key( $provider );
         if ( empty( $api_key ) ) {
             wp_send_json_error( "No API key configured for provider: {$provider}" );
         }
 
         $ssl_verify = get_option( 'botwriter_sslverify', 'yes' ) === 'yes';
-        $result     = $generator->call_provider( $provider, $api_key, $prompt, 4096, $ssl_verify );
+        $result     = $generator->call_provider( $provider, $api_key, $prompt, 4096, $ssl_verify, 'reviews' );
 
         if ( is_wp_error( $result ) ) {
             wp_send_json_error( $result->get_error_message() );
@@ -489,7 +489,7 @@ class BW_Woo_AI_Reviews {
      * ----------------------------------------------------------------*/
 
     public function ajax_apply_reviews() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
@@ -789,7 +789,7 @@ class BW_Woo_AI_Reviews {
      * ----------------------------------------------------------------*/
 
     public function ajax_delete_ai_reviews() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;

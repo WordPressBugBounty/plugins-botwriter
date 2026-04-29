@@ -3,11 +3,11 @@
 Plugin Name: BotWriter – AI Writer & Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.2.8
+Version: 3.3.0
 Author: estebandezafra
 Requires PHP: 7.0
-License:           GPL v2 or later
-License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+License: GPL v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: botwriter
 Domain Path: /languages
 */
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.2.8');
+    define('BOTWRITER_VERSION', '3.3.0');
 }
 
 // Plugin directory path (with trailing slash)
@@ -41,13 +41,48 @@ if (!defined('BOTWRITER_DEBUG')) {
 }
 
 
+if (!function_exists('botwriter_is_seo_module_enabled')) {
+    function botwriter_is_seo_module_enabled() {
+        return get_option('botwriter_seo_module_enabled', '1') === '1';
+    }
+}
+
+
+/**
+ * Returns absolute filesystem path to the plugin debug log file
+ * (wp-content/uploads/botwriter-debug.log) or false if uploads dir
+ * is not writable.
+ */
+if (!function_exists('botwriter_debug_log_path')) {
+    function botwriter_debug_log_path() {
+        $uploads = wp_upload_dir();
+        if (!empty($uploads['error'])) {
+            return false;
+        }
+        $base = isset($uploads['basedir']) ? $uploads['basedir'] : '';
+        if (!$base) {
+            return false;
+        }
+        return trailingslashit($base) . 'botwriter-debug.log';
+    }
+}
+
+/**
+ * Whether the UI-toggle for debug logging to file is enabled.
+ */
+if (!function_exists('botwriter_debug_log_enabled')) {
+    function botwriter_debug_log_enabled() {
+        return get_option('botwriter_debug_logging', '0') === '1';
+    }
+}
 
 
 if (!function_exists('botwriter_log')) {
     function botwriter_log($message, array $context = []) {
         $botwriter_debug = defined('BOTWRITER_DEBUG') && BOTWRITER_DEBUG === true;
-        $wp_debug_log = defined('WP_DEBUG') && WP_DEBUG === true && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG;
-        if (!$botwriter_debug && !$wp_debug_log) {
+        $wp_debug_log    = defined('WP_DEBUG') && WP_DEBUG === true && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG;
+        $file_log        = botwriter_debug_log_enabled();
+        if (!$botwriter_debug && !$wp_debug_log && !$file_log) {
             return;
         }
 
@@ -72,7 +107,27 @@ if (!function_exists('botwriter_log')) {
             }
         }
 
-        error_log('[BotWriter] ' . $message);
+        $line = '[BotWriter] ' . $message;
+
+        if ($botwriter_debug || $wp_debug_log) {
+            error_log($line);
+        }
+
+        if ($file_log) {
+            $path = botwriter_debug_log_path();
+            if ($path) {
+                // Cap file size at 5 MB by truncating-then-rotating in place.
+                if (file_exists($path) && filesize($path) > 5 * 1024 * 1024) {
+                    @file_put_contents($path, '');
+                }
+                $stamp = gmdate('Y-m-d H:i:s');
+                @file_put_contents(
+                    $path,
+                    '[' . $stamp . ' UTC] ' . $line . "\n",
+                    FILE_APPEND | LOCK_EX
+                );
+            }
+        }
     }
 }
 
@@ -108,6 +163,7 @@ require plugin_dir_path( __FILE__ ) . 'includes/posts.php';
 require plugin_dir_path( __FILE__ ) . 'includes/functions.php';
 require plugin_dir_path( __FILE__ ) . 'includes/settings.php';
 require plugin_dir_path( __FILE__ ) . 'includes/logs.php';
+require plugin_dir_path( __FILE__ ) . 'includes/dedup.php';
 require plugin_dir_path( __FILE__ ) . 'includes/announcements.php';
 require plugin_dir_path( __FILE__ ) . 'includes/super.php';
 require plugin_dir_path( __FILE__ ) . 'includes/addnew.php';
@@ -116,11 +172,14 @@ require plugin_dir_path( __FILE__ ) . 'includes/rewriter.php';
 require plugin_dir_path( __FILE__ ) . 'includes/siterewriter.php';
 require plugin_dir_path( __FILE__ ) . 'includes/templates.php';
 require plugin_dir_path( __FILE__ ) . 'includes/default-templates.php';
+if (botwriter_is_seo_module_enabled()) {
+    require plugin_dir_path( __FILE__ ) . 'includes/seo/seo.php';
+}
 
 // WooCommerce AI Content Optimizer (loads only when WooCommerce is active)
 require plugin_dir_path( __FILE__ ) . 'includes/woocommerce-ai/class-bw-woo-ai.php';
 add_action( 'plugins_loaded', function () {
-    $bw_woo_ai = new BW_Woo_AI();
+    $bw_woo_ai = new BotWriter_Woo_AI();
     $bw_woo_ai->init();
 } );
 
@@ -186,6 +245,39 @@ function botwriter_enqueue_scripts() {
             'confirm_bulk_delete' => __('Are you sure you want to delete the selected log entries? This action cannot be undone.', 'botwriter'),
             'error_delete' => __('Error deleting log. Please try again.', 'botwriter'),
         ));
+
+        // Reuse the featured image regeneration modal inside BotWriter logs.
+        wp_register_script('botwriter_post_image_regeneration', $my_plugin_dir . 'assets/js/post-image-regeneration.js', array('jquery'), BOTWRITER_VERSION, true);
+        wp_enqueue_script('botwriter_post_image_regeneration');
+        wp_localize_script('botwriter_post_image_regeneration', 'botwriter_post_image_regeneration', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('botwriter_regenerate_image_nonce'),
+            'i18n'     => array(
+                'link_text'         => __('Regenerate', 'botwriter'),
+                'modal_title'       => __('BotWriter Image Regeneration', 'botwriter'),
+                'modal_subtitle'    => __('Generate and preview a featured image before applying it.', 'botwriter'),
+                'provider'          => __('Current provider', 'botwriter'),
+                'model'             => __('Current model', 'botwriter'),
+                'prompt_label'      => __('Image Prompt', 'botwriter'),
+                'cleanup_label'     => __('Previous featured image', 'botwriter'),
+                'cleanup_keep'      => __('Keep in media library', 'botwriter'),
+                'cleanup_delete'    => __('Delete permanently (if not used elsewhere)', 'botwriter'),
+                'current_image'     => __('Current featured image', 'botwriter'),
+                'no_current_image'  => __('This post has no featured image yet.', 'botwriter'),
+                'btn_regenerate'    => __('Regenerate', 'botwriter'),
+                'btn_accept'        => __('Accept', 'botwriter'),
+                'btn_close'         => __('Close', 'botwriter'),
+                'loading_context'   => __('Loading data...', 'botwriter'),
+                'generating'        => __('Generating image preview...', 'botwriter'),
+                'applying'          => __('Applying featured image...', 'botwriter'),
+                'missing_log'       => __('No saved image prompt was found for this post. Please write your prompt manually.', 'botwriter'),
+                'provider_none'     => __('Image provider is currently set to "none" in settings. Select an image provider first.', 'botwriter'),
+                'invalid_post'      => __('No valid published post is linked to this log entry.', 'botwriter'),
+                'empty_prompt'      => __('Please enter an image prompt before regenerating.', 'botwriter'),
+                'working'           => __('Regenerating image...', 'botwriter'),
+                'generic_error'     => __('Could not regenerate the image. Please try again.', 'botwriter'),
+            ),
+        ));
     }
 
     																											   
@@ -242,6 +334,24 @@ function botwriter_enqueue_scripts() {
                 'confirm_reset_models' => __('Are you sure you want to reset all model lists to factory defaults?', 'botwriter'),
             )
         ));
+
+        wp_register_script('botwriter_debug_log', $my_plugin_dir . 'assets/js/debug-log.js', array('jquery', 'botwriter_settings'), BOTWRITER_VERSION, true);
+        wp_enqueue_script('botwriter_debug_log');
+        wp_localize_script('botwriter_debug_log', 'botwriter_debug_log', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('botwriter_settings_nonce'),
+            'i18n' => array(
+                'loading' => __('Loading...', 'botwriter'),
+                'size' => __('Size:', 'botwriter'),
+                'showing_last' => __('showing last 512 KB', 'botwriter'),
+                'logging_off' => __('logging is OFF', 'botwriter'),
+                'error' => __('Error.', 'botwriter'),
+                'request_failed' => __('Request failed.', 'botwriter'),
+                'confirm_clear' => __('Clear the debug log file?', 'botwriter'),
+                'clearing' => __('Clearing...', 'botwriter'),
+                'cleared' => __('Log cleared.', 'botwriter'),
+            ),
+        ));
     }
 
     if ($slug === 'botwriter_page_botwriter_write_now') {
@@ -270,6 +380,8 @@ function botwriter_enqueue_scripts() {
                 'cleanup_label'  => __('Previous featured image', 'botwriter'),
                 'cleanup_keep'   => __('Keep in media library', 'botwriter'),
                 'cleanup_delete' => __('Delete permanently (if not used elsewhere)', 'botwriter'),
+                'current_image'  => __('Current featured image', 'botwriter'),
+                'no_current_image' => __('This post has no featured image yet.', 'botwriter'),
                 'btn_regenerate' => __('Regenerate', 'botwriter'),
                 'btn_accept'     => __('Accept', 'botwriter'),
                 'btn_close'      => __('Close', 'botwriter'),
@@ -278,9 +390,71 @@ function botwriter_enqueue_scripts() {
                 'applying'       => __('Applying featured image...', 'botwriter'),
                 'missing_log'    => __('No saved image prompt was found for this post. Please write your prompt manually.', 'botwriter'),
                 'provider_none'  => __('Image provider is currently set to "none" in settings. Select an image provider first.', 'botwriter'),
+                'invalid_post'   => __('No valid published post is linked to this log entry.', 'botwriter'),
                 'empty_prompt' => __('Please enter an image prompt before regenerating.', 'botwriter'),
                 'working'      => __('Regenerating image...', 'botwriter'),
                 'generic_error'=> __('Could not regenerate the image. Please try again.', 'botwriter'),
+            ),
+        ));
+    }
+
+    // Floating AI assistant widget (post editor)
+    if ($screen && $screen->base === 'post' && (string) $screen->post_type === 'post' && current_user_can('edit_posts') && get_option('botwriter_editor_assistant_enabled', '1') === '1') {
+        wp_register_script('botwriter_editor_assistant', $my_plugin_dir . 'assets/js/editor-ai-assistant.js', array('jquery'), BOTWRITER_VERSION, true);
+        wp_enqueue_script('botwriter_editor_assistant');
+        wp_localize_script('botwriter_editor_assistant', 'botwriter_editor_ai', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('botwriter_editor_assistant_nonce'),
+            'robot_image' => $my_plugin_dir . 'assets/images/robot.png',
+            'robot_face_image' => $my_plugin_dir . 'assets/images/robot_face.png',
+            'settings' => array(
+                'skip_heading_links' => '1',
+                'seo_module_enabled' => botwriter_is_seo_module_enabled() ? '1' : '0',
+            ),
+            'i18n' => array(
+                'widget_title' => __('BotWriter Copilot', 'botwriter'),
+                'tab_prompt' => __('Prompt', 'botwriter'),
+                'tab_seo' => __('SEO', 'botwriter'),
+                'intro' => __('Select what to update', 'botwriter'),
+                'seo_intro' => __('Review the current post SEO checks.', 'botwriter'),
+                'seo_subtab_analysis' => __('SEO analysis', 'botwriter'),
+                'seo_subtab_readability' => __('Readability', 'botwriter'),
+                'seo_loading' => __('Loading SEO report...', 'botwriter'),
+                'seo_missing_post' => __('Save the post first to view SEO reports.', 'botwriter'),
+                'seo_error' => __('Could not load SEO report.', 'botwriter'),
+                'seo_empty' => __('No SEO checks available.', 'botwriter'),
+                'target_text' => __('Text', 'botwriter'),
+                'target_title' => __('Title', 'botwriter'),
+                'target_tags' => __('Tags', 'botwriter'),
+                'target_excerpt' => __('Excerpt', 'botwriter'),
+                'target_seo_meta' => __('SEO Meta', 'botwriter'),
+                'target_internal_links' => __('Internal Links', 'botwriter'),
+                'suggestions_title' => __('Suggestions', 'botwriter'),
+                'prompt_placeholder' => __('Describe exactly what you want to improve...', 'botwriter'),
+                'links_prompt_placeholder' => __('What kind of internal links do you want (educational, conversion, cluster, etc.)?', 'botwriter'),
+                'keyphrases_label' => __('Keyphrases (up to 5, comma-separated)', 'botwriter'),
+                'keyphrases_placeholder' => __('e.g. internal linking, seo writing, topic clusters', 'botwriter'),
+                'links_title' => __('Suggested internal links', 'botwriter'),
+                'insert_link' => __('Insert', 'botwriter'),
+                'inserted_link' => __('Inserted', 'botwriter'),
+                'open_link' => __('Open', 'botwriter'),
+                'links_ready' => __('Suggestions are ready. Insert the links you want, then Keep or Undo.', 'botwriter'),
+                'links_mode_ai' => __('AI mode: suggestions ranked by semantic relevance and anchor fit.', 'botwriter'),
+                'links_mode_noai' => __('Deterministic mode: suggestions ranked using taxonomy and keyword overlap (no AI call).', 'botwriter'),
+                'links_empty' => __('No relevant internal links were found yet.', 'botwriter'),
+                'link_inserted' => __('Internal link inserted. Review and choose Keep or Undo.', 'botwriter'),
+                'link_already_exists' => __('This URL is already linked in the content.', 'botwriter'),
+                'same_response_notice' => __('AI returned the same text. No changes were applied.', 'botwriter'),
+                'sending' => __('Thinking', 'botwriter'),
+                'keep' => __('Keep', 'botwriter'),
+                'undo' => __('Undo', 'botwriter'),
+                'confirm_label' => __('Apply this AI change?', 'botwriter'),
+                'missing_prompt' => __('Write a prompt or choose a suggestion first.', 'botwriter'),
+                'generic_error' => __('Could not generate a response. Please try again.', 'botwriter'),
+                'empty_response' => __('The assistant returned an empty response.', 'botwriter'),
+                'updated_notice' => __('Updated. Review and choose Keep or Undo.', 'botwriter'),
+                'reverted_notice' => __('Change reverted.', 'botwriter'),
+                'kept_notice' => __('Change kept. Save or update the post when ready.', 'botwriter'),
             ),
         ));
     }
@@ -624,12 +798,22 @@ function botwriter_get_image_regeneration_context($post_id) {
 
     $has_meta_prompt = in_array($prompt_source, array('meta_ai', 'meta_stock', 'meta_last'), true);
 
+    $current_image_src = '';
+    $current_attachment_id = intval(get_post_thumbnail_id($post_id));
+    if ($current_attachment_id > 0) {
+        $current_image = wp_get_attachment_image_src($current_attachment_id, 'medium_large');
+        if (is_array($current_image) && !empty($current_image[0])) {
+            $current_image_src = esc_url_raw($current_image[0]);
+        }
+    }
+
     botwriter_log('Image regeneration context resolved', array(
         'post_id' => $post_id,
         'provider' => $provider,
         'prompt_source' => $prompt_source,
         'prompt_len' => strlen($prefill_prompt),
         'has_meta_prompt' => $has_meta_prompt,
+        'has_current_image' => ($current_image_src !== ''),
         'has_log' => is_array($latest_log),
         'log_id' => is_array($latest_log) ? intval($latest_log['id'] ?? 0) : 0,
     ));
@@ -644,6 +828,8 @@ function botwriter_get_image_regeneration_context($post_id) {
         'provider' => $provider,
         'model' => (string) ($settings['model'] ?? ''),
         'provider_disabled' => ($provider === 'none'),
+        'current_attachment_id' => $current_attachment_id,
+        'current_image_src' => $current_image_src,
     );
 }
 
@@ -836,6 +1022,7 @@ function botwriter_is_attachment_featured_elsewhere($attachment_id, $exclude_pos
         $params[] = $exclude_post_id;
     }
 
+    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Query is built dynamically and prepared with placeholders for the only user-supplied values.
     $count = $wpdb->get_var($wpdb->prepare($query, $params));
     return intval($count) > 0;
 }
@@ -861,7 +1048,11 @@ function botwriter_register_only_image_log($post_id, $prompt, $image_url, $provi
         'id_task' => 0,
         'id_task_server' => 0,
         'post_status' => $post->post_status ?: 'draft',
-        'task_name' => sprintf(__('Image regeneration for post #%d', 'botwriter'), intval($post_id)),
+        'task_name' => sprintf(
+            /* translators: %d: post ID. */
+            __('Image regeneration for post #%d', 'botwriter'),
+            intval($post_id)
+        ),
         'task_type' => 'only_image',
         'writer' => 'orion',
         'narration' => 'Descriptive',
@@ -946,6 +1137,7 @@ function botwriter_register_only_image_log($post_id, $prompt, $image_url, $provi
     $base['error'] = '';
     $base['last_execution_time'] = current_time('mysql');
     $base['task_name'] = sprintf(
+        /* translators: 1: image provider name, 2: image model name, 3: post ID. */
         __('Only image regeneration (%1$s / %2$s) - Post #%3$d', 'botwriter'),
         $provider,
         $model,
@@ -1068,6 +1260,527 @@ add_action('wp_ajax_botwriter_apply_post_regenerated_image', 'botwriter_apply_po
 // Backward-compatible alias for previous one-step endpoint name.
 add_action('wp_ajax_botwriter_regenerate_post_image', 'botwriter_apply_post_regenerated_image_ajax');
 
+/**
+ * Build an instruction prompt for the post editor assistant.
+ *
+ * @param string $target Selected field target.
+ * @param string $user_prompt User instruction.
+ * @param array  $context Current post context.
+ * @return string
+ */
+function botwriter_build_editor_assistant_prompt($target, $user_prompt, $context) {
+    $rules = array(
+        'text' => 'Return only the improved post body as valid HTML. Do not include title, tags, excerpt, SEO meta, or explanations.',
+        'title' => 'Return only one improved post title as plain text. No quotes, bullets, or commentary.',
+        'tags' => 'Return only a comma-separated list of tags. No hashtags, no numbering, and no extra text.',
+        'excerpt' => 'Return only one short excerpt (max 160 characters) as plain text.',
+        'seo_meta' => 'Return only one SEO meta description (max 160 characters) as plain text.',
+    );
+
+    $context_payload = array(
+        'title' => (string) ($context['title'] ?? ''),
+        'content' => (string) ($context['content'] ?? ''),
+        'tags' => (string) ($context['tags'] ?? ''),
+        'excerpt' => (string) ($context['excerpt'] ?? ''),
+        'seo_meta' => (string) ($context['seo_meta'] ?? ''),
+    );
+
+    $context_json = wp_json_encode($context_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if (!is_string($context_json) || $context_json === '') {
+        $context_json = '{}';
+    }
+
+    $target_rule = isset($rules[$target]) ? $rules[$target] : $rules['text'];
+
+    return "You are BotWriter inline editor assistant for WordPress.\n"
+        . "The user is editing a post right now.\n"
+        . "Selected field: {$target}\n"
+        . "Output format rule: {$target_rule}\n"
+        . "Keep the same language as the source content unless the user asks otherwise.\n"
+        . "Never use markdown code fences.\n\n"
+        . "User instruction:\n{$user_prompt}\n\n"
+        . "Current post context JSON:\n{$context_json}";
+}
+
+/**
+ * Call the Cloudflare Worker for editor assistant generation.
+ *
+ * Uses a dedicated /editor endpoint and falls back to /woo only when the
+ * new endpoint is not available yet.
+ *
+ * @param string $provider Provider key (openai, anthropic, google, etc.).
+ * @param string $api_key Provider API key.
+ * @param string $model Model name.
+ * @param string $prompt Prompt text.
+ * @param int    $max_tokens Max output tokens.
+ * @param float  $temperature Temperature.
+ * @return string|WP_Error
+ */
+function botwriter_call_editor_worker($provider, $api_key, $model, $prompt, $max_tokens = 2048, $temperature = 0.35) {
+    $ssl_verify = get_option('botwriter_sslverify', 'yes') === 'yes';
+
+    $provider_map = array(
+        'google' => 'gemini',
+    );
+    $worker_provider = isset($provider_map[$provider]) ? $provider_map[$provider] : $provider;
+
+    $key_field_map = array(
+        'openai' => 'openai_api_key',
+        'anthropic' => 'anthropic_api_key',
+        'google' => 'google_api_key',
+        'mistral' => 'mistral_api_key',
+        'groq' => 'groq_api_key',
+        'openrouter' => 'openrouter_api_key',
+    );
+
+    $domain = preg_replace('#^https?://#', '', home_url());
+    $domain = rtrim((string) $domain, '/');
+
+    $payload = array(
+        'prompt' => $prompt,
+        'domain' => $domain,
+        'provider' => $worker_provider,
+        'model' => $model,
+        'max_tokens' => intval($max_tokens),
+        'temperature' => floatval($temperature),
+        'site_token' => get_option('botwriter_site_token', ''),
+        // Keep editor assistant out of quota checks for now.
+        'no_count' => true,
+        'assistant' => 'post_editor',
+    );
+
+    if (!empty($api_key) && isset($key_field_map[$provider])) {
+        $payload[$key_field_map[$provider]] = $api_key;
+    }
+
+    $base_url = rtrim(BOTWRITER_API_URL, '/');
+    $endpoints = array(
+        $base_url . '/editor',
+        $base_url . '/woo',
+    );
+
+    $endpoint_total = count($endpoints);
+    foreach ($endpoints as $index => $remote_url) {
+        $response = wp_remote_post($remote_url, array(
+            'timeout' => 90,
+            'sslverify' => $ssl_verify,
+            'headers' => array('Content-Type' => 'application/json'),
+            'body' => wp_json_encode($payload),
+        ));
+
+        if (is_wp_error($response)) {
+            if ($index === $endpoint_total - 1) {
+                return $response;
+            }
+            continue;
+        }
+
+        $http_code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+
+        // If the new route is not deployed yet, retry once with /woo.
+        if ($http_code === 404 && $index === 0) {
+            continue;
+        }
+
+        if (!empty($data['site_token'])) {
+            update_option('botwriter_site_token', sanitize_text_field((string) $data['site_token']));
+        }
+
+        if (!empty($data['warning']) && function_exists('botwriter_announcements_add')) {
+            botwriter_announcements_add(
+                __('Service notice', 'botwriter'),
+                (string) $data['warning']
+            );
+        }
+
+        if ($http_code !== 200 || (isset($data['status']) && $data['status'] === 'error')) {
+            $error_message = '';
+            if (is_array($data)) {
+                $error_message = (string) ($data['error'] ?? $data['message'] ?? '');
+            }
+            if ($error_message === '') {
+                $error_message = "HTTP {$http_code}";
+            }
+            return new WP_Error('editor_worker_error', $error_message);
+        }
+
+        $content = is_array($data) ? (string) ($data['content'] ?? '') : '';
+        if ($content === '') {
+            return new WP_Error('editor_worker_empty', __('AI returned an empty response.', 'botwriter'));
+        }
+
+        return $content;
+    }
+
+    return new WP_Error('editor_worker_unavailable', __('Editor assistant service is currently unavailable.', 'botwriter'));
+}
+
+// SEO module relocated to includes/seo/ — see botwriter_seo_register_admin_menu and botwriter_seo_auto_internal_links_postprocess.
+
+/**
+ * Strip wrapping quotes added by model responses.
+ *
+ * @param string $text Input text.
+ * @return string
+ */
+function botwriter_editor_strip_wrapping_quotes($text) {
+    $text = trim((string) $text);
+
+    for ($i = 0; $i < 3; $i++) {
+        $next = preg_replace("/^[\"'`\\x{201C}\\x{201D}\\x{00AB}\\x{00BB}\\x{2018}\\x{2019}]+|[\"'`\\x{201C}\\x{201D}\\x{00AB}\\x{00BB}\\x{2018}\\x{2019}]+$/u", '', $text);
+        $next = trim((string) $next);
+        if ($next === $text) {
+            break;
+        }
+        $text = $next;
+    }
+
+    return $text;
+}
+
+/**
+ * AJAX: generate post editor assistant output for selected field.
+ */
+function botwriter_editor_assistant_generate_ajax() {
+    if (!current_user_can('edit_posts')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
+    }
+
+    check_ajax_referer('botwriter_editor_assistant_nonce', 'nonce');
+
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    if ($post_id > 0 && !current_user_can('edit_post', $post_id)) {
+        wp_send_json_error(array('message' => __('You cannot edit this post.', 'botwriter')));
+    }
+
+    $allowed_targets = array('text', 'title', 'tags', 'excerpt', 'seo_meta', 'internal_links');
+    $target = isset($_POST['target']) ? sanitize_key(wp_unslash($_POST['target'])) : 'text';
+    if (!in_array($target, $allowed_targets, true)) {
+        $target = 'text';
+    }
+
+    $user_prompt = isset($_POST['prompt']) ? sanitize_textarea_field(wp_unslash($_POST['prompt'])) : '';
+    if ($user_prompt === '') {
+        wp_send_json_error(array('message' => __('Prompt is required.', 'botwriter')));
+    }
+
+    $context = array(
+        'title' => isset($_POST['context_title']) ? sanitize_text_field(wp_unslash($_POST['context_title'])) : '',
+        'content' => isset($_POST['context_content']) ? wp_kses_post(wp_unslash($_POST['context_content'])) : '',
+        'tags' => isset($_POST['context_tags']) ? sanitize_text_field(wp_unslash($_POST['context_tags'])) : '',
+        'excerpt' => isset($_POST['context_excerpt']) ? sanitize_textarea_field(wp_unslash($_POST['context_excerpt'])) : '',
+        'seo_meta' => isset($_POST['context_seo_meta']) ? sanitize_textarea_field(wp_unslash($_POST['context_seo_meta'])) : '',
+    );
+
+    $context_limits = array(
+        'title' => 300,
+        'content' => 30000,
+        'tags' => 1000,
+        'excerpt' => 500,
+        'seo_meta' => 500,
+    );
+    foreach ($context_limits as $field => $max_length) {
+        $value = (string) ($context[$field] ?? '');
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($value) > $max_length) {
+                $context[$field] = mb_substr($value, 0, $max_length);
+            }
+        } elseif (strlen($value) > $max_length) {
+            $context[$field] = substr($value, 0, $max_length);
+        }
+    }
+
+    $keyphrases_raw = isset($_POST['context_keyphrases']) ? sanitize_text_field(wp_unslash($_POST['context_keyphrases'])) : '';
+    $keyphrases = botwriter_editor_parse_keyphrases($keyphrases_raw);
+
+    $provider = sanitize_key((string) get_option('botwriter_text_provider', 'openai'));
+    $model = function_exists('botwriter_get_current_text_model')
+        ? (string) botwriter_get_current_text_model()
+        : (string) get_option('botwriter_openai_model', 'gpt-5.4-mini');
+    $api_key = function_exists('botwriter_get_provider_api_key')
+        ? (string) botwriter_get_provider_api_key($provider)
+        : '';
+
+    // SEO settings tab controls automatic publish post-processing, not the editor widget.
+    $internal_links_ai_enabled = true;
+    $internal_links_noai_enabled = true;
+
+    if ($target === 'internal_links') {
+        $candidates = botwriter_editor_get_internal_link_candidates($post_id, $context, 26);
+        if (empty($candidates)) {
+            wp_send_json_success(array(
+                'target' => $target,
+                'suggestions' => array(),
+                'provider' => $provider,
+                'model' => $model,
+                'candidate_count' => 0,
+                'strategy' => 'no_candidates',
+            ));
+        }
+
+        $use_ai_strategy = $internal_links_ai_enabled && $api_key !== '';
+        if (!$use_ai_strategy) {
+            if (!$internal_links_noai_enabled) {
+                if ($api_key === '') {
+                    wp_send_json_error(array('message' => __('Please configure the API key for your selected text provider, or enable deterministic internal-link mode in SEO settings.', 'botwriter')));
+                }
+
+                wp_send_json_error(array('message' => __('Internal-link generation is disabled. Enable AI mode or deterministic mode in SEO settings.', 'botwriter')));
+            }
+
+            $suggestions = botwriter_editor_build_internal_links_noai_suggestions($candidates, $context, $keyphrases, 8);
+            wp_send_json_success(array(
+                'target' => $target,
+                'suggestions' => $suggestions,
+                'provider' => $provider,
+                'model' => $model,
+                'candidate_count' => count($candidates),
+                'keyphrases' => $keyphrases,
+                'strategy' => 'no_ai',
+            ));
+        }
+
+        $links_prompt = botwriter_build_editor_internal_links_prompt($user_prompt, $context, $keyphrases, $candidates);
+        $generated_links = botwriter_call_editor_worker($provider, $api_key, $model, $links_prompt, 2400, 0.2);
+
+        if (is_wp_error($generated_links)) {
+            $error_message = $generated_links->get_error_message();
+            if ($error_message === '') {
+                $error_message = __('Could not generate internal link suggestions.', 'botwriter');
+            }
+            wp_send_json_error(array('message' => $error_message));
+        }
+
+        $suggestions = botwriter_parse_editor_internal_links_response((string) $generated_links, $candidates);
+
+        wp_send_json_success(array(
+            'target' => $target,
+            'suggestions' => $suggestions,
+            'provider' => $provider,
+            'model' => $model,
+            'candidate_count' => count($candidates),
+            'keyphrases' => $keyphrases,
+            'strategy' => 'ai',
+        ));
+    }
+
+    if ($api_key === '') {
+        wp_send_json_error(array('message' => __('Please configure the API key for your selected text provider in BotWriter settings.', 'botwriter')));
+    }
+
+    $max_tokens = ($target === 'text') ? 4096 : 700;
+    $assistant_prompt = botwriter_build_editor_assistant_prompt($target, $user_prompt, $context);
+    $generated = botwriter_call_editor_worker($provider, $api_key, $model, $assistant_prompt, $max_tokens, 0.35);
+
+    if (is_wp_error($generated)) {
+        $error_message = $generated->get_error_message();
+        if ($error_message === '') {
+            $error_message = __('Could not generate a response.', 'botwriter');
+        }
+        wp_send_json_error(array('message' => $error_message));
+    }
+
+    $content = trim((string) $generated);
+    $content = preg_replace('/^```(?:[a-zA-Z0-9_-]+)?\s*/', '', $content);
+    $content = preg_replace('/\s*```$/', '', $content);
+    $content = trim((string) $content);
+
+    if ($content === '') {
+        wp_send_json_error(array('message' => __('AI returned an empty response.', 'botwriter')));
+    }
+
+    if ($target === 'title') {
+        $content = sanitize_text_field($content);
+        $content = botwriter_editor_strip_wrapping_quotes($content);
+    } elseif ($target === 'tags') {
+        $parts = preg_split('/[\r\n,]+/', $content);
+        $parts = is_array($parts) ? $parts : array();
+        $tags = array();
+        foreach ($parts as $part) {
+            $tag = trim(sanitize_text_field((string) $part));
+            if ($tag !== '') {
+                $tags[] = $tag;
+            }
+        }
+        $tags = array_values(array_unique($tags));
+        $content = implode(', ', $tags);
+    } elseif ($target === 'excerpt' || $target === 'seo_meta') {
+        $content = botwriter_editor_strip_wrapping_quotes($content);
+        if (function_exists('botwriter_sanitize_meta_description')) {
+            $content = botwriter_sanitize_meta_description($content);
+        } else {
+            $content = sanitize_textarea_field($content);
+        }
+    } else {
+        $content = botwriter_editor_strip_wrapping_quotes($content);
+        $content = str_replace(array("\\r\\n", "\\n", "\\r"), "\n", $content);
+        $content = preg_replace('/(\r?\n){3,}/', "\n\n", $content);
+        $content = wp_kses_post($content);
+    }
+
+    wp_send_json_success(array(
+        'target' => $target,
+        'content' => $content,
+        'provider' => $provider,
+        'model' => $model,
+    ));
+}
+add_action('wp_ajax_botwriter_editor_ai_generate', 'botwriter_editor_assistant_generate_ajax');
+
+/**
+ * Render SEO checks for editor widget tab.
+ *
+ * @param array $seo_report SEO report array.
+ * @return string
+ */
+function botwriter_editor_render_seo_checks_html($seo_report) {
+    $seo_report = is_array($seo_report) ? $seo_report : array();
+    $seo_score  = (int) ($seo_report['score'] ?? 0);
+    $seo_grade  = (string) ($seo_report['grade'] ?? 'n/a');
+    $grade_label = function_exists('botwriter_seo_grade_label')
+        ? botwriter_seo_grade_label($seo_grade)
+        : ucfirst($seo_grade);
+
+    $seo_counts = array('good' => 0, 'warn' => 0, 'bad' => 0);
+    foreach ((array) ($seo_report['checks'] ?? array()) as $check) {
+        $status = function_exists('botwriter_seo_check_status')
+            ? botwriter_seo_check_status($check)
+            : (!empty($check['passed']) ? 'good' : 'bad');
+        $seo_counts[$status] = ($seo_counts[$status] ?? 0) + 1;
+    }
+
+    ob_start();
+    ?>
+    <div class="bw-editor-ai-seo-score-box bw-grade-<?php echo esc_attr($seo_grade); ?>">
+        <div class="bw-editor-ai-seo-score-main"><?php echo (int) $seo_score; ?></div>
+        <div class="bw-editor-ai-seo-score-label"><?php echo esc_html($grade_label); ?></div>
+    </div>
+    <div class="bw-summary-row">
+        <span class="bw-pill good"><span class="dashicons dashicons-yes-alt"></span> <?php echo (int) ($seo_counts['good'] ?? 0); ?> <?php esc_html_e('passed', 'botwriter'); ?></span>
+        <span class="bw-pill warn"><span class="dashicons dashicons-warning"></span> <?php echo (int) ($seo_counts['warn'] ?? 0); ?> <?php esc_html_e('to improve', 'botwriter'); ?></span>
+        <span class="bw-pill bad"><span class="dashicons dashicons-dismiss"></span> <?php echo (int) ($seo_counts['bad'] ?? 0); ?> <?php esc_html_e('issues', 'botwriter'); ?></span>
+    </div>
+    <ul class="bw-report-checks">
+        <?php foreach ((array) ($seo_report['checks'] ?? array()) as $check) :
+            $status = function_exists('botwriter_seo_check_status')
+                ? botwriter_seo_check_status($check)
+                : (!empty($check['passed']) ? 'good' : 'bad');
+            $icon = function_exists('botwriter_seo_status_icon')
+                ? botwriter_seo_status_icon($status)
+                : ($status === 'good' ? 'dashicons-yes-alt' : ($status === 'warn' ? 'dashicons-warning' : 'dashicons-dismiss'));
+        ?>
+            <li class="bw-check bw-status-<?php echo esc_attr($status); ?>">
+                <span class="dashicons <?php echo esc_attr($icon); ?> bw-check-icon"></span>
+                <div class="bw-check-body">
+                    <div class="bw-check-label"><?php echo esc_html((string) ($check['label'] ?? '')); ?></div>
+                    <?php if (!empty($check['hint'])) : ?>
+                        <div class="bw-check-hint"><?php echo esc_html((string) $check['hint']); ?></div>
+                    <?php endif; ?>
+                </div>
+                <?php if ((int) ($check['weight'] ?? 0) > 0) : ?>
+                    <span class="bw-weight" title="<?php esc_attr_e('Weight', 'botwriter'); ?>"><?php echo (int) ($check['weight'] ?? 0); ?></span>
+                <?php endif; ?>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php
+    return (string) ob_get_clean();
+}
+
+/**
+ * Render readability checks for editor widget tab.
+ *
+ * @param array $readability_report Readability report array.
+ * @return string
+ */
+function botwriter_editor_render_readability_checks_html($readability_report) {
+    $readability_report = is_array($readability_report) ? $readability_report : array();
+    $read_score  = (int) ($readability_report['score'] ?? 0);
+    $read_grade  = (string) ($readability_report['grade'] ?? 'n/a');
+    $grade_label = function_exists('botwriter_seo_grade_label')
+        ? botwriter_seo_grade_label($read_grade)
+        : ucfirst($read_grade);
+
+    $read_counts = array('good' => 0, 'warn' => 0, 'bad' => 0);
+    foreach ((array) ($readability_report['checks'] ?? array()) as $check) {
+        $status = (string) ($check['status'] ?? 'bad');
+        $read_counts[$status] = ($read_counts[$status] ?? 0) + 1;
+    }
+
+    ob_start();
+    ?>
+    <div class="bw-editor-ai-seo-score-box bw-grade-<?php echo esc_attr($read_grade); ?>">
+        <div class="bw-editor-ai-seo-score-main"><?php echo (int) $read_score; ?></div>
+        <div class="bw-editor-ai-seo-score-label"><?php echo esc_html($grade_label); ?></div>
+    </div>
+    <div class="bw-summary-row">
+        <span class="bw-pill good"><span class="dashicons dashicons-yes-alt"></span> <?php echo (int) ($read_counts['good'] ?? 0); ?> <?php esc_html_e('great', 'botwriter'); ?></span>
+        <span class="bw-pill warn"><span class="dashicons dashicons-warning"></span> <?php echo (int) ($read_counts['warn'] ?? 0); ?> <?php esc_html_e('ok', 'botwriter'); ?></span>
+        <span class="bw-pill bad"><span class="dashicons dashicons-dismiss"></span> <?php echo (int) ($read_counts['bad'] ?? 0); ?> <?php esc_html_e('hard', 'botwriter'); ?></span>
+    </div>
+    <ul class="bw-report-checks">
+        <?php foreach ((array) ($readability_report['checks'] ?? array()) as $check) :
+            $status = (string) ($check['status'] ?? 'bad');
+            $icon = function_exists('botwriter_seo_status_icon')
+                ? botwriter_seo_status_icon($status)
+                : ($status === 'good' ? 'dashicons-yes-alt' : ($status === 'warn' ? 'dashicons-warning' : 'dashicons-dismiss'));
+        ?>
+            <li class="bw-check bw-status-<?php echo esc_attr($status); ?>">
+                <span class="dashicons <?php echo esc_attr($icon); ?> bw-check-icon"></span>
+                <div class="bw-check-body">
+                    <div class="bw-check-label">
+                        <?php echo esc_html((string) ($check['label'] ?? '')); ?>
+                        <?php if (!empty($check['value'])) : ?>
+                            <span class="bw-tag"><?php echo esc_html((string) $check['value']); ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($check['hint'])) : ?>
+                        <div class="bw-check-hint"><?php echo esc_html((string) $check['hint']); ?></div>
+                    <?php endif; ?>
+                </div>
+                <span class="bw-weight" title="<?php esc_attr_e('Weight', 'botwriter'); ?>"><?php echo (int) ($check['weight'] ?? 0); ?></span>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php
+    return (string) ob_get_clean();
+}
+
+/**
+ * AJAX: return SEO and readability report sections for editor widget.
+ */
+function botwriter_editor_assistant_get_seo_report_ajax() {
+    if (!current_user_can('edit_posts')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
+    }
+
+    check_ajax_referer('botwriter_editor_assistant_nonce', 'nonce');
+
+    $post_id = isset($_POST['post_id']) ? absint(wp_unslash($_POST['post_id'])) : 0;
+    if ($post_id <= 0) {
+        wp_send_json_error(array('message' => __('Invalid post.', 'botwriter')));
+    }
+
+    if (!current_user_can('edit_post', $post_id)) {
+        wp_send_json_error(array('message' => __('You cannot edit this post.', 'botwriter')));
+    }
+
+    if (!function_exists('botwriter_seo_compute_score') || !function_exists('botwriter_seo_compute_readability')) {
+        wp_send_json_error(array('message' => __('SEO module is not available.', 'botwriter')));
+    }
+
+    $seo_report = botwriter_seo_compute_score($post_id);
+    $readability_report = botwriter_seo_compute_readability($post_id);
+
+    wp_send_json_success(array(
+        'seo_html' => botwriter_editor_render_seo_checks_html($seo_report),
+        'readability_html' => botwriter_editor_render_readability_checks_html($readability_report),
+    ));
+}
+add_action('wp_ajax_botwriter_editor_ai_get_seo_report', 'botwriter_editor_assistant_get_seo_report_ajax');
+
 
 
 if (!function_exists('deactivate_plugins')) {
@@ -1081,12 +1794,21 @@ function botwriter_enqueue_styles(){
 
     $slug = $screen->id;
 
+    // Keep submenu cleanup styles available across the whole admin so folded flyouts stay filtered too.
+    wp_register_style('botwriter_admin_menu', $my_plugin_dir . 'assets/css/admin-menu.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/admin-menu.css'));
+    wp_enqueue_style('botwriter_admin_menu');
+
     // Welcome banner CSS - load on ALL admin pages if not dismissed
     // (because admin_notices shows on all pages)
     $welcome_dismissed = get_option('botwriter_welcome_dismissed', false);
     if (!$welcome_dismissed) {
         wp_register_style('botwriter_welcome_banner', $my_plugin_dir . 'assets/css/welcome-banner.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/welcome-banner.css'));
         wp_enqueue_style('botwriter_welcome_banner');
+    }
+
+    if ($screen && $screen->base === 'post' && (string) $screen->post_type === 'post' && current_user_can('edit_posts') && get_option('botwriter_editor_assistant_enabled', '1') === '1') {
+        wp_register_style('botwriter_editor_assistant', $my_plugin_dir . 'assets/css/editor-ai-assistant.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/editor-ai-assistant.css'));
+        wp_enqueue_style('botwriter_editor_assistant');
     }
 
     // Only enqueue other styles for BotWriter admin screens
@@ -1105,10 +1827,6 @@ function botwriter_enqueue_styles(){
 
         wp_register_style('botwriter_style', $my_plugin_dir . 'assets/css/style.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/style.css'));
         wp_enqueue_style('botwriter_style');
-
-        // Admin menu styles (hide duplicate submenus)
-        wp_register_style('botwriter_admin_menu', $my_plugin_dir . 'assets/css/admin-menu.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/admin-menu.css'));
-        wp_enqueue_style('botwriter_admin_menu');
 
         // Settings page specific styles
         if (strpos((string)$slug, 'botwriter_settings') !== false) {
@@ -1237,6 +1955,15 @@ add_action('admin_menu', function() {
     );
 });
 
+add_filter('submenu_file', function($submenu_file) {
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only routing parameter used to highlight hidden submenu pages.
+    $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+    if (in_array($page, array('botwriter_rewriter_page', 'botwriter_siterewriter_page'), true)) {
+        return 'botwriter_addnew_page';
+    }
+    return $submenu_file;
+});
+
 // CSS for hiding duplicate submenu entries is now in assets/css/admin-menu.css
 // and enqueued via botwriter_enqueue_styles()
 
@@ -1304,7 +2031,7 @@ function botwriter_admin_page() {
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
                 <h1 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 600;">
-                    <span style="margin-right: 10px;">🤖</span><?php echo esc_html__('BotWriter', 'botwriter'); ?>
+                    <span class="dashicons dashicons-superhero" style="margin-right: 10px; font-size: 28px; width: 28px; height: 28px;"></span><?php echo esc_html__('BotWriter', 'botwriter'); ?>
                 </h1>
                 <p style="margin: 0; font-size: 16px; opacity: 0.95;">
                     <?php echo esc_html__('AI-Powered Content Creation for WordPress', 'botwriter'); ?>
@@ -1314,10 +2041,10 @@ function botwriter_admin_page() {
             <!-- Quick Start Alert -->
             <?php if (!$has_api_key): ?>
             <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px 20px; border-radius: 0 8px 8px 0; margin-bottom: 25px;">
-                <strong style="color: #856404;">⚡ <?php echo esc_html__('Quick Start:', 'botwriter'); ?></strong>
+                <strong style="color: #856404;"><span class="dashicons dashicons-lightbulb" style="font-size: 18px; width: 18px; height: 18px; vertical-align: text-bottom;"></span> <?php echo esc_html__('Quick Start:', 'botwriter'); ?></strong>
                 <span style="color: #856404;">
                     <?php echo esc_html__('Configure your AI provider API key to get started.', 'botwriter'); ?>
-                    <a href="<?php echo esc_url($settings_url); ?>" style="color: #856404; font-weight: 600;"><?php echo esc_html__('Go to Settings →', 'botwriter'); ?></a>
+                    <a href="<?php echo esc_url($settings_url); ?>" style="color: #856404; font-weight: 600;"><?php echo esc_html__('Go to Settings', 'botwriter'); ?> &rarr;</a>
                 </span>
             </div>
             <?php endif; ?>
@@ -1325,7 +2052,7 @@ function botwriter_admin_page() {
             <!-- Description -->
             <div style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
                 <p style="font-size: 15px; line-height: 1.7; color: #444; margin: 0;">
-                    <?php echo esc_html__('BotWriter automates content creation using the latest AI models. Connect your preferred AI provider, configure your content sources, and let BotWriter generate SEO-optimized articles with AI-generated images—completely hands-free.', 'botwriter'); ?>
+                    <?php echo esc_html__('BotWriter automates content creation using the latest AI models. Connect your preferred AI provider, configure your content sources, and let BotWriter generate SEO-optimized articles with AI-generated images, completely hands-free.', 'botwriter'); ?>
                 </p>
             </div>
 
@@ -1334,7 +2061,7 @@ function botwriter_admin_page() {
                 
                 <!-- Text AI Card -->
                 <div style="background: white; padding: 22px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <div style="font-size: 24px; margin-bottom: 12px;">✍️</div>
+                    <div style="margin-bottom: 12px;"><span class="dashicons dashicons-edit" style="font-size: 24px; width: 24px; height: 24px;"></span></div>
                     <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;"><?php echo esc_html__('Multi-Provider Text AI', 'botwriter'); ?></h3>
                     <p style="margin: 0; color: #666; font-size: 13px; line-height: 1.6;">
                         <?php echo esc_html__('Choose from OpenAI (GPT-4o), Anthropic (Claude), Google (Gemini), Mistral, Groq, or OpenRouter. Use your own API keys.', 'botwriter'); ?>
@@ -1343,7 +2070,7 @@ function botwriter_admin_page() {
 
                 <!-- Image AI Card -->
                 <div style="background: white; padding: 22px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <div style="font-size: 24px; margin-bottom: 12px;">🎨</div>
+                    <div style="margin-bottom: 12px;"><span class="dashicons dashicons-format-image" style="font-size: 24px; width: 24px; height: 24px;"></span></div>
                     <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;"><?php echo esc_html__('AI Image Generation', 'botwriter'); ?></h3>
                     <p style="margin: 0; color: #666; font-size: 13px; line-height: 1.6;">
                         <?php echo esc_html__('Generate featured images with DALL-E, Stable Diffusion, Flux, Recraft, and more via Replicate, Stability AI, or Fal.ai.', 'botwriter'); ?>
@@ -1352,7 +2079,7 @@ function botwriter_admin_page() {
 
                 <!-- Content Sources Card -->
                 <div style="background: white; padding: 22px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <div style="font-size: 24px; margin-bottom: 12px;">📡</div>
+                    <div style="margin-bottom: 12px;"><span class="dashicons dashicons-rss" style="font-size: 24px; width: 24px; height: 24px;"></span></div>
                     <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;"><?php echo esc_html__('Multiple Content Sources', 'botwriter'); ?></h3>
                     <p style="margin: 0; color: #666; font-size: 13px; line-height: 1.6;">
                         <?php echo esc_html__('Import and rewrite content from any WordPress site, RSS feed, or news API. Prevent duplicates automatically.', 'botwriter'); ?>
@@ -1361,7 +2088,7 @@ function botwriter_admin_page() {
 
                 <!-- Automation Card -->
                 <div style="background: white; padding: 22px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <div style="font-size: 24px; margin-bottom: 12px;">⚙️</div>
+                    <div style="margin-bottom: 12px;"><span class="dashicons dashicons-admin-generic" style="font-size: 24px; width: 24px; height: 24px;"></span></div>
                     <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;"><?php echo esc_html__('Full Automation', 'botwriter'); ?></h3>
                     <p style="margin: 0; color: #666; font-size: 13px; line-height: 1.6;">
                         <?php echo esc_html__('Schedule unlimited tasks, set publishing frequency, and let BotWriter work 24/7. Monitor everything from the Logs.', 'botwriter'); ?>
@@ -1373,20 +2100,20 @@ function botwriter_admin_page() {
             <!-- Getting Started Steps -->
             <div style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
                 <h2 style="margin: 0 0 20px 0; font-size: 18px; color: #333;">
-                    🚀 <?php echo esc_html__('Getting Started', 'botwriter'); ?>
+                    <span class="dashicons dashicons-controls-play" style="font-size: 20px; width: 20px; height: 20px; vertical-align: text-bottom;"></span> <?php echo esc_html__('Getting Started', 'botwriter'); ?>
                 </h2>
                 
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     
                     <div style="display: flex; align-items: flex-start; gap: 15px;">
                         <div style="background: <?php echo $has_api_key ? '#28a745' : '#667eea'; ?>; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0;">
-                            <?php echo $has_api_key ? '✓' : '1'; ?>
+                            <?php echo $has_api_key ? '&#10003;' : '1'; ?>
                         </div>
                         <div>
                             <strong style="color: #333;"><?php echo esc_html__('Configure your AI Provider', 'botwriter'); ?></strong>
                             <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">
                                 <?php echo esc_html__('Add your API key from OpenAI, Anthropic (Claude), Google (Gemini), Mistral, Groq, or OpenRouter.', 'botwriter'); ?>
-                                <a href="<?php echo esc_url($settings_url); ?>"><?php echo esc_html__('Settings →', 'botwriter'); ?></a>
+                                <a href="<?php echo esc_url($settings_url); ?>"><?php echo esc_html__('Settings', 'botwriter'); ?> &rarr;</a>
                             </p>
                         </div>
                     </div>
@@ -1397,7 +2124,7 @@ function botwriter_admin_page() {
                             <strong style="color: #333;"><?php echo esc_html__('Create Your First Task', 'botwriter'); ?></strong>
                             <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">
                                 <?php echo esc_html__('Define your content source, AI prompts, categories, and publishing schedule.', 'botwriter'); ?>
-                                <a href="<?php echo esc_url($addnew_url); ?>"><?php echo esc_html__('Add New →', 'botwriter'); ?></a>
+                                <a href="<?php echo esc_url($addnew_url); ?>"><?php echo esc_html__('Add New', 'botwriter'); ?> &rarr;</a>
                             </p>
                         </div>
                     </div>
@@ -1408,7 +2135,7 @@ function botwriter_admin_page() {
                             <strong style="color: #333;"><?php echo esc_html__('Activate and Monitor', 'botwriter'); ?></strong>
                             <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">
                                 <?php echo esc_html__('Enable your tasks and watch BotWriter generate posts automatically. Check the Logs for status updates.', 'botwriter'); ?>
-                                <a href="<?php echo esc_url($logs_url); ?>"><?php echo esc_html__('Logs →', 'botwriter'); ?></a>
+                                <a href="<?php echo esc_url($logs_url); ?>"><?php echo esc_html__('Logs', 'botwriter'); ?> &rarr;</a>
                             </p>
                         </div>
                     </div>
@@ -1419,35 +2146,35 @@ function botwriter_admin_page() {
             <!-- Quick Links -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
                 <a href="<?php echo esc_url($settings_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
-                    <div style="font-size: 20px; margin-bottom: 6px;">⚙️</div>
+                    <div style="margin-bottom: 6px;"><span class="dashicons dashicons-admin-generic" style="font-size: 20px; width: 20px; height: 20px;"></span></div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Settings', 'botwriter'); ?></div>
                 </a>
                 <a href="<?php echo esc_url($addnew_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
-                    <div style="font-size: 20px; margin-bottom: 6px;">➕</div>
+                    <div style="margin-bottom: 6px;"><span class="dashicons dashicons-plus-alt2" style="font-size: 20px; width: 20px; height: 20px;"></span></div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Add New', 'botwriter'); ?></div>
                 </a>
                 <a href="<?php echo esc_url($tasks_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
-                    <div style="font-size: 20px; margin-bottom: 6px;">📋</div>
+                    <div style="margin-bottom: 6px;"><span class="dashicons dashicons-list-view" style="font-size: 20px; width: 20px; height: 20px;"></span></div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Tasks', 'botwriter'); ?></div>
                 </a>
                 <a href="<?php echo esc_url($logs_url); ?>" class="botwriter-quick-link" style="background: white; padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
-                    <div style="font-size: 20px; margin-bottom: 6px;">📊</div>
+                    <div style="margin-bottom: 6px;"><span class="dashicons dashicons-chart-bar" style="font-size: 20px; width: 20px; height: 20px;"></span></div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Logs', 'botwriter'); ?></div>
                 </a>
                 <a href="https://wpbotwriter.com/faq-frequently-asked-questions/" target="_blank" class="botwriter-quick-link botwriter-quick-link-highlight" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: white; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: transform 0.2s, box-shadow 0.2s;">
-                    <div style="font-size: 20px; margin-bottom: 6px;">❓</div>
+                    <div style="margin-bottom: 6px;"><span class="dashicons dashicons-editor-help" style="font-size: 20px; width: 20px; height: 20px;"></span></div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Help & FAQ', 'botwriter'); ?></div>
                 </a>
             </div>
 
             <!-- Footer -->
             <div style="text-align: center; margin-top: 30px; padding: 15px; color: #888; font-size: 12px;">
-                <?php echo esc_html__('BotWriter', 'botwriter'); ?> v<?php echo esc_html(BOTWRITER_VERSION); ?> — 100% Free
+                <?php echo esc_html__('BotWriter', 'botwriter'); ?> v<?php echo esc_html(BOTWRITER_VERSION); ?> &mdash; 100% Free
                 <br>
                 <a href="https://www.wpbotwriter.com" target="_blank" style="color: #667eea; text-decoration: none;"><?php echo esc_html__('Website', 'botwriter'); ?></a>
-                &nbsp;•&nbsp;
+                &nbsp;&bull;&nbsp;
                 <a href="https://www.wpbotwriter.com/faq.html" target="_blank" style="color: #667eea; text-decoration: none;">FAQ</a>
-                &nbsp;•&nbsp;
+                &nbsp;&bull;&nbsp;
                 <a href="https://wordpress.org/support/plugin/botwriter/" target="_blank" style="color: #667eea; text-decoration: none;"><?php echo esc_html__('Support', 'botwriter'); ?></a>
             </div>
 
@@ -2260,6 +2987,7 @@ class botwriter_tasks_Table extends WP_List_Table
 
         function column_task_name($item){
             $slug='botwriter_automatic_post_new';
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page slug used to build edit links.
             $page = isset($_REQUEST['page']) ? sanitize_text_field(wp_unslash($_REQUEST['page'])) : '';
 
             if ($item["website_type"] == 'super2') {
@@ -2360,15 +3088,17 @@ class botwriter_tasks_Table extends WP_List_Table
          
         global $wpdb;
 
-        $table = $wpdb->prefix . 'botwriter_tasks';
+        $table = esc_sql($wpdb->prefix . 'botwriter_tasks');
 
         if ('delete_all' === $this->current_action() || ('delete' === $this->current_action() && isset($_REQUEST['id']))) {
-            $request_id = isset($_REQUEST['id']) ? array_map('absint', (array) $_REQUEST['id']) : array();
+            $request_id = isset($_REQUEST['id']) ? array_map('absint', (array) wp_unslash($_REQUEST['id'])) : array();
 
             if (!empty($request_id)) {
                 // Prepare the DELETE query with proper escaping
                 $placeholders = implode(',', array_fill(0, count($request_id), '%d'));
-                $wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE id IN({$placeholders})", $request_id));
+                $query = $wpdb->prepare("DELETE FROM {$table} WHERE id IN({$placeholders})", $request_id);
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is generated internally and placeholders are prepared from sanitized IDs.
+                $wpdb->query($query);
             }
         }
     }
@@ -2379,29 +3109,27 @@ class botwriter_tasks_Table extends WP_List_Table
       private function get_table_data( $search = '' ) {
         global $wpdb;
     
-        $table = $wpdb->prefix."botwriter_tasks";
+        $table = esc_sql($wpdb->prefix . 'botwriter_tasks');
         
     
                 if ( ! empty( $search ) ) {
             $prepared_search = $wpdb->esc_like( $search );
             $prepared_search = '%' . $wpdb->esc_like( $search ) . '%';
     
-            return $wpdb->get_results(
-                $wpdb->prepare(
-                                        "SELECT * FROM {$table} WHERE name LIKE %s AND (task_type IS NULL OR task_type <> %s)",
-                                        $prepared_search,
-                                        'writenow'
-                ),
-                ARRAY_A
+            $query = $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE name LIKE %s AND (task_type IS NULL OR task_type <> %s)",
+                $prepared_search,
+                'writenow'
             );
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is generated internally and escaped for identifier use.
+            return $wpdb->get_results($query, ARRAY_A);
                 } else {         
-                    return $wpdb->get_results(
-                        $wpdb->prepare(
-                            "SELECT * FROM {$table} WHERE (task_type IS NULL OR task_type <> %s)",
-                            'writenow'
-                        ),
-                        ARRAY_A
-                    );                            
+                    $query = $wpdb->prepare(
+                        "SELECT * FROM {$table} WHERE (task_type IS NULL OR task_type <> %s)",
+                        'writenow'
+                    );
+                    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is generated internally and escaped for identifier use.
+                    return $wpdb->get_results($query, ARRAY_A);                            
         }
     }
     
@@ -2453,10 +3181,12 @@ class botwriter_tasks_Table extends WP_List_Table
       function usort_reorder($a, $b)
       { 
           // If no sort, default to task_name          
+          // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only sort param for list table.
           $sanitized_orderby = isset($_GET['orderby']) ? sanitize_text_field(wp_unslash($_GET['orderby'])) : '';
 
           $orderby = (!empty($sanitized_orderby)) ? $sanitized_orderby : 'task_name';
   
+          // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only sort param for list table.
           $order = isset($_GET['order']) ? sanitize_text_field(wp_unslash($_GET['order'])) : 'asc';
 
           // filtrar order solo asd o desc
@@ -2818,6 +3548,7 @@ function botwriter_execute_events_pass2(){
     
     // check if the task is still in queue or finished
     global $wpdb;    
+    $table_name_tasks = $wpdb->prefix . 'botwriter_tasks';
     $table_name_logs = $wpdb->prefix . 'botwriter_logs';
     // INQUEUE
     $events2 = (array) $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table_name_logs} WHERE task_status=%s", 'inqueue'));    
@@ -2856,18 +3587,77 @@ function botwriter_execute_events_pass2(){
 
     //IN ERROR, depending on the attempt, it is resent later or marked as finished
     // Exclude 'writenow' tasks from automatic retries - they should only be retried manually
-    $events1 = (array) $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table_name_logs} WHERE task_status=%s AND intentosfase1 < %d AND (task_type IS NULL OR task_type <> 'writenow')", 'error', 8));
-    botwriter_log('Phase 1 retries fetched', ['error_count' => count($events1)]);
+    $events1 = (array) $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT l.*, t.id AS task_exists, t.status AS task_enabled
+               FROM {$table_name_logs} l
+          LEFT JOIN {$table_name_tasks} t ON t.id = l.id_task
+              WHERE l.task_status = %s
+                AND l.intentosfase1 < %d
+                AND (l.task_type IS NULL OR l.task_type <> 'writenow')",
+            'error',
+            8
+        ),
+        ARRAY_A
+    );
+
+    $retryable_events = array();
+    $closed_missing_task = 0;
+    $closed_disabled_task = 0;
+
+    foreach ($events1 as $event_row) {
+        $event_row = (array) $event_row;
+        $task_exists = !empty($event_row['task_exists']);
+        $task_enabled = isset($event_row['task_enabled']) ? (int) $event_row['task_enabled'] : 0;
+
+        if (!$task_exists || $task_enabled !== 1) {
+            $reason = !$task_exists
+                ? 'Retry stopped: linked task was deleted'
+                : 'Retry stopped: linked task is disabled';
+
+            $prev_error = isset($event_row['error']) ? trim((string) $event_row['error']) : '';
+            $new_error = $prev_error !== '' ? ($prev_error . ' | ' . $reason) : $reason;
+
+            $wpdb->update(
+                $table_name_logs,
+                array(
+                    'intentosfase1' => 8,
+                    'error' => $new_error,
+                ),
+                array('id' => (int) $event_row['id'])
+            );
+
+            if (!$task_exists) {
+                $closed_missing_task++;
+            } else {
+                $closed_disabled_task++;
+            }
+            continue;
+        }
+
+        $retryable_events[] = $event_row;
+    }
+
+    botwriter_log('Phase 1 retries fetched', [
+        'error_count' => count($retryable_events),
+        'closed_missing_task' => $closed_missing_task,
+        'closed_disabled_task' => $closed_disabled_task,
+    ]);
+
     $intento_tiempo = array(0=>0,1=>0,2=>5,3=>10,4=>30,5=>60,6=>120,7=>240,8=>480); // minutos    
-    foreach ($events1 as $event) {
+    foreach ($retryable_events as $event) {
         $event = (array) $event;
         // Execute the event if the time has passed 
         $intentosfase1 = $event["intentosfase1"];
         $tiempo = $intento_tiempo[$intentosfase1+1];
-        $created_at = strtotime($event["created_at"]);        
+        $retry_reference = !empty($event['last_execution_time']) ? $event['last_execution_time'] : $event['created_at'];
+        $retry_reference_ts = strtotime($retry_reference);
+        if ($retry_reference_ts === false) {
+            $retry_reference_ts = strtotime($event['created_at']);
+        }
         $now = current_time('timestamp');
 
-        $diff = $now - $created_at;       
+        $diff = $now - $retry_reference_ts;       
         if ($diff > $tiempo * 60) {        
             botwriter_log('Retrying phase 1 request', [
                 'log_id' => $event['id'],
@@ -2998,18 +3788,57 @@ function botwriter_generate_post($data){
         ]);
     }
 
-    // Generate SEO meta description using AI (unless disabled)
-    if ( function_exists( 'botwriter_generate_seo_meta' ) && get_option( 'botwriter_meta_disabled', '0' ) !== '1' ) {
+    // Automatic SEO post-processing: insert internal links directly on publish.
+    $seo_internal_links_result = array(
+        'updated' => false,
+        'inserted' => 0,
+        'strategy' => 'disabled',
+    );
+    if (function_exists('botwriter_seo_auto_internal_links_postprocess')) {
+        $seo_publish_context = array(
+            'title' => (string) ($data['aigenerated_title'] ?? ''),
+            'content' => (string) get_post_field('post_content', $post_id),
+            'tags' => (string) ($data['aigenerated_tags'] ?? ''),
+            'excerpt' => (string) get_post_field('post_excerpt', $post_id),
+        );
+
+        botwriter_log('SEO publish post-processing start', array(
+            'post_id' => $post_id,
+            'title_len' => strlen((string) $seo_publish_context['title']),
+            'content_len' => strlen((string) $seo_publish_context['content']),
+            'tags_len' => strlen((string) $seo_publish_context['tags']),
+            'excerpt_len' => strlen((string) $seo_publish_context['excerpt']),
+            'content_preview' => botwriter_seo_debug_preview((string) $seo_publish_context['content'], 360),
+        ));
+
+        $seo_internal_links_result = botwriter_seo_auto_internal_links_postprocess($post_id, array(
+            'title' => (string) $seo_publish_context['title'],
+            'content' => (string) $seo_publish_context['content'],
+            'tags' => (string) $seo_publish_context['tags'],
+            'excerpt' => (string) $seo_publish_context['excerpt'],
+        ));
+    }
+
+    // Generate SEO meta description using AI (if enabled in SEO settings)
+    if ( function_exists( 'botwriter_generate_seo_meta' ) && function_exists( 'botwriter_is_seo_ai_meta_enabled' ) && botwriter_is_seo_ai_meta_enabled() ) {
         $post_language = $data['post_language'] ?? '';
+        $meta_source_content = (string) get_post_field('post_content', $post_id);
         $meta_description = botwriter_generate_seo_meta(
             $data['aigenerated_title'],
-            $data['aigenerated_content'],
+            $meta_source_content,
             $post_language
         );
         if ( $meta_description ) {
             botwriter_apply_seo_meta( $post_id, $meta_description );
         }
     }
+
+    botwriter_log('SEO publish post-processing summary', array(
+        'post_id' => $post_id,
+        'internal_links_strategy' => (string) ($seo_internal_links_result['strategy'] ?? 'unknown'),
+        'internal_links_inserted' => intval($seo_internal_links_result['inserted'] ?? 0),
+        'internal_links_updated' => !empty($seo_internal_links_result['updated']) ? 1 : 0,
+    ));
 
     // Persist image prompt in post meta so regeneration never depends on logs.
     $saved_image_prompt = botwriter_resolve_image_prompt_from_post_data($data);
@@ -3188,6 +4017,13 @@ function botwriter_send1_data_to_server($data) {
         $data['link_post_original'] = $rss_result['link_original'];
         $data['source_prefetched']  = '1';
 
+        // Reserve the source link in the log row BEFORE the phase 1 dispatch.
+        // This protects against a second cron tick picking the same article
+        // while this dispatch is still in flight (HTTP latency, retries, etc.).
+        if ( ! empty( $data['id'] ) ) {
+            botwriter_logs_register( $data, $data['id'] );
+        }
+
         botwriter_log('Client RSS article ready', [
             'log_id'       => $data['id'] ?? null,
             'task_id'      => $data['id_task'] ?? null,
@@ -3222,6 +4058,12 @@ function botwriter_send1_data_to_server($data) {
         $data['source_content']     = $wp_result['source_content'];
         $data['link_post_original'] = $wp_result['link_original'];
         $data['source_prefetched']  = '1';
+
+        // Reserve the source link in the log row BEFORE the phase 1 dispatch
+        // (see RSS branch above for rationale).
+        if ( ! empty( $data['id'] ) ) {
+            botwriter_logs_register( $data, $data['id'] );
+        }
 
         botwriter_log('Client WordPress article ready', [
             'log_id'       => $data['id'] ?? null,
@@ -3733,10 +4575,17 @@ function botwriter_bulk_delete_logs_ajax() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'botwriter_logs';
     $placeholders = implode(',', array_fill(0, count($log_ids), '%d'));
-    $deleted = $wpdb->query($wpdb->prepare("DELETE FROM $table_name WHERE id IN ($placeholders)", $log_ids));
+    $table_name = esc_sql($table_name);
+    $query = $wpdb->prepare("DELETE FROM {$table_name} WHERE id IN ({$placeholders})", $log_ids);
+    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is generated internally and placeholders are prepared from sanitized IDs.
+    $deleted = $wpdb->query($query);
 
     if ($deleted !== false) {
-        wp_send_json_success(['message' => sprintf(__('%d log(s) deleted successfully', 'botwriter'), $deleted)]);
+        wp_send_json_success(['message' => sprintf(
+            /* translators: %d: number of deleted log entries. */
+            __('%d log(s) deleted successfully', 'botwriter'),
+            $deleted
+        )]);
     } else {
         wp_send_json_error(['message' => __('Error deleting logs', 'botwriter')]);
     }
@@ -3907,7 +4756,11 @@ function botwriter_attach_image_to_post($post_id, $image_url, $post_title, $tran
                             $source
                         );
                     } elseif ($source) {
-                        $caption = sprintf(esc_html__('Photo from %s', 'botwriter'), $source);
+                        $caption = sprintf(
+                            /* translators: %s: image source name. */
+                            esc_html__('Photo from %s', 'botwriter'),
+                            $source
+                        );
                     }
 
                     if ($caption && $attribution_mode === 'caption') {
@@ -4310,7 +5163,7 @@ function botwriter_create_super1_callback() {
     $title_prompt = $prompt;
     
     if ($prompt=="Custom") {
-        $content_prompt = sanitize_text_field(wp_unslash($_POST['custom_prompt']));
+        $content_prompt = isset($_POST['custom_prompt']) ? sanitize_text_field(wp_unslash($_POST['custom_prompt'])) : '';
     } else {
         $info_blog = botwriter_get_info_blog();
         $json_info_blog = json_encode($info_blog, JSON_PRETTY_PRINT);
@@ -4365,7 +5218,7 @@ function botwriter_create_super1_manual_callback() {
     
     check_ajax_referer('botwriter_super_nonce');
     
-    if (!isset($_POST['manual_titles']) || empty(trim(wp_unslash($_POST['manual_titles'])))) {
+    if (!isset($_POST['manual_titles']) || empty(trim(wp_unslash($_POST['manual_titles'])))) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Only emptiness check; sanitized below before use.
         wp_send_json_error('No titles provided.');
         wp_die();
     }
@@ -4461,7 +5314,7 @@ function botwriter_rewriter_fetch_ajax() {
         wp_send_json_error(__('Permission denied.', 'botwriter'));
     }
 
-    $urls = isset($_POST['urls']) ? array_map('esc_url_raw', $_POST['urls']) : array();
+    $urls = isset($_POST['urls']) ? array_map('esc_url_raw', (array) wp_unslash($_POST['urls'])) : array();
 
     if (empty($urls)) {
         wp_send_json_error(__('No URLs provided.', 'botwriter'));
@@ -4512,9 +5365,10 @@ function botwriter_rewriter_create_task_ajax() {
     }
 
     // wp_unslash only — sanitize_text_field corrupts JSON (strips tags/newlines)
+    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON is decoded first; each title/content field is sanitized below before use.
     $articles_json  = isset($_POST['articles']) ? wp_unslash($_POST['articles']) : '';
     $rewrite_prompt = isset($_POST['rewrite_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['rewrite_prompt'])) : '';
-    $category_id    = isset($_POST['category_id']) ? intval($_POST['category_id']) : 0;
+    $category_id    = isset($_POST['category_id']) ? absint(wp_unslash($_POST['category_id'])) : 0;
 
     // Task properties from Step 3 form
     $post_status       = isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft';
@@ -4522,10 +5376,10 @@ function botwriter_rewriter_create_task_ajax() {
     $author_selection  = isset($_POST['author_selection']) ? sanitize_text_field(wp_unslash($_POST['author_selection'])) : strval(get_current_user_id());
     $post_length       = isset($_POST['post_length']) ? sanitize_text_field(wp_unslash($_POST['post_length'])) : '800';
     $custom_post_length = isset($_POST['custom_post_length']) ? sanitize_text_field(wp_unslash($_POST['custom_post_length'])) : '';
-    $template_id       = isset($_POST['template_id']) && !empty($_POST['template_id']) ? intval($_POST['template_id']) : null;
-    $disable_ai_images = isset($_POST['disable_ai_images']) ? intval($_POST['disable_ai_images']) : 0;
+    $template_id       = isset($_POST['template_id']) && !empty($_POST['template_id']) ? absint(wp_unslash($_POST['template_id'])) : null;
+    $disable_ai_images = isset($_POST['disable_ai_images']) ? absint(wp_unslash($_POST['disable_ai_images'])) : 0;
     $days              = isset($_POST['days']) ? sanitize_text_field(wp_unslash($_POST['days'])) : 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
-    $times_per_day     = isset($_POST['times_per_day']) ? intval($_POST['times_per_day']) : 1;
+    $times_per_day     = isset($_POST['times_per_day']) ? absint(wp_unslash($_POST['times_per_day'])) : 1;
     $task_name_custom  = isset($_POST['task_name']) ? sanitize_text_field(wp_unslash($_POST['task_name'])) : '';
 
     // Validate post_status
@@ -4673,9 +5527,10 @@ function botwriter_siterewriter_fetch_ajax() {
         wp_send_json_error(__('Permission denied.', 'botwriter'));
     }
 
+    // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Long-running image batch operation; safe inside an admin AJAX handler.
     @set_time_limit(0);
 
-    $urls = isset($_POST['urls']) ? array_map('esc_url_raw', $_POST['urls']) : array();
+    $urls = isset($_POST['urls']) ? array_map('esc_url_raw', (array) wp_unslash($_POST['urls'])) : array();
 
     if (empty($urls)) {
         wp_send_json_error(__('No URLs provided.', 'botwriter'));
@@ -4716,19 +5571,20 @@ function botwriter_siterewriter_create_task_ajax() {
         wp_send_json_error(__('Permission denied.', 'botwriter'));
     }
 
+    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON is decoded first; each title/content field is sanitized below before use.
     $articles_json  = isset($_POST['articles'])       ? wp_unslash($_POST['articles'])                             : '';
     $rewrite_prompt = isset($_POST['rewrite_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['rewrite_prompt'])) : '';
-    $category_id    = isset($_POST['category_id'])    ? intval($_POST['category_id'])                               : 0;
+    $category_id    = isset($_POST['category_id'])    ? absint(wp_unslash($_POST['category_id']))                   : 0;
 
     $post_status        = isset($_POST['post_status'])       ? sanitize_text_field(wp_unslash($_POST['post_status']))       : 'draft';
     $post_language      = isset($_POST['post_language'])     ? sanitize_text_field(wp_unslash($_POST['post_language']))     : substr(get_locale(), 0, 2);
     $author_selection   = isset($_POST['author_selection'])  ? sanitize_text_field(wp_unslash($_POST['author_selection']))  : strval(get_current_user_id());
     $post_length        = isset($_POST['post_length'])       ? sanitize_text_field(wp_unslash($_POST['post_length']))       : '800';
     $custom_post_length = isset($_POST['custom_post_length'])? sanitize_text_field(wp_unslash($_POST['custom_post_length'])): '';
-    $template_id        = isset($_POST['template_id']) && !empty($_POST['template_id']) ? intval($_POST['template_id']) : null;
-    $disable_ai_images  = isset($_POST['disable_ai_images']) ? intval($_POST['disable_ai_images'])                          : 0;
+    $template_id        = isset($_POST['template_id']) && !empty($_POST['template_id']) ? absint(wp_unslash($_POST['template_id'])) : null;
+    $disable_ai_images  = isset($_POST['disable_ai_images']) ? absint(wp_unslash($_POST['disable_ai_images']))                  : 0;
     $days               = isset($_POST['days'])              ? sanitize_text_field(wp_unslash($_POST['days']))              : 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
-    $times_per_day      = isset($_POST['times_per_day'])     ? intval($_POST['times_per_day'])                              : 1;
+    $times_per_day      = isset($_POST['times_per_day'])     ? absint(wp_unslash($_POST['times_per_day']))                  : 1;
     $task_name_custom   = isset($_POST['task_name'])         ? sanitize_text_field(wp_unslash($_POST['task_name']))         : '';
 
     if (!in_array($post_status, array('draft', 'publish'), true)) {

@@ -898,22 +898,59 @@ function botwriter_fetch_rss_content( $rss_url, $published_links = '' ) {
     // Find first article not already published
     $published_array = array_filter( array_map( 'trim', explode( ',', $published_links ) ) );
 
+    $dedup_skipped = array();
     foreach ( $items as $article ) {
-        if ( ! in_array( $article['link'], $published_array, true ) ) {
-            botwriter_log( 'Client RSS article selected', [
-                'title' => $article['title'],
-                'link'  => $article['link'],
-            ] );
-            return [
-                'success'        => true,
-                'source_title'   => $article['title'],
-                'source_content' => ! empty( $article['content'] ) ? $article['content'] : $article['description'],
-                'link_original'  => $article['link'],
-            ];
+        if ( in_array( $article['link'], $published_array, true ) ) {
+            continue;
         }
+
+        // Cross-task duplicate detection (URL / title / content similarity).
+        if ( function_exists( 'botwriter_dedup_is_duplicate' ) ) {
+            $dedup = botwriter_dedup_is_duplicate( array(
+                'url'     => $article['link'],
+                'title'   => $article['title'],
+                'content' => ! empty( $article['content'] ) ? $article['content'] : $article['description'],
+            ) );
+            if ( ! empty( $dedup['is_duplicate'] ) && $dedup['action'] === 'skip' ) {
+                $dedup_skipped[] = array(
+                    'title'  => $article['title'],
+                    'link'   => $article['link'],
+                    'reason' => $dedup['reason'],
+                    'score'  => $dedup['score'],
+                );
+                continue;
+            }
+            if ( ! empty( $dedup['is_duplicate'] ) ) {
+                botwriter_log( 'Client RSS dedup match (log_only)', array(
+                    'title'  => $article['title'],
+                    'link'   => $article['link'],
+                    'reason' => $dedup['reason'],
+                    'score'  => $dedup['score'],
+                ) );
+            }
+        }
+
+        botwriter_log( 'Client RSS article selected', array(
+            'title' => $article['title'],
+            'link'  => $article['link'],
+        ) );
+        return array(
+            'success'        => true,
+            'source_title'   => $article['title'],
+            'source_content' => ! empty( $article['content'] ) ? $article['content'] : $article['description'],
+            'link_original'  => $article['link'],
+        );
     }
 
-    return [ 'success' => false, 'error' => 'No new articles found in RSS feed. All articles have already been published.' ];
+    if ( ! empty( $dedup_skipped ) ) {
+        botwriter_log( 'Client RSS no article selected — all candidates flagged as duplicates', array(
+            'skipped_count' => count( $dedup_skipped ),
+            'first_skipped' => $dedup_skipped[0],
+        ) );
+        return array( 'success' => false, 'error' => 'No new articles found in RSS feed: all candidates were skipped by duplicate detection (similar to recently published posts).' );
+    }
+
+    return array( 'success' => false, 'error' => 'No new articles found in RSS feed. All articles have already been published.' );
 }
 
 
@@ -994,28 +1031,65 @@ function botwriter_fetch_wordpress_content( $domain_name, $category_ids, $publis
     // Find first unpublished post
     $published_array = array_filter( array_map( 'trim', explode( ',', $published_links ) ) );
 
+    $dedup_skipped = array();
     foreach ( $posts as $post ) {
         $post_link = $post['link'] ?? '';
 
-        if ( ! in_array( $post_link, $published_array, true ) ) {
-            $title        = wp_strip_all_tags( html_entity_decode( $post['title']['rendered'] ?? '' ) );
-            $post_content = wp_strip_all_tags( html_entity_decode( $post['content']['rendered'] ?? '' ) );
-
-            botwriter_log( 'Client WordPress article selected', [
-                'title' => $title,
-                'link'  => $post_link,
-            ] );
-
-            return [
-                'success'        => true,
-                'source_title'   => $title,
-                'source_content' => $post_content,
-                'link_original'  => $post_link,
-            ];
+        if ( in_array( $post_link, $published_array, true ) ) {
+            continue;
         }
+
+        $title        = wp_strip_all_tags( html_entity_decode( $post['title']['rendered'] ?? '' ) );
+        $post_content = wp_strip_all_tags( html_entity_decode( $post['content']['rendered'] ?? '' ) );
+
+        // Cross-task duplicate detection.
+        if ( function_exists( 'botwriter_dedup_is_duplicate' ) ) {
+            $dedup = botwriter_dedup_is_duplicate( array(
+                'url'     => $post_link,
+                'title'   => $title,
+                'content' => $post_content,
+            ) );
+            if ( ! empty( $dedup['is_duplicate'] ) && $dedup['action'] === 'skip' ) {
+                $dedup_skipped[] = array(
+                    'title'  => $title,
+                    'link'   => $post_link,
+                    'reason' => $dedup['reason'],
+                    'score'  => $dedup['score'],
+                );
+                continue;
+            }
+            if ( ! empty( $dedup['is_duplicate'] ) ) {
+                botwriter_log( 'Client WordPress dedup match (log_only)', array(
+                    'title'  => $title,
+                    'link'   => $post_link,
+                    'reason' => $dedup['reason'],
+                    'score'  => $dedup['score'],
+                ) );
+            }
+        }
+
+        botwriter_log( 'Client WordPress article selected', array(
+            'title' => $title,
+            'link'  => $post_link,
+        ) );
+
+        return array(
+            'success'        => true,
+            'source_title'   => $title,
+            'source_content' => $post_content,
+            'link_original'  => $post_link,
+        );
     }
 
-    return [ 'success' => false, 'error' => 'No new posts found in WordPress site. All posts have already been published.' ];
+    if ( ! empty( $dedup_skipped ) ) {
+        botwriter_log( 'Client WordPress no article selected — all candidates flagged as duplicates', array(
+            'skipped_count' => count( $dedup_skipped ),
+            'first_skipped' => $dedup_skipped[0],
+        ) );
+        return array( 'success' => false, 'error' => 'No new posts found in WordPress site: all candidates were skipped by duplicate detection (similar to recently published posts).' );
+    }
+
+    return array( 'success' => false, 'error' => 'No new posts found in WordPress site. All posts have already been published.' );
 }
 
 
@@ -1084,6 +1158,40 @@ function botwriter_fetch_wordpress_categories( $domain_name ) {
 
 
 /**
+ * Whether AI meta generation is enabled in SEO settings.
+ *
+ * Falls back to the legacy botwriter_meta_disabled option when the
+ * new setting has not been saved yet.
+ *
+ * @return bool
+ */
+function botwriter_is_seo_ai_meta_enabled() {
+    $value = get_option('botwriter_seo_ai_meta_enabled', '');
+    if ($value === '') {
+        return get_option('botwriter_meta_disabled', '0') !== '1';
+    }
+
+    return $value === '1';
+}
+
+/**
+ * Whether meta synchronization to SEO plugins is enabled.
+ *
+ * Falls back to the legacy botwriter_meta_disabled option when the
+ * new setting has not been saved yet.
+ *
+ * @return bool
+ */
+function botwriter_is_seo_meta_sync_enabled() {
+    $value = get_option('botwriter_seo_sync_meta_enabled', '');
+    if ($value === '') {
+        return get_option('botwriter_meta_disabled', '0') !== '1';
+    }
+
+    return $value === '1';
+}
+
+/**
  * Generate an SEO meta description for a post using the configured AI text provider.
  *
  * Uses the same lightweight fast-model strategy as SEO Slug Translation.
@@ -1099,7 +1207,7 @@ function botwriter_generate_seo_meta( $title, $content, $language_code = '' ) {
     global $botwriter_languages;
 
     // Feature disabled?
-    if ( get_option( 'botwriter_meta_disabled', '0' ) === '1' ) {
+    if ( ! function_exists( 'botwriter_is_seo_ai_meta_enabled' ) || ! botwriter_is_seo_ai_meta_enabled() ) {
         return false;
     }
 
@@ -1206,6 +1314,10 @@ function botwriter_apply_seo_meta( $post_id, $meta_description ) {
         return;
     }
 
+    if ( ! function_exists( 'botwriter_is_seo_meta_sync_enabled' ) || ! botwriter_is_seo_meta_sync_enabled() ) {
+        return;
+    }
+
     // Always save as post excerpt (native WP)
     wp_update_post( [
         'ID'           => $post_id,
@@ -1213,8 +1325,17 @@ function botwriter_apply_seo_meta( $post_id, $meta_description ) {
     ] );
 
     // Yoast SEO
-    if ( defined( 'WPSEO_VERSION' ) || metadata_exists( 'post', $post_id, '_yoast_wpseo_metadesc' ) ) {
+    $yoast_available = defined( 'WPSEO_VERSION' )
+        || class_exists( 'WPSEO_Meta' )
+        || metadata_exists( 'post', $post_id, '_yoast_wpseo_metadesc' );
+    if ( $yoast_available ) {
+        // Keep the canonical Yoast post meta key in sync.
         update_post_meta( $post_id, '_yoast_wpseo_metadesc', $meta_description );
+
+        // Use Yoast API when available so Yoast internals pick up the value reliably.
+        if ( class_exists( 'WPSEO_Meta' ) && is_callable( [ 'WPSEO_Meta', 'set_value' ] ) ) {
+            call_user_func( [ 'WPSEO_Meta', 'set_value' ], 'metadesc', $meta_description, $post_id );
+        }
     }
 
     // Rank Math

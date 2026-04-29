@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class BW_Woo_AI {
+class BotWriter_Woo_AI {
 
     /** Nonce action shared across all WooCommerce AI AJAX calls. */
     const NONCE_ACTION = 'bw_woo_ai_nonce';
@@ -21,22 +21,22 @@ class BW_Woo_AI {
     /** Capability required for all operations. */
     const CAPABILITY = 'manage_options';
 
-    /** @var BW_Woo_AI_Products */
+    /** @var BotWriter_Woo_AI_Products */
     public $products;
 
-    /** @var BW_Woo_AI_Generator */
+    /** @var BotWriter_Woo_AI_Generator */
     public $generator;
 
-    /** @var BW_Woo_AI_Preview */
+    /** @var BotWriter_Woo_AI_Preview */
     public $preview;
 
-    /** @var BW_Woo_AI_History */
+    /** @var BotWriter_Woo_AI_History */
     public $history;
 
-    /** @var BW_Woo_AI_API */
+    /** @var BotWriter_Woo_AI_API */
     public $api;
 
-    /** @var BW_Woo_AI_Reviews */
+    /** @var BotWriter_Woo_AI_Reviews */
     public $reviews;
 
     /**
@@ -50,12 +50,12 @@ class BW_Woo_AI {
 
         $this->load_dependencies();
 
-        $this->products  = new BW_Woo_AI_Products();
-        $this->generator = new BW_Woo_AI_Generator();
-        $this->preview   = new BW_Woo_AI_Preview();
-        $this->history   = new BW_Woo_AI_History();
-        $this->api       = new BW_Woo_AI_API();
-        $this->reviews   = new BW_Woo_AI_Reviews();
+        $this->products  = new BotWriter_Woo_AI_Products();
+        $this->generator = new BotWriter_Woo_AI_Generator();
+        $this->preview   = new BotWriter_Woo_AI_Preview();
+        $this->history   = new BotWriter_Woo_AI_History();
+        $this->api       = new BotWriter_Woo_AI_API();
+        $this->reviews   = new BotWriter_Woo_AI_Reviews();
 
         add_action( 'admin_menu', [ $this, 'register_menu' ], 20 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
@@ -110,7 +110,7 @@ class BW_Woo_AI {
         }
 
         echo '<div class="wrap bw-woo-ai-wrap">';
-        echo '<h1 class="wp-heading-inline" style="display:none;">WooCommerce AI</h1>';
+        echo '<h1 class="wp-heading-inline bw-woo-page-title">WooCommerce AI</h1>';
         $this->render_header( $tab );
 
         switch ( $tab ) {
@@ -148,14 +148,14 @@ class BW_Woo_AI {
             'settings'   => __( 'Settings', 'botwriter' ),
         ];
         ?>
-        <div class="bw-woo-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
-            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: white;">
-                <span style="margin-right: 8px;">🛒</span><?php esc_html_e( 'WooCommerce AI Content Optimizer', 'botwriter' ); ?>
+        <div class="bw-woo-header">
+            <h2 class="bw-woo-header-title">
+                <span class="bw-woo-header-icon">🛒</span><?php esc_html_e( 'WooCommerce AI Content Optimizer', 'botwriter' ); ?>
             </h2>
-            <p style="margin: 0; opacity: .9; font-size: 14px;"><?php esc_html_e( 'Optimize your product content in bulk with AI.', 'botwriter' ); ?></p>
+            <p class="bw-woo-header-subtitle"><?php esc_html_e( 'Optimize your product content in bulk with AI.', 'botwriter' ); ?></p>
         </div>
 
-        <nav class="nav-tab-wrapper bw-woo-tabs" style="margin-bottom: 20px;">
+        <nav class="nav-tab-wrapper bw-woo-tabs bw-woo-tabs-nav">
             <?php foreach ( $tabs as $slug => $label ) : ?>
                 <a href="<?php echo esc_url( add_query_arg( 'tab', $slug, $base_url ) ); ?>"
                    class="nav-tab <?php echo $current_tab === $slug ? 'nav-tab-active' : ''; ?>">
@@ -174,7 +174,7 @@ class BW_Woo_AI {
         ?>
         <div class="bw-woo-bulk-wrap">
             <!-- Step indicator -->
-            <div class="bw-woo-steps" style="display:flex;gap:8px;margin-bottom:20px;">
+            <div class="bw-woo-steps bw-woo-steps-spaced">
                 <span class="bw-step active" data-step="1">1. <?php esc_html_e( 'Select Products', 'botwriter' ); ?></span>
                 <span class="bw-step" data-step="2">2. <?php esc_html_e( 'Choose Fields', 'botwriter' ); ?></span>
                 <span class="bw-step" data-step="3">3. <?php esc_html_e( 'AI Provider', 'botwriter' ); ?></span>
@@ -196,10 +196,10 @@ class BW_Woo_AI {
             </div>
 
             <!-- Step 2: choose fields to generate -->
-            <div class="bw-bulk-step" id="bw-step-2" style="display:none;">
+            <div class="bw-bulk-step bw-is-hidden" id="bw-step-2">
                 <div class="bw-woo-card">
                     <h3><?php esc_html_e( 'Select Fields to Generate', 'botwriter' ); ?></h3>
-                    <div class="bw-fields-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin:15px 0;">
+                    <div class="bw-fields-grid">
                         <label class="bw-field-option"><input type="checkbox" name="bw_fields[]" value="title"> <?php esc_html_e( 'Product Title', 'botwriter' ); ?></label>
                         <label class="bw-field-option"><input type="checkbox" name="bw_fields[]" value="description" checked> <?php esc_html_e( 'Product Description', 'botwriter' ); ?></label>
                         <label class="bw-field-option"><input type="checkbox" name="bw_fields[]" value="short_description"> <?php esc_html_e( 'Short Description', 'botwriter' ); ?></label>
@@ -209,7 +209,7 @@ class BW_Woo_AI {
                         <label class="bw-field-option"><input type="checkbox" name="bw_fields[]" value="seo_meta"> <?php esc_html_e( 'SEO Meta Description', 'botwriter' ); ?></label>
                         <label class="bw-field-option"><input type="checkbox" name="bw_fields[]" value="seo_title"> <?php esc_html_e( 'SEO Title', 'botwriter' ); ?></label>
                     </div>
-                    <div style="display:flex;gap:10px;margin-top:15px;">
+                    <div class="bw-woo-action-row">
                         <button type="button" class="button" id="bw-bulk-prev-2">← <?php esc_html_e( 'Back', 'botwriter' ); ?></button>
                         <button type="button" class="button button-primary" id="bw-bulk-next-2"><?php esc_html_e( 'Next: AI Provider →', 'botwriter' ); ?></button>
                     </div>
@@ -217,11 +217,11 @@ class BW_Woo_AI {
             </div>
 
             <!-- Step 3: AI provider -->
-            <div class="bw-bulk-step" id="bw-step-3" style="display:none;">
+            <div class="bw-bulk-step bw-is-hidden" id="bw-step-3">
                 <div class="bw-woo-card">
                     <h3><?php esc_html_e( 'Choose AI Provider', 'botwriter' ); ?></h3>
                     <?php $this->render_provider_selector(); ?>
-                    <div style="display:flex;gap:10px;margin-top:15px;">
+                    <div class="bw-woo-action-row">
                         <button type="button" class="button" id="bw-bulk-prev-3">← <?php esc_html_e( 'Back', 'botwriter' ); ?></button>
                         <button type="button" class="button button-primary" id="bw-bulk-generate"><?php esc_html_e( 'Generate Content →', 'botwriter' ); ?></button>
                     </div>
@@ -229,17 +229,17 @@ class BW_Woo_AI {
             </div>
 
             <!-- Step 4: preview & apply -->
-            <div class="bw-bulk-step" id="bw-step-4" style="display:none;">
+            <div class="bw-bulk-step bw-is-hidden" id="bw-step-4">
                 <div class="bw-woo-card">
                     <h3><?php esc_html_e( 'Preview & Apply', 'botwriter' ); ?></h3>
-                    <div id="bw-generation-progress" style="margin-bottom:15px;">
-                        <div class="bw-progress-bar"><div class="bw-progress-fill" style="width:0%"></div></div>
+                    <div id="bw-generation-progress" class="bw-woo-progress-wrap">
+                        <div class="bw-progress-bar"><div class="bw-progress-fill"></div></div>
                         <p class="bw-progress-text"><?php esc_html_e( 'Generating…', 'botwriter' ); ?> <span id="bw-progress-count">0/0</span></p>
                     </div>
                     <div id="bw-preview-results"></div>
-                    <div style="display:flex;gap:10px;margin-top:15px;">
-                        <button type="button" class="button" id="bw-bulk-prev-4" style="display:none;">← <?php esc_html_e( 'Back', 'botwriter' ); ?></button>
-                        <button type="button" class="button button-primary" id="bw-bulk-apply" style="display:none;"><?php esc_html_e( 'Apply All Approved Changes', 'botwriter' ); ?></button>
+                    <div class="bw-woo-action-row">
+                        <button type="button" class="button bw-is-hidden" id="bw-bulk-prev-4">← <?php esc_html_e( 'Back', 'botwriter' ); ?></button>
+                        <button type="button" class="button button-primary bw-is-hidden" id="bw-bulk-apply"><?php esc_html_e( 'Apply All Approved Changes', 'botwriter' ); ?></button>
                     </div>
                 </div>
             </div>
@@ -255,7 +255,7 @@ class BW_Woo_AI {
         ?>
         <div class="bw-woo-cat-wrap">
             <!-- Step indicator -->
-            <div class="bw-woo-steps bw-cat-steps" style="display:flex;gap:8px;margin-bottom:20px;">
+            <div class="bw-woo-steps bw-cat-steps bw-woo-steps-spaced">
                 <span class="bw-step active" data-step="c1">1. <?php esc_html_e( 'Select Categories', 'botwriter' ); ?></span>
                 <span class="bw-step" data-step="c2">2. <?php esc_html_e( 'AI Provider', 'botwriter' ); ?></span>
                 <span class="bw-step" data-step="c3">3. <?php esc_html_e( 'Preview & Apply', 'botwriter' ); ?></span>
@@ -276,11 +276,11 @@ class BW_Woo_AI {
             </div>
 
             <!-- Step 2: provider -->
-            <div class="bw-cat-step" id="bw-cat-step-2" style="display:none;">
+            <div class="bw-cat-step bw-is-hidden" id="bw-cat-step-2">
                 <div class="bw-woo-card">
                     <h3><?php esc_html_e( 'Choose AI Provider', 'botwriter' ); ?></h3>
                     <?php $this->render_provider_selector(); ?>
-                    <div style="display:flex;gap:10px;margin-top:15px;">
+                    <div class="bw-woo-action-row">
                         <button type="button" class="button" id="bw-cat-prev-2">← <?php esc_html_e( 'Back', 'botwriter' ); ?></button>
                         <button type="button" class="button button-primary" id="bw-cat-generate"><?php esc_html_e( 'Generate Descriptions →', 'botwriter' ); ?></button>
                     </div>
@@ -288,17 +288,17 @@ class BW_Woo_AI {
             </div>
 
             <!-- Step 3: preview & apply -->
-            <div class="bw-cat-step" id="bw-cat-step-3" style="display:none;">
+            <div class="bw-cat-step bw-is-hidden" id="bw-cat-step-3">
                 <div class="bw-woo-card">
                     <h3><?php esc_html_e( 'Preview & Apply', 'botwriter' ); ?></h3>
-                    <div id="bw-cat-generation-progress" style="margin-bottom:15px;">
-                        <div class="bw-progress-bar"><div class="bw-cat-progress-fill bw-progress-fill" style="width:0%"></div></div>
+                    <div id="bw-cat-generation-progress" class="bw-woo-progress-wrap">
+                        <div class="bw-progress-bar"><div class="bw-cat-progress-fill bw-progress-fill"></div></div>
                         <p class="bw-progress-text"><?php esc_html_e( 'Generating…', 'botwriter' ); ?> <span id="bw-cat-progress-count">0/0</span></p>
                     </div>
                     <div id="bw-cat-preview-results"></div>
-                    <div style="display:flex;gap:10px;margin-top:15px;">
-                        <button type="button" class="button" id="bw-cat-prev-3" style="display:none;">← <?php esc_html_e( 'Back', 'botwriter' ); ?></button>
-                        <button type="button" class="button button-primary" id="bw-cat-apply" style="display:none;"><?php esc_html_e( 'Apply All Approved Changes', 'botwriter' ); ?></button>
+                    <div class="bw-woo-action-row">
+                        <button type="button" class="button bw-is-hidden" id="bw-cat-prev-3">← <?php esc_html_e( 'Back', 'botwriter' ); ?></button>
+                        <button type="button" class="button button-primary bw-is-hidden" id="bw-cat-apply"><?php esc_html_e( 'Apply All Approved Changes', 'botwriter' ); ?></button>
                     </div>
                 </div>
             </div>
@@ -343,17 +343,17 @@ class BW_Woo_AI {
             return;
         }
         ?>
-        <div style="margin:15px 0;">
+        <div class="bw-woo-provider-wrap">
             <label for="bw-woo-provider"><strong><?php esc_html_e( 'Text AI Provider', 'botwriter' ); ?></strong></label><br>
-            <select id="bw-woo-provider" class="form-select" style="min-width:250px;margin-top:5px;">
+            <select id="bw-woo-provider" class="form-select bw-woo-provider-select">
                 <?php foreach ( $available as $key => $label ) : ?>
                     <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $current, $key ); ?>><?php echo esc_html( $label ); ?></option>
                 <?php endforeach; ?>
             </select>
 
-            <div style="margin-top:10px;">
+            <div class="bw-woo-provider-language-wrap">
                 <label for="bw-woo-language"><strong><?php esc_html_e( 'Output Language', 'botwriter' ); ?></strong></label><br>
-                <select id="bw-woo-language" class="form-select" style="min-width:250px;margin-top:5px;">
+                <select id="bw-woo-language" class="form-select bw-woo-provider-select">
                     <option value="auto"><?php esc_html_e( 'Same as original content', 'botwriter' ); ?></option>
                     <?php
                     global $botwriter_languages;
@@ -416,16 +416,16 @@ class BW_Woo_AI {
         <!-- Prompt Templates -->
         <div class="bw-woo-card">
             <h3><?php esc_html_e( 'Prompt Templates', 'botwriter' ); ?></h3>
-            <p class="description" style="margin-bottom:15px;">
+            <p class="description bw-woo-template-description">
                 <?php esc_html_e( 'Customize the prompts sent to the AI for each field type. Use placeholders to insert product data dynamically.', 'botwriter' ); ?>
             </p>
 
             <?php foreach ( $template_labels as $field_key => $label ) :
-                $default  = BW_Woo_AI_Generator::get_default_template( $field_key );
+                $default  = BotWriter_Woo_AI_Generator::get_default_template( $field_key );
                 $current  = ! empty( $saved_templates[ $field_key ] ) ? $saved_templates[ $field_key ] : $default;
             ?>
-                <div class="bw-template-block" style="margin-bottom:20px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div class="bw-template-block">
+                    <div class="bw-template-header-row">
                         <label for="bw-tpl-<?php echo esc_attr( $field_key ); ?>">
                             <strong>📝 <?php echo esc_html( $label ); ?></strong>
                         </label>
@@ -438,17 +438,16 @@ class BW_Woo_AI {
                     <textarea id="bw-tpl-<?php echo esc_attr( $field_key ); ?>"
                               class="bw-tpl-textarea large-text code"
                               data-field="<?php echo esc_attr( $field_key ); ?>"
-                              rows="10"
-                              style="font-family:monospace;font-size:12px;line-height:1.5;"><?php echo esc_textarea( $current ); ?></textarea>
+                              rows="10"><?php echo esc_textarea( $current ); ?></textarea>
                     <textarea class="bw-tpl-default" data-field="<?php echo esc_attr( $field_key ); ?>"
-                              style="display:none;"><?php echo esc_textarea( $default ); ?></textarea>
+                              hidden><?php echo esc_textarea( $default ); ?></textarea>
                 </div>
             <?php endforeach; ?>
 
             <!-- Placeholder reference -->
-            <div class="bw-woo-card" style="background:#f0f6ff;border:1px solid #c3dafe;margin-top:10px;">
-                <h4 style="margin:0 0 8px 0;font-size:14px;">📋 <?php esc_html_e( 'Available Placeholders', 'botwriter' ); ?></h4>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px 20px;font-size:12px;font-family:monospace;">
+            <div class="bw-woo-card bw-woo-placeholders-card">
+                <h4 class="bw-woo-placeholders-title">📋 <?php esc_html_e( 'Available Placeholders', 'botwriter' ); ?></h4>
+                <div class="bw-woo-placeholders-grid">
                     <span><code>{{product_name}}</code> — <?php esc_html_e( 'Product title', 'botwriter' ); ?></span>
                     <span><code>{{description}}</code> — <?php esc_html_e( 'Full description (HTML)', 'botwriter' ); ?></span>
                     <span><code>{{short_description}}</code> — <?php esc_html_e( 'Short description', 'botwriter' ); ?></span>
@@ -466,14 +465,14 @@ class BW_Woo_AI {
                     <span><code>{{current_description}}</code> — <?php esc_html_e( 'Current category description', 'botwriter' ); ?></span>
                     <span><code>{{product_count}}</code> — <?php esc_html_e( 'Number of products in category', 'botwriter' ); ?></span>
                 </div>
-                <p style="margin:10px 0 0 0;font-size:12px;color:#555;">
+                <p class="bw-woo-placeholders-note">
                     <strong><?php esc_html_e( 'Conditionals:', 'botwriter' ); ?></strong>
                     <code>{{#if categories}}...{{/if}}</code> — <?php esc_html_e( 'Only includes the block if the field has data.', 'botwriter' ); ?>
                 </p>
             </div>
         </div>
 
-        <div style="margin-top:15px;">
+        <div class="bw-woo-settings-actions">
             <button type="button" class="button button-primary" id="bw-woo-save-settings"><?php esc_html_e( 'Save Settings', 'botwriter' ); ?></button>
         </div>
         <?php
@@ -592,7 +591,7 @@ class BW_Woo_AI {
         update_option( 'bw_woo_ai_request_delay', $delay );
 
         // Save prompt templates.
-        $template_fields = BW_Woo_AI_Generator::TEMPLATE_FIELDS;
+        $template_fields = BotWriter_Woo_AI_Generator::TEMPLATE_FIELDS;
         $templates = get_option( 'bw_woo_ai_templates', [] );
         foreach ( $template_fields as $f ) {
             $key = 'template_' . $f;

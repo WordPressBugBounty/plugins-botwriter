@@ -8,12 +8,27 @@ document.addEventListener('DOMContentLoaded', function () {
     var fetchBtn   = document.getElementById('siterewriter_fetch_btn');
     var createBtn  = document.getElementById('siterewriter_create_btn');
     var selectAll  = document.getElementById('siterewriter_select_all');
+    var articlesList = document.getElementById('siterewriter_articles_list');
 
     if (crawlBtn)  crawlBtn.addEventListener('click', siterewriterCrawl);
     if (stopBtn)   stopBtn.addEventListener('click', siterewriterStopCrawl);
     if (fetchBtn)  fetchBtn.addEventListener('click', siterewriterFetchContent);
     if (createBtn) createBtn.addEventListener('click', siterewriterCreateTask);
     if (selectAll) selectAll.addEventListener('change', siterewriterToggleSelectAll);
+    if (articlesList) {
+        articlesList.addEventListener('click', function (event) {
+            var toggleBtn = event.target.closest('.rewriter-toggle-btn');
+            if (toggleBtn) {
+                siterewriterToggleCard(toggleBtn);
+                return;
+            }
+
+            var removeBtn = event.target.closest('.rewriter-remove-btn');
+            if (removeBtn) {
+                siterewriterRemoveCard(removeBtn);
+            }
+        });
+    }
 });
 
 /* ── helpers ── */
@@ -283,8 +298,8 @@ function siterewriterCreateCard(article, index) {
         '<div class="rewriter-card-header">' +
             '<span class="rewriter-card-num">#' + (index + 1) + '</span>' +
             '<input type="text" class="rewriter-title-input" value="' + siterewriterEscape(article.title) + '" />' +
-            '<button type="button" class="button rewriter-toggle-btn" onclick="siterewriterToggleCard(this)" title="Expand/Collapse">' + (hasWarning ? '▲' : '▼') + '</button>' +
-            '<button type="button" class="button rewriter-remove-btn" onclick="siterewriterRemoveCard(this)" title="Remove">❌</button>' +
+                '<button type="button" class="button rewriter-toggle-btn" title="Expand/Collapse">' + (hasWarning ? '▲' : '▼') + '</button>' +
+                '<button type="button" class="button rewriter-remove-btn" title="Remove">❌</button>' +
         '</div>' +
         '<div class="rewriter-card-meta">' +
             (article.url ? '<small>Source: <a href="' + siterewriterEscape(article.url) + '" target="_blank">' + siterewriterEscape(article.url) + '</a></small>' : '') +

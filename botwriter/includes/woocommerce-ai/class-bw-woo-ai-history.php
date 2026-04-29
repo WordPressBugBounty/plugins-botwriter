@@ -3,7 +3,7 @@
  * BotWriter WooCommerce AI - History & Revert
  *
  * Manages the optimization history and provides revert/undo functionality.
- * Backups are stored in post meta by BW_Woo_AI_Preview.
+ * Backups are stored in post meta by BotWriter_Woo_AI_Preview.
  *
  * @package BotWriter
  * @since   2.3.0
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class BW_Woo_AI_History {
+class BotWriter_Woo_AI_History {
 
     /* ------------------------------------------------------------------
      * History tab render
@@ -51,7 +51,7 @@ class BW_Woo_AI_History {
      * ----------------------------------------------------------------*/
 
     public function ajax_get_history() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $page     = isset( $_POST['page'] ) ? absint( $_POST['page'] ) : 1;
@@ -67,11 +67,11 @@ class BW_Woo_AI_History {
             'paged'          => $page,
             'fields'         => 'ids',
             'meta_query'     => [ [
-                'key'     => BW_Woo_AI_Preview::OPTIMIZED_KEY,
+                'key'     => BotWriter_Woo_AI_Preview::OPTIMIZED_KEY,
                 'compare' => 'EXISTS',
             ] ],
             'orderby'        => 'meta_value',
-            'meta_key'       => BW_Woo_AI_Preview::OPTIMIZED_KEY,
+            'meta_key'       => BotWriter_Woo_AI_Preview::OPTIMIZED_KEY,
             'order'          => 'DESC',
         ];
 
@@ -96,11 +96,11 @@ class BW_Woo_AI_History {
                 continue;
             }
 
-            $timestamp = get_post_meta( $pid, BW_Woo_AI_Preview::BACKUP_PREFIX . 'timestamp', true );
+            $timestamp = get_post_meta( $pid, BotWriter_Woo_AI_Preview::BACKUP_PREFIX . 'timestamp', true );
             $provider  = get_post_meta( $pid, '_bw_woo_ai_provider', true );
             $model     = get_post_meta( $pid, '_bw_woo_ai_model', true );
 
-            $has_backup = ! empty( get_post_meta( $pid, BW_Woo_AI_Preview::BACKUP_PREFIX . 'timestamp', true ) );
+            $has_backup = ! empty( get_post_meta( $pid, BotWriter_Woo_AI_Preview::BACKUP_PREFIX . 'timestamp', true ) );
 
             $items[] = [
                 'id'           => $pid,
@@ -127,7 +127,7 @@ class BW_Woo_AI_History {
      * ----------------------------------------------------------------*/
 
     public function ajax_revert() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_ids = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : [];
@@ -175,7 +175,7 @@ class BW_Woo_AI_History {
             return new WP_Error( 'not_found', "Product {$product_id} not found." );
         }
 
-        $prefix = BW_Woo_AI_Preview::BACKUP_PREFIX;
+        $prefix = BotWriter_Woo_AI_Preview::BACKUP_PREFIX;
 
         // Check that a backup exists.
         $backup_ts = get_post_meta( $product_id, $prefix . 'timestamp', true );
@@ -236,7 +236,7 @@ class BW_Woo_AI_History {
         $product->save();
 
         // Clean up optimization markers.
-        delete_post_meta( $product_id, BW_Woo_AI_Preview::OPTIMIZED_KEY );
+        delete_post_meta( $product_id, BotWriter_Woo_AI_Preview::OPTIMIZED_KEY );
         delete_post_meta( $product_id, '_bw_woo_ai_provider' );
         delete_post_meta( $product_id, '_bw_woo_ai_model' );
 
@@ -261,7 +261,7 @@ class BW_Woo_AI_History {
      * ----------------------------------------------------------------*/
 
     public function ajax_get_diff() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
@@ -274,7 +274,7 @@ class BW_Woo_AI_History {
             wp_send_json_error( 'Product not found.' );
         }
 
-        $prefix    = BW_Woo_AI_Preview::BACKUP_PREFIX;
+        $prefix    = BotWriter_Woo_AI_Preview::BACKUP_PREFIX;
         $backup_ts = get_post_meta( $product_id, $prefix . 'timestamp', true );
 
         if ( empty( $backup_ts ) ) {
@@ -365,7 +365,7 @@ class BW_Woo_AI_History {
      * ----------------------------------------------------------------*/
 
     public function ajax_revert_field() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
@@ -385,7 +385,7 @@ class BW_Woo_AI_History {
             wp_send_json_error( 'Product not found.' );
         }
 
-        $prefix    = BW_Woo_AI_Preview::BACKUP_PREFIX;
+        $prefix    = BotWriter_Woo_AI_Preview::BACKUP_PREFIX;
 
         // Check that backup meta key exists (value can be empty — means field was empty before).
         if ( ! metadata_exists( 'post', $product_id, $prefix . $field ) ) {

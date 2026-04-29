@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.2.8
+Stable tag: 3.3.0
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -331,6 +331,13 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.0 =
+* NEW: Added FULL SEO Module 
+* NEW: Added BotWriter Floating Copilot in the post editor (Prompt + SEO assistant workspace).
+
+= 3.2.9 =
+* NEW: Added image editing/regeneration from the Logs screen using the same modal as post editing.
+
 = 3.2.8 =
 * NEW: Added featured image regeneration for published posts to improve SEO and ai writer workflows.
 

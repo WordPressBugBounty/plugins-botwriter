@@ -71,7 +71,7 @@ function botwriter_quick_create() {
     
     // Process taxonomy terms and build taxonomy_data JSON if not already provided
     if (empty($item['taxonomy_data']) && isset($_POST['taxonomy_terms'])) {
-        $taxonomy_terms = wp_unslash($_POST['taxonomy_terms']);
+        $taxonomy_terms = map_deep(wp_unslash($_POST['taxonomy_terms']), 'sanitize_text_field');
         $taxonomy_data = array();
         foreach ($taxonomy_terms as $taxonomy_name => $term_ids) {
             $taxonomy_name = sanitize_key($taxonomy_name);
@@ -194,13 +194,11 @@ function botwriter_quick_retry() {
 
     // Ensure we resend full task data (prompts, ai_keywords, etc.) by merging with source task
     global $wpdb;
-    $table_tasks = $wpdb->prefix . 'botwriter_tasks';
+    $table_tasks = esc_sql($wpdb->prefix . 'botwriter_tasks');
     if (!empty($log['id_task'])) {
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom table; identifier escaped via esc_sql() and value bound with placeholder.
         $task_row = $wpdb->get_row(
-            $wpdb->prepare(
-                'SELECT * FROM ' . $table_tasks . ' WHERE id = %d',
-                intval($log['id_task'])
-            ),
+            $wpdb->prepare( "SELECT * FROM {$table_tasks} WHERE id = %d", intval( $log['id_task'] ) ),
             ARRAY_A
         );
         if (is_array($task_row)) {
@@ -237,15 +235,13 @@ function botwriter_quick_cancel() {
     if ($task_id <= 0 || $log_id <= 0) { wp_send_json_error('invalid-ids'); }
 
     global $wpdb;
-    $table_tasks = $wpdb->prefix . 'botwriter_tasks';
-    $table_logs  = $wpdb->prefix . 'botwriter_logs';
+    $table_tasks = esc_sql($wpdb->prefix . 'botwriter_tasks');
+    $table_logs  = esc_sql($wpdb->prefix . 'botwriter_logs');
 
     // Only allow cancel for Write now tasks for safety
+    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom table; identifier escaped via esc_sql() and value bound with placeholder.
     $task = $wpdb->get_row(
-        $wpdb->prepare(
-            'SELECT id, task_type FROM ' . $table_tasks . ' WHERE id = %d',
-            $task_id
-        ),
+        $wpdb->prepare( "SELECT id, task_type FROM {$table_tasks} WHERE id = %d", $task_id ),
         ARRAY_A
     );
     if (!$task || (isset($task['task_type']) && $task['task_type'] !== 'writenow')) {
@@ -264,13 +260,20 @@ function botwriter_quick_post_page_handler() {
     if (!current_user_can('manage_options')) { return; }
 
     global $wpdb;
-    $table_name = $wpdb->prefix . 'botwriter_tasks';
+    $table_name = esc_sql($wpdb->prefix . 'botwriter_tasks');
+    $query = $wpdb->prepare("SELECT COUNT(*) FROM {$table_name} WHERE website_type = %s", 'ai');
+    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is generated internally and escaped for identifier use.
+    $quick_post_count = (int) $wpdb->get_var($query);
 
     // Defaults similar to posts.php $default
     $item = array(
         'id' => 0,
         /* translators: %d: next quick post number */
-        'task_name' => sprintf(__('Quick Post %d', 'botwriter'), $wpdb->get_var("SELECT COUNT(*) FROM $table_name WHERE website_type = 'ai'") + 1),
+        'task_name' => sprintf(
+            /* translators: %d: next quick post number. */
+            __('Quick Post %d', 'botwriter'),
+            $quick_post_count + 1
+        ),
         'writer' => 'orion',
         'narration' => 'Descriptive',
         'custom_style' => '',

@@ -96,14 +96,60 @@ jQuery(document).ready(function($) {
         }
     });
 
+    function activateMainTab(tabId, updateHash) {
+        var $tab = $('.botwriter-main-tabs .main-tab[data-main-tab="' + tabId + '"]');
+        var $panel = $('#main-tab-' + tabId);
+
+        if (!$tab.length || !$panel.length) {
+            return false;
+        }
+
+        $('.botwriter-main-tabs .main-tab').removeClass('main-tab-active');
+        $tab.addClass('main-tab-active');
+        $('.botwriter-main-tab-content').removeClass('active');
+        $panel.addClass('active');
+
+        if (updateHash) {
+            var nextHash = '#main-tab-' + tabId;
+            if (window.location.hash !== nextHash) {
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, document.title, nextHash);
+                } else {
+                    window.location.hash = nextHash;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function getRequestedMainTab() {
+        var hash = (window.location.hash || '').replace(/^#/, '');
+        if (!hash) {
+            return '';
+        }
+        if (hash.indexOf('main-tab-') === 0) {
+            hash = hash.substring('main-tab-'.length);
+        }
+        return hash;
+    }
+
     // Main tab switching
     $('.botwriter-main-tabs .main-tab').on('click', function(e) {
         e.preventDefault();
-        var tabId = $(this).data('main-tab');
-        $('.botwriter-main-tabs .main-tab').removeClass('main-tab-active');
-        $(this).addClass('main-tab-active');
-        $('.botwriter-main-tab-content').removeClass('active');
-        $('#main-tab-' + tabId).addClass('active');
+        activateMainTab($(this).data('main-tab'), true);
+    });
+
+    var requestedMainTab = getRequestedMainTab();
+    if (requestedMainTab) {
+        activateMainTab(requestedMainTab, false);
+    }
+
+    $(window).on('hashchange', function() {
+        var hashTab = getRequestedMainTab();
+        if (hashTab) {
+            activateMainTab(hashTab, false);
+        }
     });
 
     // Toggle API key visibility

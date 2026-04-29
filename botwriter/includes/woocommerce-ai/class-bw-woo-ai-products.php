@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class BW_Woo_AI_Products {
+class BotWriter_Woo_AI_Products {
 
     /* ------------------------------------------------------------------
      * Main products tab render
@@ -152,7 +152,7 @@ class BW_Woo_AI_Products {
      * ----------------------------------------------------------------*/
 
     public function ajax_get_products() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $page     = isset( $_POST['page'] ) ? absint( $_POST['page'] ) : 1;
@@ -345,7 +345,7 @@ class BW_Woo_AI_Products {
      * ----------------------------------------------------------------*/
 
     public function ajax_get_all_product_ids() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $args = [
@@ -488,7 +488,7 @@ class BW_Woo_AI_Products {
      * ----------------------------------------------------------------*/
 
     public function ajax_get_categories() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
 
         $categories = get_terms( [
             'taxonomy'   => 'product_cat',
@@ -558,7 +558,7 @@ class BW_Woo_AI_Products {
      * ----------------------------------------------------------------*/
 
     public function ajax_get_category_list() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
 
         botwriter_log( 'WooAI: ajax_get_category_list called' );
 

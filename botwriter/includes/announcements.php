@@ -311,11 +311,11 @@ function botwriter_consecutive_errors_notice() {
     
     echo '<div class="notice notice-error" id="botwriter-errors-notice">';
     echo '<p><strong>⚠️ ' . esc_html__('BotWriter: Multiple consecutive errors detected!', 'botwriter') . '</strong></p>';
-    echo '<p>' . sprintf(
-        /* translators: %d is the number of consecutive errors */
-        esc_html__('The last %d log entries have errors. Please check your configuration and logs.', 'botwriter'),
+    echo '<p>' . esc_html(sprintf(
+        /* translators: %d: number of consecutive error log entries. */
+        __('The last %d log entries have errors. Please check your configuration and logs.', 'botwriter'),
         $consecutive_errors
-    ) . '</p>';
+    )) . '</p>';
     echo '<p>';
     echo '<a class="button button-primary" href="' . esc_url($logs_url) . '">';
     echo '<span class="dashicons dashicons-warning" style="vertical-align: middle; margin-right: 5px;"></span>';
@@ -336,13 +336,12 @@ function botwriter_consecutive_errors_notice() {
  */
 function botwriter_count_consecutive_errors() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'botwriter_logs';
+    $table_name = esc_sql($wpdb->prefix . 'botwriter_logs');
     
     // Get the last 20 logs ordered by most recent first
-    $recent_logs = $wpdb->get_results(
-        "SELECT task_status FROM {$table_name} ORDER BY id DESC LIMIT 20",
-        ARRAY_A
-    );
+    $query = $wpdb->prepare("SELECT task_status FROM {$table_name} ORDER BY id DESC LIMIT %d", 20);
+    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is generated internally and escaped for identifier use.
+    $recent_logs = $wpdb->get_results($query, ARRAY_A);
     
     if (empty($recent_logs)) {
         return 0;

@@ -366,8 +366,7 @@ function botwriter_super_page_handler(){
     <?php 
     // si es editing que sea vea el html
     if ($is_editing) {
-      
-      echo botwriter_super1_view_articles_html($id);
+      echo wp_kses_post(botwriter_super1_view_articles_html($id));
     }
     ?>  
   </div>
@@ -557,12 +556,13 @@ function botwriter_super_form_meta_box_handler($item)
                         }
                         
                         foreach ($templates as $tpl) {
-                            $selected = ($selected_template_id == $tpl['id']) ? 'selected' : '';
-                            $label = esc_html($tpl['name']);
+                            $label = (string) $tpl['name'];
                             if (!empty($tpl['is_default'])) {
                                 $label .= ' ★';
                             }
-                            echo '<option value="' . esc_attr($tpl['id']) . '" ' . $selected . '>' . $label . '</option>';
+                            echo '<option value="' . esc_attr($tpl['id']) . '"';
+                            selected($selected_template_id, $tpl['id']);
+                            echo '>' . esc_html($label) . '</option>';
                         }
                         ?>
                     </select>

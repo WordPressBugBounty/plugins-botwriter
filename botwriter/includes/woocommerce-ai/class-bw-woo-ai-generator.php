@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class BW_Woo_AI_Generator {
+class BotWriter_Woo_AI_Generator {
 
     /** Max tokens for description generation. */
     const MAX_TOKENS_DESCRIPTION = 2048;
@@ -318,7 +318,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         $ssl_verify = get_option( 'botwriter_sslverify', 'yes' ) === 'yes';
 
         // Use the existing BotWriter translate_api_call helper which supports all providers.
-        $result = $this->call_provider( $provider, $api_key, $prompt, $max_tokens, $ssl_verify );
+        $result = $this->call_provider( $provider, $api_key, $prompt, $max_tokens, $ssl_verify, $field );
 
         if ( is_wp_error( $result ) ) {
             botwriter_log( '[Woo AI] generate_field error', [
@@ -412,10 +412,11 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
      * @param  string $api_key     User's decrypted API key for the provider.
      * @param  string $prompt      The rendered prompt.
      * @param  int    $max_tokens  Max output tokens.
-     * @param  bool   $ssl_verify  Whether to verify SSL.
+    * @param  bool   $ssl_verify  Whether to verify SSL.
+    * @param  string $field       Optional Woo field identifier for analytics/logging.
      * @return string|WP_Error     Generated text on success, WP_Error on failure.
      */
-    public function call_provider( $provider, $api_key, $prompt, $max_tokens, $ssl_verify ) {
+    public function call_provider( $provider, $api_key, $prompt, $max_tokens, $ssl_verify, $field = '' ) {
         $timeout     = 120;
         $temperature = self::TEMPERATURE;
 
@@ -456,6 +457,10 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
             'temperature'     => $temperature,
             'site_token'      => get_option( 'botwriter_site_token', '' ),
         );
+
+        if ( ! empty( $field ) ) {
+            $payload['field'] = $field;
+        }
 
         // Forward the user's API key so the Worker can use it
         if ( ! empty( $api_key ) && isset( $key_field_map[ $provider ] ) ) {
@@ -603,7 +608,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
      * ----------------------------------------------------------------*/
 
     public function ajax_generate() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_ids = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : [];
@@ -678,7 +683,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
      * ----------------------------------------------------------------*/
 
     public function ajax_generate_single() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
@@ -861,7 +866,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         }
 
         $ssl_verify = get_option( 'botwriter_sslverify', 'yes' ) === 'yes';
-        $result     = $this->call_provider( $provider, $api_key, $prompt, self::MAX_TOKENS_DESCRIPTION, $ssl_verify );
+        $result     = $this->call_provider( $provider, $api_key, $prompt, self::MAX_TOKENS_DESCRIPTION, $ssl_verify, 'category_description' );
 
         if ( is_wp_error( $result ) ) {
             botwriter_log( '[Woo AI] generate_category error', [
@@ -889,7 +894,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
      * ----------------------------------------------------------------*/
 
     public function ajax_generate_category() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
         $category_id = isset( $_POST['category_id'] ) ? absint( $_POST['category_id'] ) : 0;

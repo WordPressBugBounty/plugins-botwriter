@@ -17,6 +17,10 @@
     max-width: 1200px;
 }
 
+.bw-woo-page-title {
+    display: none;
+}
+
 .bw-woo-card {
     background: #fff;
     padding: 22px 28px;
@@ -30,6 +34,110 @@
     font-size: 17px;
     font-weight: 600;
     color: #1d2327;
+}
+
+.bw-woo-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 24px 30px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.bw-woo-header-title {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.bw-woo-header-icon {
+    margin-right: 8px;
+}
+
+.bw-woo-header-subtitle {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.bw-woo-tabs-nav {
+    margin-bottom: 20px;
+}
+
+.bw-is-hidden {
+    display: none;
+}
+
+.bw-woo-action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.bw-woo-progress-wrap {
+    margin-bottom: 15px;
+}
+
+.bw-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+    margin: 15px 0;
+}
+
+.bw-woo-provider-wrap {
+    margin: 15px 0;
+}
+
+.bw-woo-provider-language-wrap {
+    margin-top: 10px;
+}
+
+.bw-woo-provider-select {
+    min-width: 250px;
+    margin-top: 5px;
+}
+
+.bw-woo-template-description {
+    margin-bottom: 15px;
+}
+
+.bw-template-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.bw-woo-placeholders-card {
+    background: #f0f6ff;
+    border: 1px solid #c3dafe;
+    margin-top: 10px;
+}
+
+.bw-woo-placeholders-title {
+    margin: 0 0 8px;
+    font-size: 14px;
+}
+
+.bw-woo-placeholders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 4px 20px;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.bw-woo-placeholders-note {
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: #555;
+}
+
+.bw-woo-settings-actions {
+    margin-top: 15px;
 }
 
 /* ================================================================
@@ -104,6 +212,11 @@
     gap: 0;
 }
 
+.bw-woo-steps.bw-woo-steps-spaced {
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
 .bw-step {
     flex: 1;
     text-align: center;
@@ -144,6 +257,7 @@
 }
 
 .bw-progress-fill {
+    width: 0;
     height: 100%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
@@ -424,6 +538,7 @@
     border-radius: 8px;
     padding: 14px 16px;
     background: #fafafa;
+    margin-bottom: 20px;
 }
 
 .bw-tpl-textarea {
@@ -434,6 +549,7 @@
     border-radius: 4px;
     padding: 10px;
     background: #fff;
+    line-height: 1.5;
 }
 
 .bw-tpl-textarea:focus {

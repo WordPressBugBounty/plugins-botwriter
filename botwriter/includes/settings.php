@@ -41,6 +41,8 @@ add_action('wp_ajax_botwriter_save_settings', 'botwriter_ajax_save_settings');
 add_action('wp_ajax_botwriter_test_api_key', 'botwriter_ajax_test_api_key');
 add_action('wp_ajax_botwriter_test_model', 'botwriter_ajax_test_model');
 add_action('wp_ajax_botwriter_reset_models', 'botwriter_ajax_reset_models');
+add_action('wp_ajax_botwriter_debug_log_fetch', 'botwriter_ajax_debug_log_fetch');
+add_action('wp_ajax_botwriter_debug_log_clear', 'botwriter_ajax_debug_log_clear');
 
 /**
  * AJAX handler to test API key connectivity
@@ -544,6 +546,107 @@ function botwriter_ajax_reset_models() {
 }
 
 /**
+ * AJAX: return the contents of the BotWriter debug log file (last N lines).
+ */
+function botwriter_ajax_debug_log_fetch() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'botwriter_settings_nonce')) {
+        wp_send_json_error(array('message' => __('Security check failed.', 'botwriter')));
+    }
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
+    }
+
+    $path = botwriter_debug_log_path();
+    if (!$path) {
+        wp_send_json_error(array('message' => __('Uploads directory is not available.', 'botwriter')));
+    }
+
+    global $wp_filesystem;
+    if (!function_exists('WP_Filesystem')) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+    }
+    WP_Filesystem();
+    if (!$wp_filesystem) {
+        wp_send_json_error(array('message' => __('Filesystem initialization failed.', 'botwriter')));
+    }
+
+    if (!$wp_filesystem->exists($path)) {
+        wp_send_json_success(array(
+            'enabled'  => botwriter_debug_log_enabled(),
+            'path'     => $path,
+            'size'     => 0,
+            'content'  => '',
+            'modified' => 0,
+        ));
+    }
+
+    $all_content = $wp_filesystem->get_contents($path);
+    if ($all_content === false) {
+        wp_send_json_error(array('message' => __('Could not read log file. Check permissions.', 'botwriter')));
+    }
+
+    // Return up to the last ~512 KB of the file to keep the response light.
+    $max_bytes = 512 * 1024;
+    $size = method_exists($wp_filesystem, 'size') ? (int) $wp_filesystem->size($path) : strlen((string) $all_content);
+    $truncated = $size > $max_bytes;
+
+    if ($truncated) {
+        $content = substr((string) $all_content, -$max_bytes);
+        // Drop the (likely partial) first line.
+        $first_break = strpos($content, "\n");
+        if ($first_break !== false) {
+            $content = substr($content, $first_break + 1);
+        }
+    } else {
+        $content = (string) $all_content;
+    }
+
+    $modified = method_exists($wp_filesystem, 'mtime') ? (int) $wp_filesystem->mtime($path) : 0;
+
+    wp_send_json_success(array(
+        'enabled'  => botwriter_debug_log_enabled(),
+        'path'     => $path,
+        'size'     => (int) $size,
+        'content'  => (string) $content,
+        'modified' => $modified,
+        'truncated' => $truncated,
+    ));
+}
+
+/**
+ * AJAX: clear (truncate) the BotWriter debug log file.
+ */
+function botwriter_ajax_debug_log_clear() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'botwriter_settings_nonce')) {
+        wp_send_json_error(array('message' => __('Security check failed.', 'botwriter')));
+    }
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
+    }
+
+    $path = botwriter_debug_log_path();
+    if (!$path) {
+        wp_send_json_error(array('message' => __('Uploads directory is not available.', 'botwriter')));
+    }
+
+    global $wp_filesystem;
+    if (!function_exists('WP_Filesystem')) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+    }
+    WP_Filesystem();
+    if (!$wp_filesystem) {
+        wp_send_json_error(array('message' => __('Filesystem initialization failed.', 'botwriter')));
+    }
+
+    $ok = $wp_filesystem->put_contents($path, '', FS_CHMOD_FILE);
+    if (!$ok) {
+        wp_send_json_error(array('message' => __('Could not clear log file. Check permissions.', 'botwriter')));
+    }
+
+    wp_send_json_success(array('message' => __('Log cleared.', 'botwriter')));
+}
+
+/**
  * AJAX handler to save individual settings
  */
 function botwriter_ajax_save_settings() {
@@ -558,7 +661,7 @@ function botwriter_ajax_save_settings() {
     }
 
     $field = isset($_POST['field']) ? sanitize_text_field(wp_unslash($_POST['field'])) : '';
-    $value = isset($_POST['value']) ? wp_unslash($_POST['value']) : '';
+    $value = isset($_POST['value']) ? sanitize_text_field(wp_unslash($_POST['value'])) : '';
 
     if (empty($field)) {
         wp_send_json_error(['message' => __('No field specified.', 'botwriter')]);
@@ -606,6 +709,14 @@ function botwriter_ajax_save_settings() {
         'botwriter_tags_disabled',
         'botwriter_meta_disabled',
         'botwriter_image_error_continue',
+        'botwriter_editor_assistant_enabled',
+        'botwriter_seo_module_enabled',
+        // SEO Post-processing fields
+        'botwriter_seo_sync_meta_enabled',
+        'botwriter_seo_ai_meta_enabled',
+        'botwriter_seo_auto_internal_links_enabled',
+        'botwriter_seo_auto_internal_links_max_links',
+        'botwriter_seo_ai_internal_links_enabled',
         // SEO Translation fields
         'botwriter_seo_translation_enabled',
         'botwriter_seo_target_language',
@@ -616,6 +727,11 @@ function botwriter_ajax_save_settings() {
         'botwriter_stockphoto_preferred',
         'botwriter_stockphoto_selection',
         'botwriter_stockphoto_attribution',
+        // Duplicate detection (RSS / WordPress sources)
+        'botwriter_dedup_enabled',
+        'botwriter_dedup_title_threshold',
+        // Debug logging to file
+        'botwriter_debug_logging',
     ];
 
     if (!in_array($field, $allowed_fields)) {
@@ -649,10 +765,22 @@ function botwriter_ajax_save_settings() {
         }
     } elseif ($field === 'botwriter_paused_tasks') {
         $value = max(2, intval($value));
+    } elseif ($field === 'botwriter_seo_auto_internal_links_max_links') {
+        $value = max(1, min(8, intval($value)));
+    } elseif ($field === 'botwriter_dedup_title_threshold') {
+        $value = max(0, min(100, intval($value)));
     } elseif ($field === 'botwriter_cron_active' || $field === 'botwriter_tags_disabled'
         || $field === 'botwriter_meta_disabled'
+        || $field === 'botwriter_editor_assistant_enabled'
+        || $field === 'botwriter_seo_module_enabled'
+        || $field === 'botwriter_seo_sync_meta_enabled'
+        || $field === 'botwriter_seo_ai_meta_enabled'
+        || $field === 'botwriter_seo_auto_internal_links_enabled'
+        || $field === 'botwriter_seo_ai_internal_links_enabled'
         || $field === 'botwriter_seo_translation_enabled' || $field === 'botwriter_seo_translate_title'
-        || $field === 'botwriter_seo_translate_tags' || $field === 'botwriter_seo_translate_image') {
+        || $field === 'botwriter_seo_translate_tags' || $field === 'botwriter_seo_translate_image'
+        || $field === 'botwriter_dedup_enabled'
+        || $field === 'botwriter_debug_logging') {
         $value = ($value === '1' || $value === 'true' || $value === true) ? '1' : '0';
     } else {
         $value = sanitize_text_field($value);
@@ -660,6 +788,17 @@ function botwriter_ajax_save_settings() {
 
     // Save the option
     update_option($field, $value);
+
+    // Keep legacy/meta settings compatibility.
+    if ($field === 'botwriter_meta_disabled') {
+        $enabled = ($value === '1') ? '0' : '1';
+        update_option('botwriter_seo_ai_meta_enabled', $enabled);
+        update_option('botwriter_seo_sync_meta_enabled', $enabled);
+    }
+
+    if ($field === 'botwriter_seo_ai_meta_enabled') {
+        update_option('botwriter_meta_disabled', $value === '1' ? '0' : '1');
+    }
 
     // Handle cron activation/deactivation
     if ($field === 'botwriter_cron_active') {
@@ -727,6 +866,52 @@ function botwriter_settings_meta_box_handler() {
         : 0;
     
     $settings = botwriter_get_all_settings();
+
+    $seo_plugins_status = array(
+        array(
+            'name' => 'Yoast SEO',
+            'detected' => (defined('WPSEO_VERSION') || class_exists('WPSEO_Meta')),
+        ),
+        array(
+            'name' => 'Rank Math',
+            'detected' => class_exists('RankMath'),
+        ),
+        array(
+            'name' => 'All in One SEO',
+            'detected' => function_exists('aioseo'),
+        ),
+        array(
+            'name' => 'SEOPress',
+            'detected' => defined('SEOPRESS_VERSION'),
+        ),
+        array(
+            'name' => 'The SEO Framework',
+            'detected' => function_exists('the_seo_framework'),
+        ),
+    );
+
+    $seo_plugins_detected_count = 0;
+    foreach ($seo_plugins_status as $seo_plugin_row) {
+        if (!empty($seo_plugin_row['detected'])) {
+            $seo_plugins_detected_count++;
+        }
+    }
+
+    $seo_languages = array(
+        'en' => 'English', 'es' => 'Spanish (Español)', 'fr' => 'French (Français)',
+        'de' => 'German (Deutsch)', 'it' => 'Italian (Italiano)', 'pt' => 'Portuguese (Português)',
+        'nl' => 'Dutch (Nederlands)', 'ru' => 'Russian (Русский)',
+        'ja' => 'Japanese (日本語)', 'ko' => 'Korean (한국어)',
+        'zh' => 'Chinese (中文)', 'ar' => 'Arabic (العربية)',
+        'hi' => 'Hindi (हिन्दी)', 'tr' => 'Turkish (Türkçe)',
+        'pl' => 'Polish (Polski)', 'sv' => 'Swedish (Svenska)',
+        'da' => 'Danish (Dansk)', 'no' => 'Norwegian (Norsk)',
+        'fi' => 'Finnish (Suomi)', 'cs' => 'Czech (Čeština)',
+        'ro' => 'Romanian (Română)', 'hu' => 'Hungarian (Magyar)',
+        'el' => 'Greek (Ελληνικά)', 'th' => 'Thai (ไทย)',
+        'vi' => 'Vietnamese (Tiếng Việt)', 'id' => 'Indonesian (Bahasa)',
+        'ms' => 'Malay (Melayu)', 'uk' => 'Ukrainian (Українська)',
+    );
     
     // Provider lists
     $text_providers = [
@@ -771,7 +956,7 @@ function botwriter_settings_meta_box_handler() {
         </a>
         <a href="#" class="main-tab" data-main-tab="seo">
             <span class="dashicons dashicons-translation"></span>
-            <?php esc_html_e('SEO Translation', 'botwriter'); ?>
+            <?php esc_html_e('SEO', 'botwriter'); ?>
         </a>
     </div>
 
@@ -1066,6 +1251,30 @@ function botwriter_settings_meta_box_handler() {
 
         <div class="general-settings-section">
             <h4 class="section-title">
+                <span class="dashicons dashicons-controls-repeat"></span>
+                <?php esc_html_e('Duplicate prevention', 'botwriter'); ?>
+            </h4>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_dedup_enabled" value="1" <?php checked($settings['botwriter_dedup_enabled'], '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Avoid publishing similar articles across tasks', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, the plugin checks history from all tasks (last 7 days) and skips RSS / WordPress source articles that match a previously published one by URL, title or content. This prevents the same news from being rewritten multiple times when several tasks read overlapping feeds.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row">
+                <label><?php esc_html_e('Title similarity threshold:', 'botwriter'); ?></label>
+                <div class="input-with-suffix">
+                    <input type="number" name="botwriter_dedup_title_threshold" value="<?php echo esc_attr($settings['botwriter_dedup_title_threshold']); ?>" min="0" max="100" step="1" class="small-input botwriter-autosave">
+                    <span class="suffix">%</span>
+                </div>
+                <p class="description"><?php esc_html_e('A candidate article is considered a duplicate if its title is at least this similar to a recently published one. Lower = stricter (more articles skipped). 0 disables title comparison. Default: 70.', 'botwriter'); ?></p>
+            </div>
+        </div>
+
+        <div class="general-settings-section">
+            <h4 class="section-title">
                 <span class="dashicons dashicons-admin-tools"></span>
                 <?php esc_html_e('Advanced Settings', 'botwriter'); ?>
             </h4>
@@ -1119,125 +1328,277 @@ function botwriter_settings_meta_box_handler() {
 
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_meta_disabled" value="1" <?php checked(get_option('botwriter_meta_disabled', '0'), '1'); ?> class="botwriter-autosave">
-                    <?php esc_html_e('Disable Meta Description', 'botwriter'); ?>
-                </label>
-                <p class="description"><?php esc_html_e('When enabled, BotWriter will NOT auto-generate an SEO meta description for new posts. The meta is generated using a fast AI call after each post is created and is saved to the post excerpt and to popular SEO plugins (Yoast, Rank Math, AIOSEO, SEOPress, The SEO Framework).', 'botwriter'); ?></p>
-            </div>
-
-            <div class="form-row checkbox-row">
-                <label>
                     <input type="checkbox" name="botwriter_image_error_continue" value="1" <?php checked(get_option('botwriter_image_error_continue', '0'), '1'); ?> class="botwriter-autosave">
                     <?php esc_html_e('Publish without image if image generation fails', 'botwriter'); ?>
                 </label>
                 <p class="description"><?php esc_html_e('When enabled, if the AI image generation fails (quota exceeded, API error, etc.), the post will still be published without a featured image instead of being marked as an error. Useful if you prefer to never lose a post due to image issues.', 'botwriter'); ?></p>
             </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_editor_assistant_enabled" value="1" <?php checked(get_option('botwriter_editor_assistant_enabled', '1'), '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Enable Post Editor AI Assistant Widget', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('Show the floating BotWriter assistant widget while editing posts. Disable if you prefer a clean editor UI.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_module_enabled" value="1" <?php checked(get_option('botwriter_seo_module_enabled', '1'), '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('SEO Module', 'botwriter'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('Enable or disable loading of the complete BotWriter SEO module. Disable to reduce menu/UI complexity and skip SEO module bootstrapping.', 'botwriter'); ?></p>
+            </div>
+        </div>
+
+        <div class="general-settings-section">
+            <h4 class="section-title">
+                <span class="dashicons dashicons-editor-code"></span>
+                <?php esc_html_e('Debug log', 'botwriter'); ?>
+            </h4>
+            <p class="description bw-mb-10">
+                <?php
+                $log_path = botwriter_debug_log_path();
+                printf(
+                    /* translators: %s: absolute path to the debug log file */
+                    esc_html__('When enabled, BotWriter writes diagnostic events to %s. Useful when reporting issues or troubleshooting duplicate posts, RSS fetch failures, etc.', 'botwriter'),
+                    '<code>' . esc_html($log_path ? $log_path : 'wp-content/uploads/botwriter-debug.log') . '</code>'
+                );
+                ?>
+            </p>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_debug_logging" value="1" <?php checked($settings['botwriter_debug_logging'], '1'); ?> class="botwriter-autosave">
+                    <?php esc_html_e('Enable debug logging to file', 'botwriter'); ?>
+                </label>
+            </div>
+
+            <div class="form-row">
+                <div class="bw-debug-log-toolbar" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                    <button type="button" class="button" id="botwriter-debug-log-refresh">
+                        <span class="dashicons dashicons-update" style="margin-top:4px;"></span>
+                        <?php esc_html_e('Refresh', 'botwriter'); ?>
+                    </button>
+                    <button type="button" class="button" id="botwriter-debug-log-clear">
+                        <span class="dashicons dashicons-trash" style="margin-top:4px;"></span>
+                        <?php esc_html_e('Clear', 'botwriter'); ?>
+                    </button>
+                    <span id="botwriter-debug-log-status" style="color:#666;font-size:12px;"></span>
+                </div>
+                <textarea id="botwriter-debug-log-viewer" readonly rows="18" spellcheck="false"
+                    style="width:100%;background:#000;color:#e6e6e6;font-family:Menlo,Consolas,'Courier New',monospace;font-size:12px;line-height:1.45;padding:12px;border:1px solid #333;border-radius:4px;white-space:pre;overflow:auto;"
+                    placeholder="<?php esc_attr_e('Click Refresh to load the log…', 'botwriter'); ?>"></textarea>
+            </div>
         </div>
 
     </div>
 
-    <!-- Tab: SEO Translation -->
+    <!-- Tab: SEO -->
     <div id="main-tab-seo" class="botwriter-main-tab-content">
         <div class="general-settings-section">
             <h4 class="section-title">
-                <span class="dashicons dashicons-translation"></span>
-                <?php esc_html_e('SEO Slug Translation', 'botwriter'); ?>
+                <span class="dashicons dashicons-chart-line"></span>
+                <?php esc_html_e('SEO Post-Processing Overview', 'botwriter'); ?>
             </h4>
             <p class="description bw-mb-10">
-                <?php esc_html_e('By default, WordPress generates URL slugs from your post title in whatever language you write it. If you create content in Spanish, your slugs will be in Spanish (e.g. /receta-paella-valenciana/). The same applies to tag URLs and image filenames.', 'botwriter'); ?>
+                <?php esc_html_e('This panel controls everything BotWriter does after creating a post to improve SEO quality. The settings are split into deterministic rules (no AI cost) and AI-driven enhancements, so you can choose exactly what runs and why.', 'botwriter'); ?>
             </p>
-            <p class="description bw-mb-10">
-                <?php esc_html_e('This feature is useful if you write content in a non-English language but want your URLs in English for international SEO — or vice versa. If you already write in your target slug language, you do not need this.', 'botwriter'); ?>
+
+            <div class="bw-seo-status-grid">
+                <?php foreach ($seo_plugins_status as $seo_plugin_row) : ?>
+                    <div class="bw-seo-status-pill <?php echo !empty($seo_plugin_row['detected']) ? 'is-active' : 'is-inactive'; ?>">
+                        <span class="dashicons <?php echo !empty($seo_plugin_row['detected']) ? 'dashicons-yes-alt' : 'dashicons-minus'; ?>"></span>
+                        <span><?php echo esc_html($seo_plugin_row['name']); ?></span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <p class="description">
+                <?php
+                echo esc_html(sprintf(
+                    /* translators: 1: detected plugins, 2: total supported plugins */
+                    __('Detected %1$d of %2$d supported SEO plugins. Meta synchronization will only write to plugins that are active on this site.', 'botwriter'),
+                    (int) $seo_plugins_detected_count,
+                    (int) count($seo_plugins_status)
+                ));
+                ?>
             </p>
-            <p class="description bw-mb-15">
-                <?php esc_html_e('It uses a single, lightweight API call per post with your configured Text AI provider — cost is negligible (fractions of a cent per post).', 'botwriter'); ?>
-            </p>
+        </div>
+
+        <div class="general-settings-section">
+            <h4 class="section-title">
+                <span class="dashicons dashicons-admin-tools"></span>
+                <?php esc_html_e('Without AI (Deterministic Rules)', 'botwriter'); ?>
+            </h4>
 
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_seo_translation_enabled" value="1" <?php checked(get_option('botwriter_seo_translation_enabled', '0'), '1'); ?> class="botwriter-autosave">
-                    <strong><?php esc_html_e('Enable SEO Slug Translation', 'botwriter'); ?></strong>
+                    <input type="checkbox" name="botwriter_seo_sync_meta_enabled" value="1" <?php checked($settings['botwriter_seo_sync_meta_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Auto-sync meta description to SEO plugins', 'botwriter'); ?></strong>
                 </label>
-                <p class="description"><?php esc_html_e('When enabled, slugs will be translated using your configured text AI provider before each post is published.', 'botwriter'); ?></p>
+                <p class="description"><?php esc_html_e('When enabled, BotWriter writes the generated meta description to the post excerpt and to active SEO plugin fields (Yoast, Rank Math, AIOSEO, SEOPress, The SEO Framework).', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_auto_internal_links_enabled" value="1" <?php checked($settings['botwriter_seo_auto_internal_links_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Enable automatic internal links on publish', 'botwriter'); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, BotWriter inserts internal links directly into the content during post creation. This is automatic post-processing, not a suggestion flow.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row">
+                <label><?php esc_html_e('Maximum automatic internal links per post:', 'botwriter'); ?></label>
+                <div class="input-with-suffix">
+                    <input type="number" name="botwriter_seo_auto_internal_links_max_links" value="<?php echo esc_attr($settings['botwriter_seo_auto_internal_links_max_links']); ?>" min="1" max="8" class="small-input botwriter-autosave">
+                    <span class="suffix"><?php esc_html_e('links', 'botwriter'); ?></span>
+                </div>
+                <p class="description"><?php esc_html_e('Recommended range: 2-5 links for most articles. Heading tags (H1-H6) are always excluded from link insertion.', 'botwriter'); ?></p>
+            </div>
+
+            <p class="description"><?php esc_html_e('Deterministic fallback is always active to guarantee internal-link insertion even if AI is unavailable.', 'botwriter'); ?></p>
+        </div>
+
+        <div class="general-settings-section">
+            <h4 class="section-title">
+                <span class="dashicons dashicons-superhero"></span>
+                <?php esc_html_e('With AI (LLM SEO Enhancements)', 'botwriter'); ?>
+            </h4>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_ai_meta_enabled" value="1" <?php checked($settings['botwriter_seo_ai_meta_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Generate SEO meta description with AI', 'botwriter'); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e('Runs one lightweight AI call per post to produce a concise meta description (about 155 chars) aligned to title and content intent.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_ai_internal_links_enabled" value="1" <?php checked($settings['botwriter_seo_ai_internal_links_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Use AI for automatic internal-link selection', 'botwriter'); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e('Uses your selected text model to choose links, anchors, and placement context before inserting them automatically into the article.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="info-tip">
+                <span class="dashicons dashicons-info"></span>
+                <div>
+                    <p><strong><?php esc_html_e('Execution logic:', 'botwriter'); ?></strong></p>
+                    <p><?php esc_html_e('Automatic links run at publish time. AI mode is used when enabled and available; otherwise BotWriter automatically falls back to deterministic insertion.', 'botwriter'); ?></p>
+                </div>
+            </div>
+
+            <div class="info-tip">
+                <span class="dashicons dashicons-clock"></span>
+                <div>
+                    <p><strong><?php esc_html_e('Performance note:', 'botwriter'); ?></strong></p>
+                    <p><?php esc_html_e('For typical settings (2-5 links), no dedicated cron is needed. Processing runs immediately after generation. High volumes or very large link counts can be moved to background cron later if required.', 'botwriter'); ?></p>
+                </div>
             </div>
         </div>
 
         <div class="general-settings-section">
             <h4 class="section-title">
-                <span class="dashicons dashicons-admin-settings"></span>
-                <?php esc_html_e('Target Language', 'botwriter'); ?>
+                <span class="dashicons dashicons-translation"></span>
+                <?php esc_html_e('AI Slug Translation', 'botwriter'); ?>
             </h4>
+            <p class="description bw-mb-10">
+                <?php esc_html_e('Use AI to translate post/tag/image slugs into your target SEO language. Useful for multilingual workflows where content language and URL language are different.', 'botwriter'); ?>
+            </p>
+
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_translation_enabled" value="1" <?php checked($settings['botwriter_seo_translation_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Enable AI slug translation', 'botwriter'); ?></strong>
+                </label>
+            </div>
 
             <div class="form-row">
                 <label for="botwriter_seo_target_language"><?php esc_html_e('Translate slugs to:', 'botwriter'); ?></label>
-                <?php
-                $seo_lang = get_option('botwriter_seo_target_language', 'en');
-                $seo_languages = array(
-                    'en' => 'English', 'es' => 'Spanish (Español)', 'fr' => 'French (Français)',
-                    'de' => 'German (Deutsch)', 'it' => 'Italian (Italiano)', 'pt' => 'Portuguese (Português)',
-                    'nl' => 'Dutch (Nederlands)', 'ru' => 'Russian (Русский)',
-                    'ja' => 'Japanese (日本語)', 'ko' => 'Korean (한국어)',
-                    'zh' => 'Chinese (中文)', 'ar' => 'Arabic (العربية)',
-                    'hi' => 'Hindi (हिन्दी)', 'tr' => 'Turkish (Türkçe)',
-                    'pl' => 'Polish (Polski)', 'sv' => 'Swedish (Svenska)',
-                    'da' => 'Danish (Dansk)', 'no' => 'Norwegian (Norsk)',
-                    'fi' => 'Finnish (Suomi)', 'cs' => 'Czech (Čeština)',
-                    'ro' => 'Romanian (Română)', 'hu' => 'Hungarian (Magyar)',
-                    'el' => 'Greek (Ελληνικά)', 'th' => 'Thai (ไทย)',
-                    'vi' => 'Vietnamese (Tiếng Việt)', 'id' => 'Indonesian (Bahasa)',
-                    'ms' => 'Malay (Melayu)', 'uk' => 'Ukrainian (Українська)',
-                );
-                ?>
                 <select name="botwriter_seo_target_language" id="botwriter_seo_target_language" class="botwriter-autosave bw-select-wide">
                     <?php foreach ($seo_languages as $code => $name) : ?>
-                        <option value="<?php echo esc_attr($code); ?>" <?php selected($seo_lang, $code); ?>>
+                        <option value="<?php echo esc_attr($code); ?>" <?php selected($settings['botwriter_seo_target_language'], $code); ?>>
                             <?php echo esc_html($name); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <p class="description"><?php esc_html_e('Select the language your URL slugs should be translated to. Typically, choose English for best global SEO.', 'botwriter'); ?></p>
+                <p class="description"><?php esc_html_e('Example: post written in Spanish but URL slug translated to English for international SEO.', 'botwriter'); ?></p>
             </div>
-        </div>
-
-        <div class="general-settings-section">
-            <h4 class="section-title">
-                <span class="dashicons dashicons-list-view"></span>
-                <?php esc_html_e('What to Translate', 'botwriter'); ?>
-            </h4>
 
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_seo_translate_title" value="1" <?php checked(get_option('botwriter_seo_translate_title', '1'), '1'); ?> class="botwriter-autosave">
+                    <input type="checkbox" name="botwriter_seo_translate_title" value="1" <?php checked($settings['botwriter_seo_translate_title'], '1'); ?> class="botwriter-autosave">
                     <?php esc_html_e('Post Slug (URL)', 'botwriter'); ?>
                 </label>
-                <p class="description"><?php esc_html_e('Translate the post URL slug. Example: "receta-paella-valenciana" → "valencian-paella-recipe"', 'botwriter'); ?></p>
             </div>
 
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_seo_translate_tags" value="1" <?php checked(get_option('botwriter_seo_translate_tags', '1'), '1'); ?> class="botwriter-autosave">
+                    <input type="checkbox" name="botwriter_seo_translate_tags" value="1" <?php checked($settings['botwriter_seo_translate_tags'], '1'); ?> class="botwriter-autosave">
                     <?php esc_html_e('Tag Slugs', 'botwriter'); ?>
                 </label>
-                <p class="description"><?php esc_html_e('Translate tag URL slugs for consistent multi-language taxonomy URLs.', 'botwriter'); ?></p>
             </div>
 
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_seo_translate_image" value="1" <?php checked(get_option('botwriter_seo_translate_image', '1'), '1'); ?> class="botwriter-autosave">
+                    <input type="checkbox" name="botwriter_seo_translate_image" value="1" <?php checked($settings['botwriter_seo_translate_image'], '1'); ?> class="botwriter-autosave">
                     <?php esc_html_e('Image Filenames', 'botwriter'); ?>
                 </label>
-                <p class="description"><?php esc_html_e('Use translated slugs for AI-generated image filenames, improving image SEO.', 'botwriter'); ?></p>
             </div>
         </div>
 
         <div class="general-settings-section">
             <h4 class="section-title">
-                <span class="dashicons dashicons-info-outline"></span>
-                <?php esc_html_e('How It Works', 'botwriter'); ?>
+                <span class="dashicons dashicons-analytics"></span>
+                <?php esc_html_e('Yoast-Inspired Feature Map', 'botwriter'); ?>
             </h4>
-            <p class="description">
-                <?php esc_html_e('When a post is generated, BotWriter makes one extra API call using your configured Text AI provider to translate the title, tags, and image names into SEO-friendly slugs. This uses a fast, lightweight model (e.g. GPT-4o-mini, Gemini Flash, Haiku) with ~200 tokens — costing less than $0.001 per post. No additional API key is needed.', 'botwriter'); ?>
+            <p class="description bw-mb-10">
+                <?php esc_html_e('This map shows what is active now and what is planned to reach parity with advanced SEO suites. It makes the execution strategy explicit for each feature.', 'botwriter'); ?>
             </p>
+
+            <table class="bw-seo-feature-table">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e('SEO Capability', 'botwriter'); ?></th>
+                        <th><?php esc_html_e('Execution Mode', 'botwriter'); ?></th>
+                        <th><?php esc_html_e('Status', 'botwriter'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><?php esc_html_e('Meta description generation + plugin synchronization', 'botwriter'); ?></td>
+                        <td><?php esc_html_e('AI + deterministic sync', 'botwriter'); ?></td>
+                        <td><span class="bw-seo-badge is-live"><?php esc_html_e('Live', 'botwriter'); ?></span></td>
+                    </tr>
+                    <tr>
+                        <td><?php esc_html_e('Automatic internal links on publish', 'botwriter'); ?></td>
+                        <td><?php esc_html_e('AI or deterministic fallback', 'botwriter'); ?></td>
+                        <td><span class="bw-seo-badge is-live"><?php esc_html_e('Live', 'botwriter'); ?></span></td>
+                    </tr>
+                    <tr>
+                        <td><?php esc_html_e('Slug translation by target SEO language', 'botwriter'); ?></td>
+                        <td><?php esc_html_e('AI', 'botwriter'); ?></td>
+                        <td><span class="bw-seo-badge is-live"><?php esc_html_e('Live', 'botwriter'); ?></span></td>
+                    </tr>
+                    <tr>
+                        <td><?php esc_html_e('Focus keyphrase checks (density, distribution)', 'botwriter'); ?></td>
+                        <td><?php esc_html_e('Deterministic analysis', 'botwriter'); ?></td>
+                        <td><span class="bw-seo-badge is-planned"><?php esc_html_e('Planned', 'botwriter'); ?></span></td>
+                    </tr>
+                    <tr>
+                        <td><?php esc_html_e('Readability checks (sentence length, transitions, voice)', 'botwriter'); ?></td>
+                        <td><?php esc_html_e('Deterministic analysis', 'botwriter'); ?></td>
+                        <td><span class="bw-seo-badge is-planned"><?php esc_html_e('Planned', 'botwriter'); ?></span></td>
+                    </tr>
+                    <tr>
+                        <td><?php esc_html_e('Schema graph enrichment (Article/FAQ/HowTo)', 'botwriter'); ?></td>
+                        <td><?php esc_html_e('AI + deterministic validation', 'botwriter'); ?></td>
+                        <td><span class="bw-seo-badge is-planned"><?php esc_html_e('Planned', 'botwriter'); ?></span></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
     <?php
@@ -1247,6 +1608,9 @@ function botwriter_settings_meta_box_handler() {
  * Get all settings with defaults
  */
 function botwriter_get_all_settings() {
+    $legacy_meta_disabled = get_option('botwriter_meta_disabled', '0');
+    $legacy_meta_enabled = ($legacy_meta_disabled === '1') ? '0' : '1';
+
     return array(
         'botwriter_ai_image_size' => get_option('botwriter_ai_image_size', 'square'),
         'botwriter_ai_image_quality' => get_option('botwriter_ai_image_quality', 'medium'),
@@ -1262,12 +1626,24 @@ function botwriter_get_all_settings() {
         'botwriter_paused_tasks' => get_option('botwriter_paused_tasks', '2'),
         'botwriter_tags_disabled' => get_option('botwriter_tags_disabled', '0'),
         'botwriter_meta_disabled' => get_option('botwriter_meta_disabled', '0'),
+        'botwriter_editor_assistant_enabled' => get_option('botwriter_editor_assistant_enabled', '1'),
+        // SEO post-processing
+        'botwriter_seo_sync_meta_enabled' => get_option('botwriter_seo_sync_meta_enabled', $legacy_meta_enabled),
+        'botwriter_seo_ai_meta_enabled' => get_option('botwriter_seo_ai_meta_enabled', $legacy_meta_enabled),
+        'botwriter_seo_auto_internal_links_enabled' => get_option('botwriter_seo_auto_internal_links_enabled', '1'),
+        'botwriter_seo_auto_internal_links_max_links' => get_option('botwriter_seo_auto_internal_links_max_links', '3'),
+        'botwriter_seo_ai_internal_links_enabled' => get_option('botwriter_seo_ai_internal_links_enabled', '1'),
         // SEO Translation
         'botwriter_seo_translation_enabled' => get_option('botwriter_seo_translation_enabled', '0'),
         'botwriter_seo_target_language' => get_option('botwriter_seo_target_language', 'en'),
         'botwriter_seo_translate_title' => get_option('botwriter_seo_translate_title', '1'),
         'botwriter_seo_translate_tags' => get_option('botwriter_seo_translate_tags', '1'),
         'botwriter_seo_translate_image' => get_option('botwriter_seo_translate_image', '1'),
+        // Duplicate detection
+        'botwriter_dedup_enabled' => get_option('botwriter_dedup_enabled', '1'),
+        'botwriter_dedup_title_threshold' => get_option('botwriter_dedup_title_threshold', '70'),
+        // Debug logging to file
+        'botwriter_debug_logging' => get_option('botwriter_debug_logging', '0'),
         // API keys (encrypted, just check if they exist for display purposes)
         'botwriter_openai_api_key' => get_option('botwriter_openai_api_key', ''),
         'botwriter_google_api_key' => get_option('botwriter_google_api_key', ''),

@@ -167,13 +167,15 @@ function botwriter_render_model_select($provider, $field_name, $current_value, $
         $attrs_str .= ' ' . esc_attr($key) . '="' . esc_attr($value) . '"';
     }
     
+    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $attrs_str is assembled only from esc_attr()-escaped keys and values.
     echo '<select name="' . esc_attr($field_name) . '" class="form-select model-select" data-provider="' . esc_attr($provider) . '"' . $attrs_str . ' style="max-width: 400px;">';
     
     foreach ($models as $group_name => $group_models) {
         echo '<optgroup label="' . esc_attr($group_name) . '">';
         foreach ($group_models as $model_id => $model_name) {
-            $selected = selected($current_value, $model_id, false);
-            echo '<option value="' . esc_attr($model_id) . '"' . $selected . '>' . esc_html($model_name) . '</option>';
+            echo '<option value="' . esc_attr($model_id) . '"';
+            selected($current_value, $model_id);
+            echo '>' . esc_html($model_name) . '</option>';
         }
         echo '</optgroup>';
     }

@@ -34,6 +34,7 @@ function botwriter_logs_page_handler() {
     
     echo '<form method="post">';
     wp_nonce_field('botwriter_logs_action', 'botwriter_logs_nonce');
+    $logs_table->search_box(__('Search logs', 'botwriter'), 'botwriter-logs-search');
     $logs_table->display();
     echo '</form>';
     echo '</div>';
@@ -147,22 +148,19 @@ class botwriter_Logs_Table extends WP_List_Table {
     
     function prepare_items()
     {
-        //data
-        if ( isset( $_POST['s'] ) && isset( $_POST['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field(wp_unslash($_POST['_wpnonce'])), 'botwriter_nonce' ) ) {
-          $search_query = sanitize_text_field(wp_unslash($_POST['s']));
-          $this->table_data = $this->get_table_data($search_query);
-        } else {
-          $this->table_data = $this->get_table_data();
-        }
-      
+                // Read-only search term from list table request.
+                // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only search param for list table.
+                $search_query = isset($_REQUEST['s']) ? sanitize_text_field(wp_unslash($_REQUEST['s'])) : '';
+
+                // Process actions first (e.g., bulk delete), then fetch filtered rows.
+                $this->process_bulk_action();
+                $this->table_data = $this->get_table_data($search_query);
 
         $columns = $this->get_columns();
         $hidden = ( is_array(get_user_meta( get_current_user_id(), 'managetoplevel_page_list_tablecolumnshidden', true)) ) ? get_user_meta( get_current_user_id(), 'managetoplevel_page_list_tablecolumnshidden', true) : array();
         $sortable = $this->get_sortable_columns();
         $primary  = 'name';
         $this->_column_headers = array($columns, $hidden, $sortable, $primary);
-        $this->process_bulk_action();
-        $this->table_data = $this->get_table_data();
 
         usort($this->table_data, array($this, 'usort_reorder'));
 
@@ -194,24 +192,37 @@ class botwriter_Logs_Table extends WP_List_Table {
             
         
             if ( ! empty( $search ) ) {
-                $prepared_search = $wpdb->esc_like( $search );
-                $prepared_search = '%' . $wpdb->esc_like( $search ) . '%';
-															
-		   
-        
+                $like = '%' . $wpdb->esc_like( $search ) . '%';
+
                 return $wpdb->get_results(
                     $wpdb->prepare(
-                        "SELECT * FROM {$table} WHERE task_name LIKE %s ",
-                        $prepared_search
+                        "SELECT *
+                           FROM {$table}
+                          WHERE website_type <> %s
+                            AND (
+                                task_name LIKE %s
+                                OR aigenerated_title LIKE %s
+                                OR link_post_original LIKE %s
+                                OR rss_source LIKE %s
+                                OR error LIKE %s
+                                OR task_status LIKE %s
+                            )",
+                        'super1',
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like
                     ),
                     ARRAY_A
                 );
-            } else {         
-              return $wpdb->get_results(
-                  $wpdb->prepare("SELECT * FROM {$table} WHERE website_type <> %s", 'super1'),
-                  ARRAY_A
-              );
             }
+
+            return $wpdb->get_results(
+                $wpdb->prepare("SELECT * FROM {$table} WHERE website_type <> %s", 'super1'),
+                ARRAY_A
+            );
         }
     
 
@@ -219,10 +230,12 @@ class botwriter_Logs_Table extends WP_List_Table {
           function usort_reorder($a, $b)
           { 
               // If no sort, default to task_name          
+              // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only sort param for list table.
               $sanitized_orderby = isset($_GET['orderby']) ? sanitize_text_field(wp_unslash($_GET['orderby'])) : '';
     
               $orderby = (!empty($sanitized_orderby)) ? $sanitized_orderby : 'created_at';
       
+              // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only sort param for list table.
               $order = isset($_GET['order']) ? sanitize_text_field(wp_unslash($_GET['order'])) : 'desc  ';
     
               // filtrar order solo asd o desc
@@ -284,36 +297,66 @@ class botwriter_Logs_Table extends WP_List_Table {
     }
 
     public function column_aigenerated_image($item) {
+        $id_post_published = intval($item['id_post_published'] ?? 0);
+        $image_html = '';
+
         // check if the post is published
-        $id_post_published = $item['id_post_published'];
         if ($id_post_published != 0) {
             // get the post image url
             $post_thumbnail_id = get_post_thumbnail_id($id_post_published);
             $post_thumbnail_url = wp_get_attachment_image_src($post_thumbnail_id, 'thumbnail');
             if ($post_thumbnail_url) {
-                return '<img src="' . esc_url($post_thumbnail_url[0]) . '" alt="Post Image" width="50">';
+                $image_html = '<img src="' . esc_url($post_thumbnail_url[0]) . '" alt="Post Image" width="50">';
             }
         }
 
         // Render the image or fallback to text if invalid
-        if (filter_var($item['aigenerated_image'], FILTER_VALIDATE_URL)) {
-            return '<img src="' . esc_url($item['aigenerated_image']) . '" alt="Generated Image" width="50">';
-        } else {
-            return esc_html($item['aigenerated_image']);
+        if ($image_html === '' && filter_var($item['aigenerated_image'], FILTER_VALIDATE_URL)) {
+            $image_html = '<img src="' . esc_url($item['aigenerated_image']) . '" alt="Generated Image" width="50">';
         }
-			
+
+        if ($image_html === '' && !filter_var($item['aigenerated_image'], FILTER_VALIDATE_URL)) {
+            $fallback = trim((string) ($item['aigenerated_image'] ?? ''));
+            $image_html = ($fallback !== '')
+                ? '<span style="font-size:11px;color:#666;">' . esc_html($fallback) . '</span>'
+                : '<span style="color:#999;">—</span>';
+        }
+
+        $edit_link = '';
+        if ($id_post_published > 0) {
+            $edit_link = '<a href="#" class="botwriter-regenerate-image-link" data-post-id="' . esc_attr($id_post_published) . '" title="' . esc_attr__('Edit featured image', 'botwriter') . '" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-top:6px;">'
+                . '<span class="dashicons dashicons-edit" style="font-size:14px;width:14px;height:14px;"></span>'
+                . '<span>' . esc_html__('Edit', 'botwriter') . '</span>'
+                . '</a>';
+        }
+
+        return '<div class="botwriter-log-image-actions" style="display:flex;flex-direction:column;align-items:flex-start;">' . $image_html . $edit_link . '</div>';
     }
 	
 	public function column_task_name($item) {
-        if ($item['website_type']=="super2") {
-            $txt = esc_html($item['task_name']);            
+        $txt = esc_html($item['task_name'] ?? '');
+
+        if (($item['website_type'] ?? '') === 'super2') {
             $txt .= '<br><span style="color:blue;">' . esc_html($item['title_prompt']) . '</span>';
-            return $txt;
-        } else {
-            return esc_html($item['task_name']);
         }
-        
-        
+
+        if (($item['website_type'] ?? '') === 'rss') {
+            $source_url_raw = trim((string) ($item['link_post_original'] ?? ''));
+            $source_label = esc_html__('Source URL', 'botwriter');
+
+            if ($source_url_raw !== '') {
+                $source_url = esc_url($source_url_raw);
+                if ($source_url !== '') {
+                    $txt .= '<br><span style="font-size:11px;color:#555;"><strong>' . $source_label . ':</strong> <a href="' . $source_url . '" target="_blank" rel="noopener" style="word-break:break-all;">' . esc_html($source_url_raw) . '</a></span>';
+                } else {
+                    $txt .= '<br><span style="font-size:11px;color:#555;"><strong>' . $source_label . ':</strong> ' . esc_html($source_url_raw) . '</span>';
+                }
+            } else {
+                $txt .= '<br><span style="font-size:11px;color:#999;"><strong>' . $source_label . ':</strong> ' . esc_html__('not available yet', 'botwriter') . '</span>';
+            }
+        }
+
+        return $txt;
     }
 
 
@@ -336,29 +379,44 @@ class botwriter_Logs_Table extends WP_List_Table {
 
 function botwriter_get_logs_links($id_task) {
     global $wpdb;
-     
 
-    $links = $wpdb->get_results($wpdb->prepare("SELECT link_post_original FROM {$wpdb->prefix}botwriter_logs WHERE id_task = %d ORDER BY id DESC LIMIT 50", $id_task), ARRAY_A);
+    // Per-task "already-handled" list. Excludes rows that ended in error so a
+    // failed task can be retried on the same source URL, but keeps pending /
+    // in-flight rows so two cron ticks don't pick the same article.
+    $links = $wpdb->get_results($wpdb->prepare(
+        "SELECT link_post_original FROM {$wpdb->prefix}botwriter_logs
+          WHERE id_task = %d
+            AND (task_status IS NULL OR task_status <> 'error')
+          ORDER BY id DESC LIMIT 50",
+        $id_task
+    ), ARRAY_A);
     $links_array = [];
     if (empty($links)) {
         return false;
     } else {
         foreach ($links as $link) {
             if ($link['link_post_original'] != '') {
-                $links_array[] = $link['link_post_original'];    
+                $links_array[] = $link['link_post_original'];
             }
         }
     }
     return $links_array;
-    
+
 }
 
-            
+
 function botwriter_get_logs_titles($id_task) {
     global $wpdb;
-    
 
-    $results = $wpdb->get_results($wpdb->prepare("SELECT aigenerated_title FROM {$wpdb->prefix}botwriter_logs WHERE id_task = %d ORDER BY id DESC LIMIT 50", $id_task), ARRAY_A);
+    // Used to feed prompt context (avoid repeating titles). Same status filter
+    // as botwriter_get_logs_links: skip error rows so retries are allowed.
+    $results = $wpdb->get_results($wpdb->prepare(
+        "SELECT aigenerated_title FROM {$wpdb->prefix}botwriter_logs
+          WHERE id_task = %d
+            AND (task_status IS NULL OR task_status <> 'error')
+          ORDER BY id DESC LIMIT 50",
+        $id_task
+    ), ARRAY_A);
     $titles_array = [];
     if (empty($results)) {
         return false;

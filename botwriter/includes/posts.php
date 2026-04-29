@@ -51,6 +51,7 @@ function botwriter_automatic_posts_page()
         <form id="contacts-table" method="POST">
             <?php
             wp_nonce_field('botwriter_tasks_nonce_action', 'botwriter_tasks_nonce');            
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page slug echoed into hidden field; the form has its own nonce above.
             $page_value = isset($_REQUEST['page']) ? sanitize_text_field(wp_unslash($_REQUEST['page'])) : '';
             ?>
             <input type="hidden" name="page" value="<?php echo esc_html($page_value); ?>"/>
@@ -189,7 +190,7 @@ function botwriter_form_page_handler(){
         );
         
         // Process taxonomy terms and build taxonomy_data JSON
-        $taxonomy_terms = isset($_POST['taxonomy_terms']) ? wp_unslash($_POST['taxonomy_terms']) : array();
+        $taxonomy_terms = isset($_POST['taxonomy_terms']) ? map_deep(wp_unslash($_POST['taxonomy_terms']), 'sanitize_text_field') : array();
         $taxonomy_data = array();
         foreach ($taxonomy_terms as $taxonomy_name => $term_ids) {
             $taxonomy_name = sanitize_key($taxonomy_name);
@@ -936,12 +937,13 @@ $default_language_code = substr($locale, 0, 2); // Obtiene el código del idioma
     }
     
     foreach ($templates as $tpl) {
-        $selected = ($selected_template_id == $tpl['id']) ? 'selected' : '';
-        $label = esc_html($tpl['name']);
+        $label = (string) $tpl['name'];
         if (!empty($tpl['is_default'])) {
             $label .= ' ★';
         }
-        echo '<option value="' . esc_attr($tpl['id']) . '" ' . $selected . '>' . $label . '</option>';
+        echo '<option value="' . esc_attr($tpl['id']) . '"';
+        selected($selected_template_id, $tpl['id']);
+        echo '>' . esc_html($label) . '</option>';
     }
     ?>
   </select>

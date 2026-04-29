@@ -732,6 +732,77 @@
     font-weight: 600;
 }
 
+/* SEO Tab */
+.bw-seo-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+}
+
+.bw-seo-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.bw-seo-status-pill.is-active {
+    background: #e7f8ec;
+    color: #0a6b2f;
+    border: 1px solid #b9e8c7;
+}
+
+.bw-seo-status-pill.is-inactive {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+}
+
+.bw-seo-feature-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.bw-seo-feature-table th,
+.bw-seo-feature-table td {
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    padding: 10px 8px;
+    font-size: 13px;
+    vertical-align: top;
+}
+
+.bw-seo-feature-table th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #4b5563;
+}
+
+.bw-seo-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+}
+
+.bw-seo-badge.is-live {
+    background: #dff7e5;
+    color: #0f7a39;
+}
+
+.bw-seo-badge.is-planned {
+    background: #eef2ff;
+    color: #334155;
+}
+
 /* Responsive */
 @media (max-width: 782px) {
     .botwriter-main-tabs {
@@ -757,6 +828,33 @@
     }
     .cost-card {
         min-width: auto;
+    }
+
+    .bw-seo-feature-table,
+    .bw-seo-feature-table thead,
+    .bw-seo-feature-table tbody,
+    .bw-seo-feature-table tr,
+    .bw-seo-feature-table th,
+    .bw-seo-feature-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .bw-seo-feature-table thead {
+        display: none;
+    }
+
+    .bw-seo-feature-table tr {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        padding: 8px;
+        background: #fff;
+    }
+
+    .bw-seo-feature-table td {
+        border: none;
+        padding: 6px 4px;
     }
 }
 /* Compression Slider - styled like quality bar */

@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const fetchBtn = document.getElementById('rewriter_fetch_btn');
     const createBtn = document.getElementById('rewriter_create_btn');
     const addManualBtn = document.getElementById('rewriter_add_manual_btn');
+    const articlesList = document.getElementById('rewriter_articles_list');
 
     if (fetchBtn) {
         fetchBtn.addEventListener('click', rewriterFetchUrls);
@@ -15,6 +16,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (addManualBtn) {
         addManualBtn.addEventListener('click', rewriterAddManualArticle);
+    }
+    if (articlesList) {
+        articlesList.addEventListener('click', function (event) {
+            const toggleBtn = event.target.closest('.rewriter-toggle-btn');
+            if (toggleBtn) {
+                rewriterToggleContent(toggleBtn);
+                return;
+            }
+
+            const removeBtn = event.target.closest('.rewriter-remove-btn');
+            if (removeBtn) {
+                rewriterRemoveArticle(removeBtn);
+            }
+        });
     }
 });
 
@@ -184,8 +199,8 @@ function rewriterCreateArticleCard(article, index) {
         '<div class="rewriter-card-header">' +
         '<span class="rewriter-card-num">#' + (index + 1) + '</span>' +
         '<input type="text" class="rewriter-title-input" value="' + escapeHtml(article.title) + '" />' +
-        '<button type="button" class="button rewriter-toggle-btn" onclick="rewriterToggleContent(this)" title="Expand/Collapse">' + (hasWarning ? '▲' : '▼') + '</button>' +
-        '<button type="button" class="button rewriter-remove-btn" onclick="rewriterRemoveArticle(this)" title="Remove">❌</button>' +
+        '<button type="button" class="button rewriter-toggle-btn" title="Expand/Collapse">' + (hasWarning ? '▲' : '▼') + '</button>' +
+        '<button type="button" class="button rewriter-remove-btn" title="Remove">❌</button>' +
         '</div>' +
         '<div class="rewriter-card-meta">' +
         (article.url ? '<small>Source: <a href="' + escapeHtml(article.url) + '" target="_blank">' + escapeHtml(article.url) + '</a></small>' : '') +
@@ -246,16 +261,12 @@ function rewriterAddManualArticle() {
         '<span class="rewriter-card-num">#' + index + '</span>' +
         '<input type="text" class="rewriter-title-input" placeholder="Article title" />' +
         '<button type="button" class="button rewriter-toggle-btn" title="Expand/Collapse">▲</button>' +
-        '<button type="button" class="button rewriter-remove-btn" onclick="rewriterRemoveArticle(this)" title="Remove">❌</button>' +
+        '<button type="button" class="button rewriter-remove-btn" title="Remove">❌</button>' +
         '</div>' +
         '<div class="rewriter-card-meta"><small>Manual entry</small></div>' +
         '<div class="rewriter-card-content">' +
         '<textarea class="rewriter-content-textarea" rows="10" placeholder="Paste the original article content here..."></textarea>' +
         '</div>';
-
-    card.querySelector('.rewriter-toggle-btn').addEventListener('click', function () {
-        rewriterToggleContent(this);
-    });
 
     container.appendChild(card);
 

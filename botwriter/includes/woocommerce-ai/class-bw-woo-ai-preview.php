@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class BW_Woo_AI_Preview {
+class BotWriter_Woo_AI_Preview {
 
     /** Meta key prefix for backups. */
     const BACKUP_PREFIX = '_bw_backup_';
@@ -26,9 +26,10 @@ class BW_Woo_AI_Preview {
      * ----------------------------------------------------------------*/
 
     public function ajax_apply() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Items are unslashed here and each supported field is sanitized before use below.
         $items = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : [];
 
         if ( empty( $items ) || ! is_array( $items ) ) {
@@ -361,9 +362,10 @@ class BW_Woo_AI_Preview {
      * ----------------------------------------------------------------*/
 
     public function ajax_apply_categories() {
-        BW_Woo_AI::verify_request();
+        BotWriter_Woo_AI::verify_request();
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_request().
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Items are unslashed here and each supported field is sanitized before use below.
         $items = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : [];
 
         if ( empty( $items ) || ! is_array( $items ) ) {
