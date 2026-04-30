@@ -947,7 +947,7 @@ function botwriter_fetch_rss_content( $rss_url, $published_links = '' ) {
             'skipped_count' => count( $dedup_skipped ),
             'first_skipped' => $dedup_skipped[0],
         ) );
-        return array( 'success' => false, 'error' => 'No new articles found in RSS feed: all candidates were skipped by duplicate detection (similar to recently published posts).' );
+        return array( 'success' => false, 'error' => 'No new articles found in RSS feed. All candidates were too similar to recently published posts.' );
     }
 
     return array( 'success' => false, 'error' => 'No new articles found in RSS feed. All articles have already been published.' );
@@ -1086,7 +1086,7 @@ function botwriter_fetch_wordpress_content( $domain_name, $category_ids, $publis
             'skipped_count' => count( $dedup_skipped ),
             'first_skipped' => $dedup_skipped[0],
         ) );
-        return array( 'success' => false, 'error' => 'No new posts found in WordPress site: all candidates were skipped by duplicate detection (similar to recently published posts).' );
+        return array( 'success' => false, 'error' => 'No new posts found in WordPress site. All candidates were too similar to recently published posts.' );
     }
 
     return array( 'success' => false, 'error' => 'No new posts found in WordPress site. All posts have already been published.' );

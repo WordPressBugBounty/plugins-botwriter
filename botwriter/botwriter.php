@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.3.0
+Version: 3.3.1
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.3.0');
+    define('BOTWRITER_VERSION', '3.3.1');
 }
 
 // Plugin directory path (with trailing slash)
@@ -4007,6 +4007,7 @@ function botwriter_send1_data_to_server($data) {
             ]);
             $data['task_status'] = 'error';
             $data['error'] = $rss_result['error'] ?? 'RSS fetch failed';
+            $data['intentosfase1'] = isset($data['intentosfase1']) ? (int) $data['intentosfase1'] + 1 : 1;
             botwriter_logs_register($data, $data['id']);
             return false;
         }
@@ -4050,6 +4051,7 @@ function botwriter_send1_data_to_server($data) {
             ]);
             $data['task_status'] = 'error';
             $data['error'] = $wp_result['error'] ?? 'WordPress fetch failed';
+            $data['intentosfase1'] = isset($data['intentosfase1']) ? (int) $data['intentosfase1'] + 1 : 1;
             botwriter_logs_register($data, $data['id']);
             return false;
         }

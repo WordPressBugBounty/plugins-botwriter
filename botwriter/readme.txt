@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.3.0
+Stable tag: 3.3.1
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -331,6 +331,11 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.1 =
+* Improved RSS duplicate control to skip source items that are too similar to recently published posts.
+* Fixed RSS/WordPress source retry timing so failed prefetches follow the normal backoff schedule instead of being retried in rapid bursts.
+
+
 = 3.3.0 =
 * NEW: Added FULL SEO Module 
 * NEW: Added BotWriter Floating Copilot in the post editor (Prompt + SEO assistant workspace).
