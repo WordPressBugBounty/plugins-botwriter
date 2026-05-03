@@ -153,37 +153,46 @@ function botwriter_dedup_similarity($a, $b) {
 function botwriter_dedup_get_recent_rows($opts, $id_task = null) {
     global $wpdb;
     $table = $wpdb->prefix . 'botwriter_logs';
+    $table_sql = preg_replace('/[^A-Za-z0-9_]/', '', (string) $table);
+    if ($table_sql === '') {
+        return array();
+    }
 
     $since = gmdate('Y-m-d H:i:s', time() - ($opts['window_days'] * DAY_IN_SECONDS));
     $limit = (int) $opts['max_history'];
 
     if ($opts['scope'] === 'task' && $id_task) {
-        $sql = $wpdb->prepare(
-            "SELECT link_post_original, aigenerated_title, aigenerated_content
-               FROM {$table}
-              WHERE id_task = %d
-                AND task_status = 'completed'
-                AND created_at >= %s
-              ORDER BY id DESC
-              LIMIT %d",
-            (int) $id_task,
-            $since,
-            $limit
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT link_post_original, aigenerated_title, aigenerated_content
+                   FROM `" . $table_sql . "`
+                  WHERE id_task = %d
+                    AND task_status = 'completed'
+                    AND created_at >= %s
+                  ORDER BY id DESC
+                  LIMIT %d",
+                (int) $id_task,
+                $since,
+                $limit
+            ),
+            ARRAY_A
         );
     } else {
-        $sql = $wpdb->prepare(
-            "SELECT link_post_original, aigenerated_title, aigenerated_content
-               FROM {$table}
-              WHERE task_status = 'completed'
-                AND created_at >= %s
-              ORDER BY id DESC
-              LIMIT %d",
-            $since,
-            $limit
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT link_post_original, aigenerated_title, aigenerated_content
+                   FROM `" . $table_sql . "`
+                  WHERE task_status = 'completed'
+                    AND created_at >= %s
+                  ORDER BY id DESC
+                  LIMIT %d",
+                $since,
+                $limit
+            ),
+            ARRAY_A
         );
     }
 
-    $rows = $wpdb->get_results($sql, ARRAY_A);
     return is_array($rows) ? $rows : array();
 }
 

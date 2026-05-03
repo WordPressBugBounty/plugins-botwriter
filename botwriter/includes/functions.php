@@ -405,15 +405,24 @@ function botwriter_get_current_text_model() {
  * Get the current image model based on selected provider
  */
 function botwriter_get_current_image_model() {
-    $provider = get_option('botwriter_image_provider', 'dalle');
-    $defaults = [
-        'dalle' => 'gpt-image-1',
-        'fal' => 'fal-ai/flux-pro/v1.1',
-        'replicate' => 'black-forest-labs/flux-1.1-pro',
-        'stability' => 'sd3-large-turbo',
-        'ideogram' => 'V_2_TURBO',
-    ];
-    return get_option("botwriter_{$provider}_model", $defaults[$provider] ?? 'gpt-image-1');
+    $provider = (string) get_option('botwriter_image_provider', 'dalle');
+
+    if (function_exists('botwriter_get_current_image_model_by_provider')) {
+        return (string) botwriter_get_current_image_model_by_provider($provider);
+    }
+
+    $default = function_exists('botwriter_get_provider_default_image_model')
+        ? (string) botwriter_get_provider_default_image_model($provider)
+        : 'gpt-image-1';
+    if ($default === '') {
+        $default = 'gpt-image-1';
+    }
+
+    $option_name = function_exists('botwriter_get_image_model_option_name')
+        ? botwriter_get_image_model_option_name($provider)
+        : ($provider === 'gemini' ? 'botwriter_gemini_image_model' : "botwriter_{$provider}_model");
+
+    return (string) get_option($option_name, $default);
 }
 
 /**

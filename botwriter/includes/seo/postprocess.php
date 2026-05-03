@@ -35,7 +35,7 @@ function botwriter_seo_auto_internal_links_postprocess($post_id, $context = arra
     );
 
     $post_id = intval($post_id);
-    $auto_enabled = get_option('botwriter_seo_auto_internal_links_enabled', '1');
+    $auto_enabled = get_option('botwriter_seo_auto_internal_links_enabled', '0');
 
     botwriter_log('SEO auto postprocess: start', array(
         'post_id' => $post_id,
@@ -92,7 +92,7 @@ function botwriter_seo_auto_internal_links_postprocess($post_id, $context = arra
         return $result;
     }
 
-    $ai_enabled = get_option('botwriter_seo_ai_internal_links_enabled', '1') === '1';
+    $ai_enabled = get_option('botwriter_seo_ai_internal_links_enabled', '0') === '1';
 
     $suggestions = array();
     $strategy = 'none';

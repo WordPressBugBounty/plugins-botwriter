@@ -13,6 +13,24 @@ if (!defined('ABSPATH')) {
  * Get DALL-E models configuration
  */
 function botwriter_get_dalle_models() {
+    if (function_exists('botwriter_get_provider_image_models')) {
+        $grouped = botwriter_get_provider_image_models('dalle');
+        if (!empty($grouped)) {
+            $flat = array();
+            foreach ($grouped as $group_models) {
+                if (!is_array($group_models)) {
+                    continue;
+                }
+                foreach ($group_models as $id => $name) {
+                    $flat[$id] = $name;
+                }
+            }
+            if (!empty($flat)) {
+                return $flat;
+            }
+        }
+    }
+
     return [
         'gpt-image-1' => 'GPT Image 1 (latest - best quality)',
         'dall-e-3' => 'DALL-E 3 (high quality)',

@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
 
 // Include models manager
 require_once plugin_dir_path(__FILE__) . 'models.php';
+require_once plugin_dir_path(__FILE__) . 'image-models.php';
 
 // Include provider configuration files
 $botwriter_settings_dir = plugin_dir_path(__FILE__) . 'settings/';
@@ -763,6 +764,18 @@ function botwriter_ajax_save_settings() {
             }
             $value = botwriter_encrypt_api_key_generic($value);
         }
+    } elseif ($field === 'botwriter_gemini_image_model') {
+        $raw_value = sanitize_text_field($value);
+        $value = function_exists('botwriter_normalize_image_model')
+            ? (string) botwriter_normalize_image_model('gemini', $raw_value)
+            : $raw_value;
+
+        botwriter_log('Settings save: Gemini image model normalized', array(
+            'field' => $field,
+            'raw_value' => $raw_value,
+            'saved_value' => $value,
+            'changed' => ($raw_value !== $value),
+        ));
     } elseif ($field === 'botwriter_paused_tasks') {
         $value = max(2, intval($value));
     } elseif ($field === 'botwriter_seo_auto_internal_links_max_links') {
@@ -1549,57 +1562,6 @@ function botwriter_settings_meta_box_handler() {
             </div>
         </div>
 
-        <div class="general-settings-section">
-            <h4 class="section-title">
-                <span class="dashicons dashicons-analytics"></span>
-                <?php esc_html_e('Yoast-Inspired Feature Map', 'botwriter'); ?>
-            </h4>
-            <p class="description bw-mb-10">
-                <?php esc_html_e('This map shows what is active now and what is planned to reach parity with advanced SEO suites. It makes the execution strategy explicit for each feature.', 'botwriter'); ?>
-            </p>
-
-            <table class="bw-seo-feature-table">
-                <thead>
-                    <tr>
-                        <th><?php esc_html_e('SEO Capability', 'botwriter'); ?></th>
-                        <th><?php esc_html_e('Execution Mode', 'botwriter'); ?></th>
-                        <th><?php esc_html_e('Status', 'botwriter'); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><?php esc_html_e('Meta description generation + plugin synchronization', 'botwriter'); ?></td>
-                        <td><?php esc_html_e('AI + deterministic sync', 'botwriter'); ?></td>
-                        <td><span class="bw-seo-badge is-live"><?php esc_html_e('Live', 'botwriter'); ?></span></td>
-                    </tr>
-                    <tr>
-                        <td><?php esc_html_e('Automatic internal links on publish', 'botwriter'); ?></td>
-                        <td><?php esc_html_e('AI or deterministic fallback', 'botwriter'); ?></td>
-                        <td><span class="bw-seo-badge is-live"><?php esc_html_e('Live', 'botwriter'); ?></span></td>
-                    </tr>
-                    <tr>
-                        <td><?php esc_html_e('Slug translation by target SEO language', 'botwriter'); ?></td>
-                        <td><?php esc_html_e('AI', 'botwriter'); ?></td>
-                        <td><span class="bw-seo-badge is-live"><?php esc_html_e('Live', 'botwriter'); ?></span></td>
-                    </tr>
-                    <tr>
-                        <td><?php esc_html_e('Focus keyphrase checks (density, distribution)', 'botwriter'); ?></td>
-                        <td><?php esc_html_e('Deterministic analysis', 'botwriter'); ?></td>
-                        <td><span class="bw-seo-badge is-planned"><?php esc_html_e('Planned', 'botwriter'); ?></span></td>
-                    </tr>
-                    <tr>
-                        <td><?php esc_html_e('Readability checks (sentence length, transitions, voice)', 'botwriter'); ?></td>
-                        <td><?php esc_html_e('Deterministic analysis', 'botwriter'); ?></td>
-                        <td><span class="bw-seo-badge is-planned"><?php esc_html_e('Planned', 'botwriter'); ?></span></td>
-                    </tr>
-                    <tr>
-                        <td><?php esc_html_e('Schema graph enrichment (Article/FAQ/HowTo)', 'botwriter'); ?></td>
-                        <td><?php esc_html_e('AI + deterministic validation', 'botwriter'); ?></td>
-                        <td><span class="bw-seo-badge is-planned"><?php esc_html_e('Planned', 'botwriter'); ?></span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
     </div>
     <?php
 }
@@ -1610,6 +1572,44 @@ function botwriter_settings_meta_box_handler() {
 function botwriter_get_all_settings() {
     $legacy_meta_disabled = get_option('botwriter_meta_disabled', '0');
     $legacy_meta_enabled = ($legacy_meta_disabled === '1') ? '0' : '1';
+
+    $dalle_default = function_exists('botwriter_get_provider_default_image_model')
+        ? botwriter_get_provider_default_image_model('dalle')
+        : 'gpt-image-1';
+    $gemini_default = function_exists('botwriter_get_provider_default_image_model')
+        ? botwriter_get_provider_default_image_model('gemini')
+        : 'gemini-2.5-flash-image';
+    $fal_default = function_exists('botwriter_get_provider_default_image_model')
+        ? botwriter_get_provider_default_image_model('fal')
+        : 'fal-ai/flux-pro/v1.1';
+    $replicate_default = function_exists('botwriter_get_provider_default_image_model')
+        ? botwriter_get_provider_default_image_model('replicate')
+        : 'black-forest-labs/flux-1.1-pro';
+    $stability_default = function_exists('botwriter_get_provider_default_image_model')
+        ? botwriter_get_provider_default_image_model('stability')
+        : 'sd3.5-large-turbo';
+    $cloudflare_default = function_exists('botwriter_get_provider_default_image_model')
+        ? botwriter_get_provider_default_image_model('cloudflare')
+        : 'flux-1-schnell';
+
+    if ($dalle_default === '') {
+        $dalle_default = 'gpt-image-1';
+    }
+    if ($gemini_default === '') {
+        $gemini_default = 'gemini-2.5-flash-image';
+    }
+    if ($fal_default === '') {
+        $fal_default = 'fal-ai/flux-pro/v1.1';
+    }
+    if ($replicate_default === '') {
+        $replicate_default = 'black-forest-labs/flux-1.1-pro';
+    }
+    if ($stability_default === '') {
+        $stability_default = 'sd3.5-large-turbo';
+    }
+    if ($cloudflare_default === '') {
+        $cloudflare_default = 'flux-1-schnell';
+    }
 
     return array(
         'botwriter_ai_image_size' => get_option('botwriter_ai_image_size', 'square'),
@@ -1630,9 +1630,9 @@ function botwriter_get_all_settings() {
         // SEO post-processing
         'botwriter_seo_sync_meta_enabled' => get_option('botwriter_seo_sync_meta_enabled', $legacy_meta_enabled),
         'botwriter_seo_ai_meta_enabled' => get_option('botwriter_seo_ai_meta_enabled', $legacy_meta_enabled),
-        'botwriter_seo_auto_internal_links_enabled' => get_option('botwriter_seo_auto_internal_links_enabled', '1'),
+        'botwriter_seo_auto_internal_links_enabled' => get_option('botwriter_seo_auto_internal_links_enabled', '0'),
         'botwriter_seo_auto_internal_links_max_links' => get_option('botwriter_seo_auto_internal_links_max_links', '3'),
-        'botwriter_seo_ai_internal_links_enabled' => get_option('botwriter_seo_ai_internal_links_enabled', '1'),
+        'botwriter_seo_ai_internal_links_enabled' => get_option('botwriter_seo_ai_internal_links_enabled', '0'),
         // SEO Translation
         'botwriter_seo_translation_enabled' => get_option('botwriter_seo_translation_enabled', '0'),
         'botwriter_seo_target_language' => get_option('botwriter_seo_target_language', 'en'),
@@ -1663,12 +1663,24 @@ function botwriter_get_all_settings() {
         'botwriter_groq_model' => get_option('botwriter_groq_model', 'llama-3.3-70b-versatile'),
         'botwriter_openrouter_model' => get_option('botwriter_openrouter_model', 'anthropic/claude-sonnet-4'),
         // Image models
-        'botwriter_dalle_model' => get_option('botwriter_dalle_model', 'gpt-image-1'),
-        'botwriter_gemini_image_model' => get_option('botwriter_gemini_image_model', 'gemini-2.5-flash-image'),
-        'botwriter_fal_model' => get_option('botwriter_fal_model', 'fal-ai/flux-pro/v1.1'),
-        'botwriter_replicate_model' => get_option('botwriter_replicate_model', 'black-forest-labs/flux-1.1-pro'),
-        'botwriter_stability_model' => get_option('botwriter_stability_model', 'sd3.5-large-turbo'),
-        'botwriter_cloudflare_model' => get_option('botwriter_cloudflare_model', 'flux-1-schnell'),
+        'botwriter_dalle_model' => function_exists('botwriter_get_current_image_model_by_provider')
+            ? botwriter_get_current_image_model_by_provider('dalle')
+            : get_option('botwriter_dalle_model', $dalle_default),
+        'botwriter_gemini_image_model' => function_exists('botwriter_get_current_image_model_by_provider')
+            ? botwriter_get_current_image_model_by_provider('gemini')
+            : get_option('botwriter_gemini_image_model', $gemini_default),
+        'botwriter_fal_model' => function_exists('botwriter_get_current_image_model_by_provider')
+            ? botwriter_get_current_image_model_by_provider('fal')
+            : get_option('botwriter_fal_model', $fal_default),
+        'botwriter_replicate_model' => function_exists('botwriter_get_current_image_model_by_provider')
+            ? botwriter_get_current_image_model_by_provider('replicate')
+            : get_option('botwriter_replicate_model', $replicate_default),
+        'botwriter_stability_model' => function_exists('botwriter_get_current_image_model_by_provider')
+            ? botwriter_get_current_image_model_by_provider('stability')
+            : get_option('botwriter_stability_model', $stability_default),
+        'botwriter_cloudflare_model' => function_exists('botwriter_get_current_image_model_by_provider')
+            ? botwriter_get_current_image_model_by_provider('cloudflare')
+            : get_option('botwriter_cloudflare_model', $cloudflare_default),
         'botwriter_cloudflare_account_id' => get_option('botwriter_cloudflare_account_id', ''),
         // Stock photo settings
         'botwriter_stockphoto_preferred' => get_option('botwriter_stockphoto_preferred', 'pixabay'),

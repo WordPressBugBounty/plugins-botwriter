@@ -1,0 +1,167 @@
+{
+    "version": "1.0.0",
+    "updated": "2026-05-03",
+    "providers": {
+        "dalle": {
+            "default": "gpt-image-1",
+            "groups": {
+                "GPT Image": {
+                    "gpt-image-2": "GPT Image 2 (latest)",
+                    "gpt-image-1.5": "GPT Image 1.5",
+                    "gpt-image-1": "GPT Image 1 (stable)",
+                    "gpt-image-1-mini": "GPT Image 1 Mini"
+                },
+                "DALL-E (legacy)": {
+                    "dall-e-3": "DALL-E 3",
+                    "dall-e-2": "DALL-E 2"
+                }
+            },
+            "all_models": []
+        },
+        "gemini": {
+            "default": "gemini-2.5-flash-image",
+            "groups": {
+                "Gemini Image": {
+                    "gemini-3.1-flash-image-preview": "Gemini 3.1 Flash Image Preview",
+                    "gemini-3-pro-image-preview": "Gemini 3 Pro Image Preview",
+                    "gemini-2.5-flash-image": "Gemini 2.5 Flash Image"
+                }
+            },
+            "all_models": []
+        },
+        "fal": {
+            "default": "fal-ai/flux-pro/v1.1",
+            "groups": {
+                "Top Models": {
+                    "fal-ai/nano-banana-pro": "Nano Banana Pro",
+                    "fal-ai/recraft/v4/pro/text-to-image": "Recraft V4 Pro",
+                    "fal-ai/bytedance/seedream/v4.5/text-to-image": "Seedream 4.5",
+                    "fal-ai/flux-2-pro": "Flux 2 Pro"
+                },
+                "Google": {
+                    "fal-ai/gemini-3-pro-image-preview": "Gemini 3 Pro Image"
+                },
+                "Flux 2.x": {
+                    "fal-ai/flux-2-flex": "Flux 2 Flex",
+                    "fal-ai/flux-2": "Flux 2 Dev"
+                },
+                "Flux Kontext": {
+                    "fal-ai/flux-pro/kontext/max": "Flux Kontext Max",
+                    "fal-ai/flux-pro/kontext": "Flux Kontext Pro"
+                },
+                "Flux 1.x": {
+                    "fal-ai/flux-pro/v1.1": "Flux Pro v1.1",
+                    "fal-ai/flux/dev": "Flux Dev",
+                    "fal-ai/flux/schnell": "Flux Schnell"
+                },
+                "Other": {
+                    "fal-ai/recraft/v3/text-to-image": "Recraft V3",
+                    "fal-ai/qwen-image": "Qwen Image",
+                    "fal-ai/z-image/turbo": "Z-Image Turbo",
+                    "fal-ai/piflow": "PiFlow"
+                }
+            },
+            "all_models": []
+        },
+        "replicate": {
+            "default": "black-forest-labs/flux-1.1-pro",
+            "groups": {
+                "Top Models": {
+                    "openai/gpt-image-2": "GPT Image 2",
+                    "google/nano-banana-2": "Nano Banana 2",
+                    "google/imagen-4-ultra": "Imagen 4 Ultra",
+                    "bytedance/seedream-4.5": "Seedream 4.5"
+                },
+                "Google Imagen": {
+                    "google/imagen-4": "Imagen 4",
+                    "google/imagen-4-fast": "Imagen 4 Fast"
+                },
+                "Flux 2.x": {
+                    "black-forest-labs/flux-2-pro": "Flux 2 Pro",
+                    "black-forest-labs/flux-2-flex": "Flux 2 Flex",
+                    "black-forest-labs/flux-2-dev": "Flux 2 Dev",
+                    "black-forest-labs/flux-kontext-max": "Flux Kontext Max",
+                    "black-forest-labs/flux-kontext-pro": "Flux Kontext Pro"
+                },
+                "Flux 1.x": {
+                    "black-forest-labs/flux-1.1-pro": "Flux 1.1 Pro",
+                    "black-forest-labs/flux-1.1-pro-ultra": "Flux 1.1 Pro Ultra",
+                    "black-forest-labs/flux-dev": "Flux Dev",
+                    "black-forest-labs/flux-schnell": "Flux Schnell"
+                },
+                "Design Models": {
+                    "ideogram-ai/ideogram-v3-quality": "Ideogram V3 Quality",
+                    "ideogram-ai/ideogram-v3-turbo": "Ideogram V3 Turbo",
+                    "recraft-ai/recraft-v3": "Recraft V3",
+                    "qwen/qwen-image": "Qwen Image"
+                },
+                "Stability": {
+                    "stability-ai/stable-diffusion-3.5-large-turbo": "SD 3.5 Large Turbo"
+                }
+            },
+            "all_models": []
+        },
+        "stability": {
+            "default": "sd3.5-large-turbo",
+            "groups": {
+                "Stable Image Services": {
+                    "core": "Stable Image Core",
+                    "ultra": "Stable Image Ultra"
+                },
+                "Stable Diffusion 3.5": {
+                    "sd3.5-large-turbo": "SD 3.5 Large Turbo",
+                    "sd3.5-large": "SD 3.5 Large",
+                    "sd3.5-medium": "SD 3.5 Medium",
+                    "sd3.5-flash": "SD 3.5 Flash"
+                },
+                "Legacy (auto-rerouted)": {
+                    "sd3-large-turbo": "SD3 Large Turbo",
+                    "sd3-large": "SD3 Large",
+                    "sd3-medium": "SD3 Medium"
+                }
+            },
+            "all_models": []
+        },
+        "cloudflare": {
+            "default": "flux-1-schnell",
+            "groups": {
+                "FLUX": {
+                    "flux-1-schnell": "FLUX.1 Schnell",
+                    "flux-2-dev": "FLUX.2 Dev",
+                    "flux-2-klein-4b": "FLUX.2 Klein 4B",
+                    "flux-2-klein-9b": "FLUX.2 Klein 9B"
+                },
+                "Leonardo": {
+                    "lucid-origin": "Lucid Origin",
+                    "phoenix-1.0": "Phoenix 1.0"
+                },
+                "Stable Diffusion": {
+                    "stable-diffusion-xl-lightning": "SDXL Lightning",
+                    "stable-diffusion-xl-base-1.0": "SDXL Base 1.0"
+                },
+                "Other": {
+                    "dreamshaper-8-lcm": "Dreamshaper 8 LCM"
+                }
+            },
+            "all_models": []
+        },
+        "stockphoto": {
+            "default": "stockphoto",
+            "groups": {
+                "Stock Photo": {
+                    "stockphoto": "Stock photo search"
+                }
+            },
+            "all_models": []
+        },
+        "none": {
+            "default": "none",
+            "groups": {
+                "Disabled": {
+                    "none": "No image generation"
+                }
+            },
+            "all_models": []
+        }
+    }
+}

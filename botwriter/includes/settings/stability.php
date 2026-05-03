@@ -13,6 +13,13 @@ if (!defined('ABSPATH')) {
  * Get Stability AI models configuration
  */
 function botwriter_get_stability_models() {
+    if (function_exists('botwriter_get_provider_image_models')) {
+        $catalog_models = botwriter_get_provider_image_models('stability');
+        if (!empty($catalog_models)) {
+            return $catalog_models;
+        }
+    }
+
     return [
         'Stable Diffusion 3.5' => [
             'sd3.5-large-turbo' => 'SD 3.5 Large Turbo (fast)',

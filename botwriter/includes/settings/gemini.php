@@ -14,6 +14,24 @@ if (!defined('ABSPATH')) {
  * Get Gemini image models configuration
  */
 function botwriter_get_gemini_image_models() {
+    if (function_exists('botwriter_get_provider_image_models')) {
+        $grouped = botwriter_get_provider_image_models('gemini');
+        if (!empty($grouped)) {
+            $flat = array();
+            foreach ($grouped as $group_models) {
+                if (!is_array($group_models)) {
+                    continue;
+                }
+                foreach ($group_models as $id => $name) {
+                    $flat[$id] = $name;
+                }
+            }
+            if (!empty($flat)) {
+                return $flat;
+            }
+        }
+    }
+
     return [
         'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image (fast, efficient)',
         'gemini-3-pro-image-preview' => 'Gemini 3 Pro Image Preview (advanced, 4K)',

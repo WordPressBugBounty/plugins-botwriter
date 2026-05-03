@@ -13,6 +13,13 @@ if (!defined('ABSPATH')) {
  * Get Cloudflare Workers AI models configuration
  */
 function botwriter_get_cloudflare_models() {
+    if (function_exists('botwriter_get_provider_image_models')) {
+        $catalog_models = botwriter_get_provider_image_models('cloudflare');
+        if (!empty($catalog_models)) {
+            return $catalog_models;
+        }
+    }
+
     return [
         'Flux (Black Forest Labs)' => [
             'flux-1-schnell' => 'FLUX.1 Schnell ⭐ (Fast, FREE tier - RECOMMENDED)',

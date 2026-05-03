@@ -14,6 +14,13 @@ if (!defined('ABSPATH')) {
  * Updated: December 2025 with latest models
  */
 function botwriter_get_replicate_models() {
+    if (function_exists('botwriter_get_provider_image_models')) {
+        $catalog_models = botwriter_get_provider_image_models('replicate');
+        if (!empty($catalog_models)) {
+            return $catalog_models;
+        }
+    }
+
     return [
         // Google - Latest Imagen & Nano Banana
         'Google' => [

@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.3.1
+Version: 3.3.2
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.3.1');
+    define('BOTWRITER_VERSION', '3.3.2');
 }
 
 // Plugin directory path (with trailing slash)
@@ -150,7 +150,7 @@ function botwriter_plugin_row_meta($links, $file) {
     if (plugin_basename(__FILE__) === $file) {
         $row_meta = array(
             'website' => '<a href="https://www.wpbotwriter.com" target="_blank" rel="noopener">' . __('Website', 'botwriter') . '</a>',
-            'faq'     => '<a href="https://www.wpbotwriter.com/faq.html" target="_blank" rel="noopener">' . __('FAQ', 'botwriter') . '</a>',
+            'faq'     => '<a href="https://wpbotwriter.com/faq.html" target="_blank" rel="noopener">' . __('FAQ', 'botwriter') . '</a>',
             'support' => '<a href="https://wordpress.org/support/plugin/botwriter/" target="_blank" rel="noopener">' . __('Support', 'botwriter') . '</a>',
         );
         return array_merge($links, $row_meta);
@@ -541,21 +541,53 @@ function botwriter_get_latest_log_with_image_prompt_by_post_id($post_id) {
 function botwriter_get_current_image_model_by_provider($provider) {
     $provider = sanitize_key((string) $provider);
 
-    $image_model_defaults = array(
-        'dalle'      => 'gpt-image-1',
-        'gemini'     => 'gemini-2.5-flash-image',
-        'fal'        => 'fal-ai/flux-pro/v1.1',
-        'replicate'  => 'black-forest-labs/flux-1.1-pro',
-        'stability'  => 'sd3.5-large-turbo',
-        'cloudflare' => 'flux-1-schnell',
-        'stockphoto' => 'stockphoto',
-    );
-
-    if ($provider === 'gemini') {
-        return (string) get_option('botwriter_gemini_image_model', $image_model_defaults[$provider]);
+    if ($provider === 'stockphoto') {
+        return 'stockphoto';
+    }
+    if ($provider === 'none') {
+        return 'none';
     }
 
-    return (string) get_option("botwriter_{$provider}_model", $image_model_defaults[$provider] ?? 'gpt-image-1');
+    $default_model = function_exists('botwriter_get_provider_default_image_model')
+        ? (string) botwriter_get_provider_default_image_model($provider)
+        : '';
+    if ($default_model === '') {
+        $fallback_defaults = array(
+            'dalle' => 'gpt-image-1',
+            'gemini' => 'gemini-2.5-flash-image',
+            'fal' => 'fal-ai/flux-pro/v1.1',
+            'replicate' => 'black-forest-labs/flux-1.1-pro',
+            'stability' => 'sd3.5-large-turbo',
+            'cloudflare' => 'flux-1-schnell',
+        );
+        $default_model = (string) ($fallback_defaults[$provider] ?? 'gpt-image-1');
+    }
+
+    $option_name = function_exists('botwriter_get_image_model_option_name')
+        ? botwriter_get_image_model_option_name($provider)
+        : ($provider === 'gemini' ? 'botwriter_gemini_image_model' : "botwriter_{$provider}_model");
+
+    $model = (string) get_option($option_name, $default_model);
+
+    if (function_exists('botwriter_normalize_image_model')) {
+        $normalized_model = (string) botwriter_normalize_image_model($provider, $model);
+
+        // Persist normalized aliases (for example legacy Gemini 2.0 IDs)
+        // so the settings UI reflects the real value used in dispatch.
+        if ($normalized_model !== '' && $normalized_model !== $model) {
+            update_option($option_name, $normalized_model);
+            botwriter_log('Image model option auto-normalized', array(
+                'provider' => $provider,
+                'option_name' => $option_name,
+                'raw_model' => $model,
+                'normalized_model' => $normalized_model,
+            ));
+        }
+
+        return $normalized_model;
+    }
+
+    return $model;
 }
 
 /**
@@ -2161,7 +2193,7 @@ function botwriter_admin_page() {
                     <div style="margin-bottom: 6px;"><span class="dashicons dashicons-chart-bar" style="font-size: 20px; width: 20px; height: 20px;"></span></div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Logs', 'botwriter'); ?></div>
                 </a>
-                <a href="https://wpbotwriter.com/faq-frequently-asked-questions/" target="_blank" class="botwriter-quick-link botwriter-quick-link-highlight" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: white; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: transform 0.2s, box-shadow 0.2s;">
+                <a href="https://wpbotwriter.com/faq.html" target="_blank" class="botwriter-quick-link botwriter-quick-link-highlight" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 8px; text-align: center; text-decoration: none; color: white; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: transform 0.2s, box-shadow 0.2s;">
                     <div style="margin-bottom: 6px;"><span class="dashicons dashicons-editor-help" style="font-size: 20px; width: 20px; height: 20px;"></span></div>
                     <div style="font-size: 13px; font-weight: 500;"><?php echo esc_html__('Help & FAQ', 'botwriter'); ?></div>
                 </a>
@@ -2173,7 +2205,7 @@ function botwriter_admin_page() {
                 <br>
                 <a href="https://www.wpbotwriter.com" target="_blank" style="color: #667eea; text-decoration: none;"><?php echo esc_html__('Website', 'botwriter'); ?></a>
                 &nbsp;&bull;&nbsp;
-                <a href="https://www.wpbotwriter.com/faq.html" target="_blank" style="color: #667eea; text-decoration: none;">FAQ</a>
+                <a href="https://wpbotwriter.com/faq.html" target="_blank" style="color: #667eea; text-decoration: none;">FAQ</a>
                 &nbsp;&bull;&nbsp;
                 <a href="https://wordpress.org/support/plugin/botwriter/" target="_blank" style="color: #667eea; text-decoration: none;"><?php echo esc_html__('Support', 'botwriter'); ?></a>
             </div>
@@ -3928,21 +3960,60 @@ function botwriter_send1_data_to_server($data) {
     
     // Get current image model based on provider
     $image_provider = $data['image_provider'];
-    $image_model_defaults = [
-        'dalle' => 'gpt-image-1',
-        'gemini' => 'gemini-2.5-flash-image',
-        'fal' => 'fal-ai/flux-pro/v1.1',
-        'replicate' => 'black-forest-labs/flux-1.1-pro',
-        'stability' => 'sd3.5-large-turbo',
-        'cloudflare' => 'flux-1-schnell',
-    ];
-    // Gemini uses a different option name (gemini_image_model instead of gemini_model to avoid conflict with text)
-    $image_model_option = ($image_provider === 'gemini') ? 'botwriter_gemini_image_model' : "botwriter_{$image_provider}_model";
-    $data['image_model'] = get_option($image_model_option, $image_model_defaults[$image_provider] ?? 'gpt-image-1');
+    $image_model_default = null;
+    $image_model_option = null;
+    $image_model_raw = null;
+
+    if ($image_provider === 'stockphoto') {
+        $data['image_model'] = 'stockphoto';
+    } elseif ($image_provider === 'none') {
+        $data['image_model'] = 'none';
+    } else {
+        $image_model_default = function_exists('botwriter_get_provider_default_image_model')
+            ? (string) botwriter_get_provider_default_image_model($image_provider)
+            : '';
+        if ($image_model_default === '') {
+            $image_model_default = 'gpt-image-1';
+        }
+
+        $image_model_option = function_exists('botwriter_get_image_model_option_name')
+            ? botwriter_get_image_model_option_name($image_provider)
+            : ($image_provider === 'gemini' ? 'botwriter_gemini_image_model' : "botwriter_{$image_provider}_model");
+
+        $image_model_raw = (string) get_option($image_model_option, $image_model_default);
+
+        if (function_exists('botwriter_get_current_image_model_by_provider')) {
+            $data['image_model'] = botwriter_get_current_image_model_by_provider($image_provider);
+        } else {
+            $data['image_model'] = $image_model_raw;
+        }
+    }
     
     // Also send the specific field name the server expects
     if ($image_provider === 'gemini') {
         $data['gemini_image_model'] = $data['image_model'];
+
+        $gemini_catalog_models = array();
+        $image_model_raw_in_catalog = null;
+        if (function_exists('botwriter_get_provider_image_models_flat')) {
+            $gemini_catalog_models = array_keys(botwriter_get_provider_image_models_flat('gemini'));
+            if (!empty($gemini_catalog_models)) {
+                $image_model_raw_in_catalog = in_array(strtolower((string) $image_model_raw), $gemini_catalog_models, true);
+            }
+        }
+
+        botwriter_log('Image model trace before phase 1 send', array(
+            'log_id' => $data['id'] ?? null,
+            'task_id' => $data['id_task'] ?? null,
+            'image_provider' => $image_provider,
+            'image_model_option' => $image_model_option,
+            'image_model_default' => $image_model_default,
+            'image_model_raw' => $image_model_raw,
+            'image_model_resolved' => $data['image_model'] ?? null,
+            'image_model_changed' => ((string) ($image_model_raw ?? '') !== (string) ($data['image_model'] ?? '')),
+            'image_model_raw_in_catalog' => $image_model_raw_in_catalog,
+            'gemini_catalog_models' => $gemini_catalog_models,
+        ));
     }
     
     // Send all API keys (decrypted) - server will use the ones needed
@@ -4101,6 +4172,7 @@ function botwriter_send1_data_to_server($data) {
         'text_model' => $data['text_model'] ?? null,
         'image_provider' => $data['image_provider'] ?? null,
         'image_model' => $data['image_model'] ?? null,
+        'gemini_image_model' => $data['gemini_image_model'] ?? null,
     ]);
 
     $data["error"]= "";

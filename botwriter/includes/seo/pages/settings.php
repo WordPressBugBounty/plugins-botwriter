@@ -27,8 +27,8 @@ function botwriter_seo_page_settings() {
     echo '<div class="bw-seo-grid cols-2">';
 
     botwriter_seo_card_open(__('Internal links engine', 'botwriter'), 'admin-links');
-    echo '<div class="bw-form-row"><label>' . esc_html__('Auto-insert on publish', 'botwriter') . '</label><input type="checkbox" name="auto_links" value="1"' . checked((string) get_option('botwriter_seo_auto_internal_links_enabled', '1'), '1', false) . ' /></div>';
-    echo '<div class="bw-form-row"><label>' . esc_html__('Use AI suggestions', 'botwriter') . '</label><input type="checkbox" name="ai_links" value="1"' . checked((string) get_option('botwriter_seo_ai_internal_links_enabled', '1'), '1', false) . ' /></div>';
+    echo '<div class="bw-form-row"><label>' . esc_html__('Auto-insert on publish', 'botwriter') . '</label><input type="checkbox" name="auto_links" value="1"' . checked((string) get_option('botwriter_seo_auto_internal_links_enabled', '0'), '1', false) . ' /></div>';
+    echo '<div class="bw-form-row"><label>' . esc_html__('Use AI suggestions', 'botwriter') . '</label><input type="checkbox" name="ai_links" value="1"' . checked((string) get_option('botwriter_seo_ai_internal_links_enabled', '0'), '1', false) . ' /></div>';
     echo '<div class="bw-form-row"><label>' . esc_html__('Max links / article', 'botwriter') . '</label><input type="number" name="max_links" min="1" max="8" value="' . esc_attr($max_links_value) . '" /></div>';
     botwriter_seo_card_close();
 

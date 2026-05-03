@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.3.1
+Stable tag: 3.3.2
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -61,7 +61,7 @@ Choose from 7 different AI providers for text generation:
 7 image providers with 50+ models:
 * **📷 [FREE] Stock Images:** Search Pixabay, Pexels, Unsplash & Openverse — $0.00 per image, no API generation cost
 * **OpenAI DALL-E:** GPT-Image-1, DALL-E 3
-* **Google Gemini:** gemini-2.5-flash-image, gemini-3-pro-image-preview
+* **Google Gemini:** gemini-2.5-flash-image, gemini-3-pro-image-preview, gemini-3.1-flash-image-preview
 * **Fal.ai:** Flux 2 Pro/Dev, Nano Banana Pro (Google Gemini), Seedream 4.5
 * **Replicate:** Flux 1.1 Pro, Ideogram V3, Imagen 4
 * **Stability AI:** Stable Diffusion 3.5, SDXL
@@ -331,6 +331,10 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.2 =
+* Added a dedicated image models catalog and refreshed image provider model lists with newer options.
+* New image model options include GPT Image 2, Gemini 3.1 Flash Image Preview, Flux 2 family, Nano Banana, Seedream 4.5, and Cloudflare FLUX.2 Klein variants.
+
 = 3.3.1 =
 * Improved RSS duplicate control to skip source items that are too similar to recently published posts.
 * Fixed RSS/WordPress source retry timing so failed prefetches follow the normal backoff schedule instead of being retried in rapid bursts.
