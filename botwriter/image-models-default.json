@@ -146,10 +146,14 @@
             "all_models": []
         },
         "stockphoto": {
-            "default": "stockphoto",
+            "default": "random",
             "groups": {
                 "Stock Photo": {
-                    "stockphoto": "Stock photo search"
+                    "random": "Random (auto rotate)",
+                    "pixabay": "Pixabay",
+                    "pexels": "Pexels",
+                    "unsplash": "Unsplash",
+                    "openverse": "Openverse"
                 }
             },
             "all_models": []

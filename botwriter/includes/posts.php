@@ -979,7 +979,7 @@ $default_language_code = substr($locale, 0, 2); // Obtiene el código del idioma
 <!-- Disable AI Images -->
 <div class="col-md-6">
   <?php 
-  $image_provider = get_option('botwriter_image_provider', 'dalle');
+  $image_provider = get_option('botwriter_image_provider', 'stockphoto');
   $force_disable_images = ($image_provider === 'none');
   ?>
   <label class="form-label"><?php esc_html_e('AI Image Generation:', 'botwriter'); ?></label>

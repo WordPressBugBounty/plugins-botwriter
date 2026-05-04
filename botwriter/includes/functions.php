@@ -405,7 +405,7 @@ function botwriter_get_current_text_model() {
  * Get the current image model based on selected provider
  */
 function botwriter_get_current_image_model() {
-    $provider = (string) get_option('botwriter_image_provider', 'dalle');
+    $provider = (string) get_option('botwriter_image_provider', 'stockphoto');
 
     if (function_exists('botwriter_get_current_image_model_by_provider')) {
         return (string) botwriter_get_current_image_model_by_provider($provider);

@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
  * Called when 'stockphoto' is selected as image_provider
  */
 function botwriter_render_stockphoto_settings($settings, $is_active) {
-    $preferred = get_option('botwriter_stockphoto_preferred', 'pixabay');
+    $preferred = get_option('botwriter_stockphoto_preferred', 'random');
     $selection = get_option('botwriter_stockphoto_selection', 'random_top10');
     $attribution = get_option('botwriter_stockphoto_attribution', 'caption');
     ?>
@@ -40,6 +40,7 @@ function botwriter_render_stockphoto_settings($settings, $is_active) {
                 <div class="form-row">
                     <label><span class="dashicons dashicons-images-alt2"></span> <?php esc_html_e('Preferred Image Bank:', 'botwriter'); ?></label>
                     <select name="botwriter_stockphoto_preferred" class="form-select botwriter-autosave" id="stockphoto_preferred">
+                        <option value="random" <?php selected($preferred, 'random'); ?>>🎲 <?php esc_html_e('Random (auto rotate)', 'botwriter'); ?></option>
                         <option value="pixabay" <?php selected($preferred, 'pixabay'); ?>>📷 Pixabay</option>
                         <option value="pexels" <?php selected($preferred, 'pexels'); ?>>📸 Pexels</option>
                         <option value="unsplash" <?php selected($preferred, 'unsplash'); ?>>🏞️ Unsplash</option>
@@ -51,6 +52,7 @@ function botwriter_render_stockphoto_settings($settings, $is_active) {
                 </p>
                 <div class="bank-details" style="margin-top: 12px;">
                     <table class="specs-table">
+                        <tr><td><strong>Random</strong></td><td><?php esc_html_e('Randomizes bank order on each search across all providers', 'botwriter'); ?></td></tr>
                         <tr><td><strong>Pixabay</strong></td><td><?php esc_html_e('Large library, no attribution required', 'botwriter'); ?></td></tr>
                         <tr><td><strong>Pexels</strong></td><td><?php esc_html_e('High quality photos, no attribution required', 'botwriter'); ?></td></tr>
                         <tr><td><strong>Unsplash</strong></td><td><?php esc_html_e('Professional photos, no attribution required', 'botwriter'); ?></td></tr>

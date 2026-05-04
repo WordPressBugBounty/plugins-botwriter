@@ -872,7 +872,7 @@ function botwriter_settings_page_handler() {
 function botwriter_settings_meta_box_handler() { 
     // Get current values with defaults
     $text_provider = get_option('botwriter_text_provider', 'openai');
-    $image_provider = get_option('botwriter_image_provider', 'dalle');
+    $image_provider = get_option('botwriter_image_provider', 'stockphoto');
     $show_wp_cron_disabled_warning = function_exists('botwriter_should_show_wp_cron_disabled_warning') && botwriter_should_show_wp_cron_disabled_warning();
     $active_tasks_count = $show_wp_cron_disabled_warning && function_exists('botwriter_get_enabled_tasks_count')
         ? (int) botwriter_get_enabled_tasks_count()
@@ -1683,7 +1683,7 @@ function botwriter_get_all_settings() {
             : get_option('botwriter_cloudflare_model', $cloudflare_default),
         'botwriter_cloudflare_account_id' => get_option('botwriter_cloudflare_account_id', ''),
         // Stock photo settings
-        'botwriter_stockphoto_preferred' => get_option('botwriter_stockphoto_preferred', 'pixabay'),
+        'botwriter_stockphoto_preferred' => get_option('botwriter_stockphoto_preferred', 'random'),
         'botwriter_stockphoto_selection' => get_option('botwriter_stockphoto_selection', 'random_top10'),
         'botwriter_stockphoto_attribution' => get_option('botwriter_stockphoto_attribution', 'caption'),
     );

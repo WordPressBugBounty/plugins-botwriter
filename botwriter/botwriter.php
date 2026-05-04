@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.3.2
+Version: 3.3.3
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.3.2');
+    define('BOTWRITER_VERSION', '3.3.3');
 }
 
 // Plugin directory path (with trailing slash)
@@ -542,7 +542,13 @@ function botwriter_get_current_image_model_by_provider($provider) {
     $provider = sanitize_key((string) $provider);
 
     if ($provider === 'stockphoto') {
-        return 'stockphoto';
+        $preferred = sanitize_key((string) get_option('botwriter_stockphoto_preferred', 'random'));
+        $allowed_preferred = array('pixabay', 'pexels', 'unsplash', 'openverse', 'random');
+        if (!in_array($preferred, $allowed_preferred, true)) {
+            $preferred = 'random';
+        }
+
+        return $preferred;
     }
     if ($provider === 'none') {
         return 'none';
@@ -597,8 +603,13 @@ function botwriter_get_current_image_model_by_provider($provider) {
  * @return array
  */
 function botwriter_get_current_image_generation_settings() {
-    $provider = (string) get_option('botwriter_image_provider', 'dalle');
+    $provider = (string) get_option('botwriter_image_provider', 'stockphoto');
     $model = botwriter_get_current_image_model_by_provider($provider);
+    $stockphoto_preferred = sanitize_key((string) get_option('botwriter_stockphoto_preferred', 'random'));
+    $allowed_preferred = array('pixabay', 'pexels', 'unsplash', 'openverse', 'random');
+    if (!in_array($stockphoto_preferred, $allowed_preferred, true)) {
+        $stockphoto_preferred = 'random';
+    }
 
     return array(
         'provider' => $provider,
@@ -607,7 +618,7 @@ function botwriter_get_current_image_generation_settings() {
         'quality' => (string) get_option('botwriter_ai_image_quality', 'medium'),
         'style' => (string) get_option('botwriter_ai_image_style', 'realistic'),
         'style_custom' => (string) get_option('botwriter_ai_image_style_custom', ''),
-        'stockphoto_preferred' => (string) get_option('botwriter_stockphoto_preferred', 'pixabay'),
+        'stockphoto_preferred' => $stockphoto_preferred,
         'stockphoto_selection' => (string) get_option('botwriter_stockphoto_selection', 'random_top10'),
         'stockphoto_attribution' => (string) get_option('botwriter_stockphoto_attribution', 'caption'),
     );
@@ -2248,6 +2259,22 @@ function botwriter_activate_apikey_and_defaults() {
     if (get_option('botwriter_cron_active') === false) {
         update_option('botwriter_cron_active', '1');
     }
+
+    if (get_option('botwriter_image_provider') === false) {
+        update_option('botwriter_image_provider', 'stockphoto');
+    }
+
+    if (get_option('botwriter_stockphoto_preferred') === false) {
+        update_option('botwriter_stockphoto_preferred', 'random');
+    }
+
+    if (get_option('botwriter_stockphoto_selection') === false) {
+        update_option('botwriter_stockphoto_selection', 'random_top10');
+    }
+
+    if (get_option('botwriter_stockphoto_attribution') === false) {
+        update_option('botwriter_stockphoto_attribution', 'caption');
+    }
     
     if (get_option('botwriter_ai_image_size') === false) {
         update_option('botwriter_ai_image_size', 'square');
@@ -3706,6 +3733,8 @@ function botwriter_execute_events_pass2(){
 
 
 function botwriter_generate_post($data){
+    $data = botwriter_normalize_generated_post_payload($data);
+
     // Determine post type (default to 'post' for backward compatibility)
     $post_type = isset($data['post_type']) && !empty($data['post_type']) ? $data['post_type'] : 'post';
     
@@ -3904,10 +3933,189 @@ function botwriter_generate_post($data){
 
     return $post_id;
 }
+
+/**
+ * Parse a JSON-like AI payload from a raw content string.
+ * Handles markdown fences and typographic quotes used by some providers.
+ *
+ * @param mixed $raw_content
+ * @return array|null
+ */
+function botwriter_parse_generated_payload_from_content($raw_content) {
+    if (!is_string($raw_content)) {
+        return null;
+    }
+
+    $clean = trim($raw_content);
+    if ($clean === '') {
+        return null;
+    }
+
+    // Normalize BOM + typographic quotes before parsing.
+    $clean = preg_replace('/^\xEF\xBB\xBF/u', '', $clean);
+    $clean = preg_replace('/[\x{201C}\x{201D}\x{201E}\x{201F}]/u', '"', $clean);
+    $clean = preg_replace('/[\x{2018}\x{2019}\x{201A}\x{201B}]/u', "'", $clean);
+
+    // Strip markdown code fences.
+    if (preg_match('/^```(?:json|JSON)?\s*\n?(.*?)\n?```$/su', $clean, $matches)) {
+        $clean = trim($matches[1]);
+    } elseif (preg_match('/```(?:json|JSON)?\s*\n?(.*?)\n?```/su', $clean, $matches)) {
+        $clean = trim($matches[1]);
+    } elseif (preg_match('/^`{1,3}(?:json|JSON)?\s*\n?([\s\S]+)$/u', $clean, $matches)) {
+        $inner = trim($matches[1]);
+        $clean = preg_replace('/`{1,3}\s*$/u', '', $inner);
+        $clean = trim((string) $clean);
+    }
+
+    // Some providers prepend a stray "json" token before the object.
+    $clean = preg_replace('/^json\s*(?=\{|\[)/i', '', $clean);
+
+    // Remove decorative wrappers around the payload.
+    $clean = trim($clean, " \t\n\r\0\x0B`'\"");
+
+    $parsed = json_decode($clean, true);
+
+    if (!is_array($parsed) && preg_match('/\{[\s\S]*\}/u', $clean, $json_match)) {
+        $parsed = json_decode($json_match[0], true);
+    }
+
+    if (!is_array($parsed) || !isset($parsed['aigenerated_content'])) {
+        return null;
+    }
+
+    return $parsed;
+}
+
+/**
+ * Ensure the post payload uses parsed fields when content accidentally contains
+ * wrapped JSON returned by the AI model.
+ *
+ * @param mixed $data
+ * @return mixed
+ */
+function botwriter_normalize_generated_post_payload($data) {
+    if (!is_array($data)) {
+        return $data;
+    }
+
+    $raw_content = isset($data['aigenerated_content']) ? (string) $data['aigenerated_content'] : '';
+    $parsed_payload = botwriter_parse_generated_payload_from_content($raw_content);
+
+    if (!is_array($parsed_payload)) {
+        return $data;
+    }
+
+    $normalized = $data;
+    $changed = false;
+
+    $field_map = array('aigenerated_title', 'aigenerated_content', 'aigenerated_tags', 'image_prompt', 'image_keywords');
+    foreach ($field_map as $field) {
+        if (!array_key_exists($field, $parsed_payload)) {
+            continue;
+        }
+
+        $new_value = $parsed_payload[$field];
+        if ($field === 'aigenerated_tags' && is_array($new_value)) {
+            $new_value = implode(', ', $new_value);
+        }
+        $new_value = is_string($new_value) ? trim($new_value) : '';
+
+        if ($new_value === '') {
+            continue;
+        }
+
+        $current_value = isset($normalized[$field]) ? (string) $normalized[$field] : '';
+        if ($current_value !== $new_value) {
+            $normalized[$field] = $new_value;
+            $changed = true;
+        }
+    }
+
+    if ($changed) {
+        botwriter_log('Post payload normalized from wrapped JSON response', array(
+            'title_len' => strlen((string) ($normalized['aigenerated_title'] ?? '')),
+            'content_len' => strlen((string) ($normalized['aigenerated_content'] ?? '')),
+            'tags_len' => strlen((string) ($normalized['aigenerated_tags'] ?? '')),
+            'image_prompt_len' => strlen((string) ($normalized['image_prompt'] ?? '')),
+        ));
+    }
+
+    return $normalized;
+}
  
  
  
  
+/**
+ * Send a legacy compat request with one automatic site_token recovery retry.
+ *
+ * When the backend reports token mismatch, clear local token and retry once.
+ * This self-heals cloned/reinstalled sites where the stored token is stale.
+ *
+ * @param string $remote_url Endpoint URL.
+ * @param array  $data       Request body.
+ * @param bool   $ssl_verify SSL verify flag.
+ * @param int    $timeout    Request timeout in seconds.
+ * @return array|WP_Error
+ */
+function botwriter_post_compat_with_token_recovery($remote_url, $data, $ssl_verify, $timeout = 45) {
+    $request_args = array(
+        'method'    => 'POST',
+        'body'      => $data,
+        'timeout'   => $timeout,
+        'headers'   => array(),
+        'sslverify' => (bool) $ssl_verify,
+    );
+
+    $response = wp_remote_post($remote_url, $request_args);
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $http_code = wp_remote_retrieve_response_code($response);
+    if ((int) $http_code !== 200) {
+        return $response;
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    $result = json_decode($body, true);
+    if (!is_array($result)) {
+        return $response;
+    }
+
+    $error_code = (string) ($result['error'] ?? '');
+    $error_message = (string) ($result['error_message'] ?? '');
+    $token_issue = in_array($error_code, array('invalid_site_token', 'token_required'), true)
+        || stripos($error_message, 'site token mismatch') !== false
+        || stripos($error_message, 'requires authentication') !== false;
+
+    if (!$token_issue) {
+        return $response;
+    }
+
+    $current_token = (string) get_option('botwriter_site_token', '');
+    if ($current_token === '') {
+        return $response;
+    }
+
+    delete_option('botwriter_site_token');
+    $retry_data = $data;
+    $retry_data['site_token'] = '';
+
+    botwriter_log('Site token mismatch detected. Retrying request with empty site_token.', array(
+        'error' => $error_code,
+        'message' => $error_message,
+    ));
+
+    return wp_remote_post($remote_url, array(
+        'method'    => 'POST',
+        'body'      => $retry_data,
+        'timeout'   => $timeout,
+        'headers'   => array(),
+        'sslverify' => (bool) $ssl_verify,
+    ));
+}
+
 // Function to send data to the server pass1
 function botwriter_send1_data_to_server($data) {
     
@@ -3939,10 +4147,10 @@ function botwriter_send1_data_to_server($data) {
     
     // Provider selections
     $data['text_provider'] = get_option('botwriter_text_provider', 'openai');
-    $data['image_provider'] = get_option('botwriter_image_provider', 'dalle');
+    $data['image_provider'] = get_option('botwriter_image_provider', 'stockphoto');
     
     // Stock photo settings (sent always, used only when image_provider=stockphoto)
-    $data['stockphoto_preferred'] = get_option('botwriter_stockphoto_preferred', 'pixabay');
+    $data['stockphoto_preferred'] = botwriter_get_current_image_model_by_provider('stockphoto');
     $data['stockphoto_selection'] = get_option('botwriter_stockphoto_selection', 'random_top10');
     $data['stockphoto_attribution'] = get_option('botwriter_stockphoto_attribution', 'caption');
     
@@ -3965,7 +4173,7 @@ function botwriter_send1_data_to_server($data) {
     $image_model_raw = null;
 
     if ($image_provider === 'stockphoto') {
-        $data['image_model'] = 'stockphoto';
+        $data['image_model'] = $data['stockphoto_preferred'];
     } elseif ($image_provider === 'none') {
         $data['image_model'] = 'none';
     } else {
@@ -4188,13 +4396,7 @@ function botwriter_send1_data_to_server($data) {
 
 
 
-    $response = wp_remote_post($remote_url, array(
-        'method'    => 'POST',
-        'body'      => $data,
-        'timeout'   => 45,
-        'headers'   => array(),
-        'sslverify' => $ssl_verify, 
-    ));
+    $response = botwriter_post_compat_with_token_recovery($remote_url, $data, $ssl_verify, 45);
 
     $data["intentosfase1"]++;
     botwriter_logs_register($data, $data["id"]); 
@@ -4223,6 +4425,10 @@ function botwriter_send1_data_to_server($data) {
             $result = json_decode($body, true);        
 
             //error_log("Data received: " . print_r($body, true));
+
+            if (!empty($result['site_token'])) {
+                update_option('botwriter_site_token', sanitize_text_field((string) $result['site_token']));
+            }
 
             // STOPFORMANY: server reports too many consecutive errors
             if (isset($result['error']) && strpos($result['error'], 'STOPFORMANY') === 0) {
@@ -4334,13 +4540,7 @@ function botwriter_send2_data_to_server($data) {
         'id_task_server' => $data['id_task_server'] ?? null,
     ]);
 
-    $response = wp_remote_post($remote_url, array(
-        'method'    => 'POST',
-        'body'      => $data,
-        'timeout'   => 45,
-        'headers'   => array(),
-        'sslverify' => $ssl_verify
-    ));
+    $response = botwriter_post_compat_with_token_recovery($remote_url, $data, $ssl_verify, 45);
 
     
     if (is_wp_error($response)) {
@@ -4359,6 +4559,10 @@ function botwriter_send2_data_to_server($data) {
         
             $body = wp_remote_retrieve_body($response);
             $result = json_decode($body, true);
+
+            if (!empty($result['site_token'])) {
+                update_option('botwriter_site_token', sanitize_text_field((string) $result['site_token']));
+            }
         
             //echo 'Data recive: <pre>' . print_r($result, true) . '</pre>'; 
             
@@ -5088,7 +5292,7 @@ function botwriter_process_image($file_path) {
                 update_option('botwriter_text_provider', 'openai');
             }
             if (get_option('botwriter_image_provider') === 'custom') {
-                update_option('botwriter_image_provider', 'dalle');
+                update_option('botwriter_image_provider', 'stockphoto');
             }
             // Clean up custom provider options
             delete_option('botwriter_custom_text_url');

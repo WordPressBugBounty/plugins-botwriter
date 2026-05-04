@@ -80,10 +80,14 @@ function botwriter_get_image_models_fallback_catalog() {
                 'all_models' => array(),
             ),
             'stockphoto' => array(
-                'default' => 'stockphoto',
+                'default' => 'random',
                 'groups' => array(
                     'Stock Photo' => array(
-                        'stockphoto' => 'Stock Photo Search',
+                        'random' => 'Random (auto rotate)',
+                        'pixabay' => 'Pixabay',
+                        'pexels' => 'Pexels',
+                        'unsplash' => 'Unsplash',
+                        'openverse' => 'Openverse',
                     ),
                 ),
                 'all_models' => array(),
@@ -218,7 +222,14 @@ function botwriter_normalize_image_model($provider, $model) {
     $default_model = (string) botwriter_get_provider_default_image_model($provider);
 
     if ($provider === 'stockphoto') {
-        return 'stockphoto';
+        $model = sanitize_key((string) $model);
+        $valid_stock_models = array('pixabay', 'pexels', 'unsplash', 'openverse', 'random');
+
+        if (in_array($model, $valid_stock_models, true)) {
+            return $model;
+        }
+
+        return 'random';
     }
     if ($provider === 'none') {
         return 'none';

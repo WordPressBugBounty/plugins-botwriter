@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.3.2
+Stable tag: 3.3.3
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -331,6 +331,12 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.3 =
+* Stock Images is now the default image provider on first plugin installation.
+* Preferred stock bank now defaults to Random on first plugin installation.
+* Added Random as preferred stock bank option in settings and improved automatic bank rotation.
+* Improved stock image metadata so the reported image model reflects the selected/resolved stock bank.
+
 = 3.3.2 =
 * Added a dedicated image models catalog and refreshed image provider model lists with newer options.
 * New image model options include GPT Image 2, Gemini 3.1 Flash Image Preview, Flux 2 family, Nano Banana, Seedream 4.5, and Cloudflare FLUX.2 Klein variants.
