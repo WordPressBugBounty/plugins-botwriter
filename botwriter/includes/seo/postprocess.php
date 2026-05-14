@@ -92,12 +92,19 @@ function botwriter_seo_auto_internal_links_postprocess($post_id, $context = arra
         return $result;
     }
 
-    $ai_enabled = get_option('botwriter_seo_ai_internal_links_enabled', '0') === '1';
+    $suggestions = botwriter_editor_build_internal_links_noai_suggestions($candidates, $seo_context, array(), max($max_links * 2, 8));
+    $result['suggestion_count'] = count($suggestions);
 
-    $suggestions = array();
-    $strategy = 'none';
+    // First pass: deterministic suggestions + opportunity-first matcher.
+    $apply = botwriter_seo_apply_internal_links_to_content($content, $suggestions, $max_links, $candidates);
+    $inserted = intval($apply['inserted'] ?? 0);
+    $opportunity_inserts = intval($apply['opportunity_inserts'] ?? 0);
+    $strategy = !empty($suggestions) ? 'no_ai' : 'opportunity';
+    $ai_attempted = false;
 
-    if ($ai_enabled && function_exists('botwriter_call_editor_worker')) {
+    // Second pass (fallback): if deterministic pass inserted nothing,
+    // try AI suggestions when a provider key is available.
+    if ($inserted <= 0 && function_exists('botwriter_call_editor_worker')) {
         $provider = sanitize_key((string) get_option('botwriter_text_provider', 'openai'));
         $model = function_exists('botwriter_get_current_text_model')
             ? (string) botwriter_get_current_text_model()
@@ -107,6 +114,7 @@ function botwriter_seo_auto_internal_links_postprocess($post_id, $context = arra
             : '';
 
         if ($api_key !== '') {
+            $ai_attempted = true;
             $auto_prompt = sprintf(
                 /* translators: %d: maximum links to insert */
                 __('Automatically insert up to %d contextual internal links in this article. Avoid heading tags and existing links.', 'botwriter'),
@@ -117,12 +125,16 @@ function botwriter_seo_auto_internal_links_postprocess($post_id, $context = arra
             $generated_links = botwriter_call_editor_worker($provider, $api_key, $model, $links_prompt, 2200, 0.2);
 
             if (!is_wp_error($generated_links)) {
-                $suggestions = botwriter_parse_editor_internal_links_response((string) $generated_links, $candidates);
-                if (!empty($suggestions)) {
-                    $strategy = 'ai';
+                $ai_suggestions = botwriter_parse_editor_internal_links_response((string) $generated_links, $candidates);
+                if (!empty($ai_suggestions)) {
+                    $result['suggestion_count'] = count($ai_suggestions);
+                    $apply = botwriter_seo_apply_internal_links_to_content($content, $ai_suggestions, $max_links, $candidates);
+                    $inserted = intval($apply['inserted'] ?? 0);
+                    $opportunity_inserts = intval($apply['opportunity_inserts'] ?? 0);
+                    $strategy = 'ai_fallback';
                 }
             } else {
-                botwriter_log('SEO auto postprocess: AI call failed', array(
+                botwriter_log('SEO auto postprocess: AI fallback call failed', array(
                     'post_id' => $post_id,
                     'error' => $generated_links->get_error_message(),
                 ));
@@ -130,38 +142,21 @@ function botwriter_seo_auto_internal_links_postprocess($post_id, $context = arra
         }
     }
 
-    if (empty($suggestions)) {
-        $suggestions = botwriter_editor_build_internal_links_noai_suggestions($candidates, $seo_context, array(), max($max_links * 2, 8));
-        if (!empty($suggestions)) {
-            $strategy = 'no_ai';
-        }
-    }
-
-    $result['suggestion_count'] = count($suggestions);
-
-    // Always run the apply pipeline, even if suggestions are empty —
-    // the opportunity-first matcher may still discover natural matches
-    // from the candidates pool.
-    $apply = botwriter_seo_apply_internal_links_to_content($content, $suggestions, $max_links, $candidates);
-    $inserted = intval($apply['inserted'] ?? 0);
-    $opportunity_inserts = intval($apply['opportunity_inserts'] ?? 0);
-
     $result['inserted'] = $inserted;
     $result['opportunity_inserts'] = $opportunity_inserts;
 
     if ($inserted <= 0) {
-        $result['strategy'] = $strategy === 'none' ? 'no_match' : $strategy . '_no_match';
+        $result['strategy'] = $ai_attempted ? 'ai_fallback_no_match' : 'no_match';
         botwriter_log('SEO auto postprocess: no links inserted', array(
             'post_id' => $post_id,
             'strategy' => $strategy,
+            'ai_attempted' => $ai_attempted ? 1 : 0,
             'suggestion_count' => $result['suggestion_count'],
         ));
         return $result;
     }
 
-    if ($strategy === 'none' && $opportunity_inserts > 0) {
-        $strategy = 'opportunity';
-    } elseif ($opportunity_inserts > 0) {
+    if ($strategy !== 'opportunity' && $opportunity_inserts > 0) {
         $strategy .= '+opportunity';
     }
     $result['strategy'] = $strategy;

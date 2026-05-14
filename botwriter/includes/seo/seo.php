@@ -48,16 +48,19 @@ require_once $botwriter_seo_dir . 'bulk/action-optimize-images.php';
 // 4) AI editorial
 require_once $botwriter_seo_dir . 'ai/faq.php';
 
-// 5) Embeddings
+// 5) Social metadata
+require_once $botwriter_seo_dir . 'social.php';
+
+// 6) Embeddings
 require_once $botwriter_seo_dir . 'embeddings/index.php';
 
-// 6) External services
+// 7) External services
 require_once $botwriter_seo_dir . 'external/serp.php';
 
-// 7) Autopilot
+// 8) Autopilot
 require_once $botwriter_seo_dir . 'autopilot/redirects.php';
 
-// 8) Admin UI router (loads page renderers internally)
+// 9) Admin UI router (loads page renderers internally)
 require_once $botwriter_seo_dir . 'llmstxt.php';
 require_once $botwriter_seo_dir . 'media-alt.php';
 require_once $botwriter_seo_dir . 'admin-page.php';

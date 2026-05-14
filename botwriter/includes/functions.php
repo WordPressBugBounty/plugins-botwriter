@@ -1186,18 +1186,18 @@ function botwriter_is_seo_ai_meta_enabled() {
 /**
  * Whether meta synchronization to SEO plugins is enabled.
  *
- * Falls back to the legacy botwriter_meta_disabled option when the
- * new setting has not been saved yet.
+ * This is intentionally tied to AI meta generation so that, when
+ * "Generate SEO meta description with AI" is enabled, the generated
+ * description is always synchronized to excerpt + SEO plugin fields.
  *
  * @return bool
  */
 function botwriter_is_seo_meta_sync_enabled() {
-    $value = get_option('botwriter_seo_sync_meta_enabled', '');
-    if ($value === '') {
-        return get_option('botwriter_meta_disabled', '0') !== '1';
+    if (function_exists('botwriter_is_seo_ai_meta_enabled')) {
+        return botwriter_is_seo_ai_meta_enabled();
     }
 
-    return $value === '1';
+    return get_option('botwriter_meta_disabled', '0') !== '1';
 }
 
 /**

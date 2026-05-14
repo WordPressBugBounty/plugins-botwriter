@@ -718,6 +718,10 @@ function botwriter_ajax_save_settings() {
         'botwriter_seo_auto_internal_links_enabled',
         'botwriter_seo_auto_internal_links_max_links',
         'botwriter_seo_ai_internal_links_enabled',
+        'botwriter_seo_featured_image_alt_enabled',
+        'botwriter_seo_publish_faq_enabled',
+        'botwriter_seo_publish_faq_mode',
+        'botwriter_seo_social_meta_enabled',
         // SEO Translation fields
         'botwriter_seo_translation_enabled',
         'botwriter_seo_target_language',
@@ -780,6 +784,11 @@ function botwriter_ajax_save_settings() {
         $value = max(2, intval($value));
     } elseif ($field === 'botwriter_seo_auto_internal_links_max_links') {
         $value = max(1, min(8, intval($value)));
+    } elseif ($field === 'botwriter_seo_publish_faq_mode') {
+        $value = sanitize_key($value);
+        if ($value !== 'visible_schema' && $value !== 'schema_only') {
+            $value = 'visible_schema';
+        }
     } elseif ($field === 'botwriter_dedup_title_threshold') {
         $value = max(0, min(100, intval($value)));
     } elseif ($field === 'botwriter_cron_active' || $field === 'botwriter_tags_disabled'
@@ -790,6 +799,9 @@ function botwriter_ajax_save_settings() {
         || $field === 'botwriter_seo_ai_meta_enabled'
         || $field === 'botwriter_seo_auto_internal_links_enabled'
         || $field === 'botwriter_seo_ai_internal_links_enabled'
+        || $field === 'botwriter_seo_featured_image_alt_enabled'
+        || $field === 'botwriter_seo_publish_faq_enabled'
+        || $field === 'botwriter_seo_social_meta_enabled'
         || $field === 'botwriter_seo_translation_enabled' || $field === 'botwriter_seo_translate_title'
         || $field === 'botwriter_seo_translate_tags' || $field === 'botwriter_seo_translate_image'
         || $field === 'botwriter_dedup_enabled'
@@ -811,6 +823,7 @@ function botwriter_ajax_save_settings() {
 
     if ($field === 'botwriter_seo_ai_meta_enabled') {
         update_option('botwriter_meta_disabled', $value === '1' ? '0' : '1');
+        update_option('botwriter_seo_sync_meta_enabled', $value);
     }
 
     // Handle cron activation/deactivation
@@ -1415,7 +1428,7 @@ function botwriter_settings_meta_box_handler() {
                 <?php esc_html_e('SEO Post-Processing Overview', 'botwriter'); ?>
             </h4>
             <p class="description bw-mb-10">
-                <?php esc_html_e('This panel controls everything BotWriter does after creating a post to improve SEO quality. The settings are split into deterministic rules (no AI cost) and AI-driven enhancements, so you can choose exactly what runs and why.', 'botwriter'); ?>
+                <?php esc_html_e('Configure what BotWriter runs right after publishing to improve SEO automatically.', 'botwriter'); ?>
             </p>
 
             <div class="bw-seo-status-grid">
@@ -1442,15 +1455,15 @@ function botwriter_settings_meta_box_handler() {
         <div class="general-settings-section">
             <h4 class="section-title">
                 <span class="dashicons dashicons-admin-tools"></span>
-                <?php esc_html_e('Without AI (Deterministic Rules)', 'botwriter'); ?>
+                <?php esc_html_e('Publish-time SEO Actions', 'botwriter'); ?>
             </h4>
 
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_seo_sync_meta_enabled" value="1" <?php checked($settings['botwriter_seo_sync_meta_enabled'], '1'); ?> class="botwriter-autosave">
-                    <strong><?php esc_html_e('Auto-sync meta description to SEO plugins', 'botwriter'); ?></strong>
+                    <input type="checkbox" name="botwriter_seo_ai_meta_enabled" value="1" <?php checked($settings['botwriter_seo_ai_meta_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Generate SEO meta description with AI', 'botwriter'); ?></strong>
                 </label>
-                <p class="description"><?php esc_html_e('When enabled, BotWriter writes the generated meta description to the post excerpt and to active SEO plugin fields (Yoast, Rank Math, AIOSEO, SEOPress, The SEO Framework).', 'botwriter'); ?></p>
+                <p class="description"><?php esc_html_e('When enabled, BotWriter generates one SEO meta description and applies it automatically to the post excerpt plus active SEO plugin fields.', 'botwriter'); ?></p>
             </div>
 
             <div class="form-row checkbox-row">
@@ -1458,7 +1471,7 @@ function botwriter_settings_meta_box_handler() {
                     <input type="checkbox" name="botwriter_seo_auto_internal_links_enabled" value="1" <?php checked($settings['botwriter_seo_auto_internal_links_enabled'], '1'); ?> class="botwriter-autosave">
                     <strong><?php esc_html_e('Enable automatic internal links on publish', 'botwriter'); ?></strong>
                 </label>
-                <p class="description"><?php esc_html_e('When enabled, BotWriter inserts internal links directly into the content during post creation. This is automatic post-processing, not a suggestion flow.', 'botwriter'); ?></p>
+                <p class="description"><?php esc_html_e('BotWriter first tries deterministic insertion from your existing content. If it cannot find a natural deterministic match and an API key is available, it falls back to AI selection.', 'botwriter'); ?></p>
             </div>
 
             <div class="form-row">
@@ -1470,45 +1483,35 @@ function botwriter_settings_meta_box_handler() {
                 <p class="description"><?php esc_html_e('Recommended range: 2-5 links for most articles. Heading tags (H1-H6) are always excluded from link insertion.', 'botwriter'); ?></p>
             </div>
 
-            <p class="description"><?php esc_html_e('Deterministic fallback is always active to guarantee internal-link insertion even if AI is unavailable.', 'botwriter'); ?></p>
-        </div>
-
-        <div class="general-settings-section">
-            <h4 class="section-title">
-                <span class="dashicons dashicons-superhero"></span>
-                <?php esc_html_e('With AI (LLM SEO Enhancements)', 'botwriter'); ?>
-            </h4>
-
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_seo_ai_meta_enabled" value="1" <?php checked($settings['botwriter_seo_ai_meta_enabled'], '1'); ?> class="botwriter-autosave">
-                    <strong><?php esc_html_e('Generate SEO meta description with AI', 'botwriter'); ?></strong>
+                    <input type="checkbox" name="botwriter_seo_featured_image_alt_enabled" value="1" <?php checked($settings['botwriter_seo_featured_image_alt_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Set featured image ALT text automatically', 'botwriter'); ?></strong>
                 </label>
-                <p class="description"><?php esc_html_e('Runs one lightweight AI call per post to produce a concise meta description (about 155 chars) aligned to title and content intent.', 'botwriter'); ?></p>
             </div>
 
             <div class="form-row checkbox-row">
                 <label>
-                    <input type="checkbox" name="botwriter_seo_ai_internal_links_enabled" value="1" <?php checked($settings['botwriter_seo_ai_internal_links_enabled'], '1'); ?> class="botwriter-autosave">
-                    <strong><?php esc_html_e('Use AI for automatic internal-link selection', 'botwriter'); ?></strong>
+                    <input type="checkbox" name="botwriter_seo_publish_faq_enabled" value="1" <?php checked($settings['botwriter_seo_publish_faq_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Generate FAQ + FAQ schema on publish', 'botwriter'); ?></strong>
                 </label>
-                <p class="description"><?php esc_html_e('Uses your selected text model to choose links, anchors, and placement context before inserting them automatically into the article.', 'botwriter'); ?></p>
             </div>
 
-            <div class="info-tip">
-                <span class="dashicons dashicons-info"></span>
-                <div>
-                    <p><strong><?php esc_html_e('Execution logic:', 'botwriter'); ?></strong></p>
-                    <p><?php esc_html_e('Automatic links run at publish time. AI mode is used when enabled and available; otherwise BotWriter automatically falls back to deterministic insertion.', 'botwriter'); ?></p>
-                </div>
+            <div class="form-row" id="botwriter-seo-faq-mode-row" style="<?php echo $settings['botwriter_seo_publish_faq_enabled'] === '1' ? '' : 'display:none;'; ?>">
+                <label><?php esc_html_e('FAQ output mode:', 'botwriter'); ?></label>
+                <select name="botwriter_seo_publish_faq_mode" class="botwriter-autosave bw-select-wide">
+                    <option value="visible_schema" <?php selected($settings['botwriter_seo_publish_faq_mode'], 'visible_schema'); ?>><?php esc_html_e('Visible block + FAQ schema', 'botwriter'); ?></option>
+                    <option value="schema_only" <?php selected($settings['botwriter_seo_publish_faq_mode'], 'schema_only'); ?>><?php esc_html_e('Schema only (hidden block)', 'botwriter'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e('Applied when FAQ generation is enabled.', 'botwriter'); ?></p>
             </div>
 
-            <div class="info-tip">
-                <span class="dashicons dashicons-clock"></span>
-                <div>
-                    <p><strong><?php esc_html_e('Performance note:', 'botwriter'); ?></strong></p>
-                    <p><?php esc_html_e('For typical settings (2-5 links), no dedicated cron is needed. Processing runs immediately after generation. High volumes or very large link counts can be moved to background cron later if required.', 'botwriter'); ?></p>
-                </div>
+            <div class="form-row checkbox-row">
+                <label>
+                    <input type="checkbox" name="botwriter_seo_social_meta_enabled" value="1" <?php checked($settings['botwriter_seo_social_meta_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Emit social meta tags (Open Graph + Twitter Cards)', 'botwriter'); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e('Outputs deterministic social tags only when no major SEO plugin is active, to avoid duplicate head metadata.', 'botwriter'); ?></p>
             </div>
         </div>
 
@@ -1633,6 +1636,10 @@ function botwriter_get_all_settings() {
         'botwriter_seo_auto_internal_links_enabled' => get_option('botwriter_seo_auto_internal_links_enabled', '0'),
         'botwriter_seo_auto_internal_links_max_links' => get_option('botwriter_seo_auto_internal_links_max_links', '3'),
         'botwriter_seo_ai_internal_links_enabled' => get_option('botwriter_seo_ai_internal_links_enabled', '0'),
+        'botwriter_seo_featured_image_alt_enabled' => get_option('botwriter_seo_featured_image_alt_enabled', '1'),
+        'botwriter_seo_publish_faq_enabled' => get_option('botwriter_seo_publish_faq_enabled', '0'),
+        'botwriter_seo_publish_faq_mode' => get_option('botwriter_seo_publish_faq_mode', 'visible_schema'),
+        'botwriter_seo_social_meta_enabled' => get_option('botwriter_seo_social_meta_enabled', '0'),
         // SEO Translation
         'botwriter_seo_translation_enabled' => get_option('botwriter_seo_translation_enabled', '0'),
         'botwriter_seo_target_language' => get_option('botwriter_seo_target_language', 'en'),

@@ -360,6 +360,37 @@ jQuery(document).ready(function($) {
         }
     });
 
+    // SEO FAQ mode visibility: show only when FAQ publish is enabled.
+    function setSeoFaqModeVisibility(animated) {
+        var $toggle = $('input[name="botwriter_seo_publish_faq_enabled"]');
+        var $row = $('#botwriter-seo-faq-mode-row');
+
+        if (!$toggle.length || !$row.length) {
+            return;
+        }
+
+        var show = $toggle.is(':checked');
+        if (show) {
+            if (animated) {
+                $row.stop(true, true).slideDown(160);
+            } else {
+                $row.show();
+            }
+        } else {
+            if (animated) {
+                $row.stop(true, true).slideUp(160);
+            } else {
+                $row.hide();
+            }
+        }
+    }
+
+    $(document).on('change', 'input[name="botwriter_seo_publish_faq_enabled"]', function() {
+        setSeoFaqModeVisibility(true);
+    });
+
+    setSeoFaqModeVisibility(false);
+
     // Compression slider value display
     $('#compression_slider').on('input', function() {
         $('#compression_value').text($(this).val() + '%');

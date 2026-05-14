@@ -292,7 +292,38 @@ Storytelling Guidelines:
 -IMPORTANT: End with the story\'s natural resolution or a powerful final image. No labeled conclusion needed.',
         ),
 
-        // Template 11: Custom Prompt (Empty)
+        // Template 11: SEO 2026 Optimized Article
+        array(
+            'name' => 'SEO 2026 Optimized Article',
+            'is_default' => 0,
+            'content' => 'Write a modern SEO-focused article for 2026 using an intent-first, evidence-backed approach:
+
+-Format: HTML with H2-H4 headings and <p> paragraphs. Do NOT use H1.
+-Length: Approximately {{post_length}} words.
+-Language: {{post_language}}
+-Writing style: {{writer_style}}
+-Target keywords/topic: {{prompt_or_keywords}}
+
+2026 SEO Requirements:
+-Match search intent early: in the first 120 words, clearly state what the reader will learn and include the primary keyword naturally.
+-Use semantic entities and related terms across headings and body to strengthen topical depth.
+-Include one concise "Key Takeaways" block near the beginning (2-4 bullet points) for scanability.
+-Structure H2 headings as practical, user-centered questions or outcomes.
+-Use short, information-dense paragraphs (2-4 sentences) and avoid filler.
+-Add one brief section with examples, data points, or expert-backed context to improve trust.
+-Include exactly ONE external authoritative reference link in the body (HTML <a> tag) to a relevant high-trust source (official documentation, government, standards body, academic, or recognized industry authority).
+-The external link must be directly relevant to a claim in the article and use descriptive anchor text (not "click here").
+-Do not add more than one external link.
+
+Editorial Quality Rules:
+-Avoid generic introductions and repetitive wording.
+-Keep a helpful, precise tone focused on real user outcomes.
+-Do not invent fake statistics or unverifiable claims.
+
+-IMPORTANT: End naturally without using headings such as "Conclusion", "Summary", "Final Thoughts", or similar labels. The closing paragraph should deliver a practical next step or clear takeaway.',
+        ),
+
+        // Template 12: Custom Prompt (Empty)
         array(
             'name' => 'Custom Prompt (Empty)',
             'is_default' => 0,
@@ -312,7 +343,10 @@ function botwriter_insert_all_default_templates() {
     // Check if any templates exist
     $existing_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
     if ($existing_count > 0) {
-        return; // Templates already exist, don't overwrite
+        // Keep existing templates untouched, but ensure any new bundled
+        // defaults are added over time (for plugin updates).
+        botwriter_ensure_default_templates_exist();
+        return;
     }
     
     $templates = botwriter_get_default_templates();
@@ -326,6 +360,65 @@ function botwriter_insert_all_default_templates() {
                 'is_default' => $template['is_default'],
             )
         );
+    }
+}
+
+/**
+ * Ensure bundled default templates exist without overwriting user templates.
+ *
+ * Inserts only templates whose names are missing from the DB.
+ *
+ * @return void
+ */
+function botwriter_ensure_default_templates_exist() {
+    static $already_run = false;
+    if ($already_run) {
+        return;
+    }
+    $already_run = true;
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'botwriter_templates';
+
+    $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name));
+    if ($table_exists !== $table_name) {
+        return;
+    }
+
+    $existing_names = $wpdb->get_col("SELECT name FROM $table_name");
+    $existing_lookup = array();
+    if (is_array($existing_names)) {
+        foreach ($existing_names as $existing_name) {
+            $existing_lookup[(string) $existing_name] = true;
+        }
+    }
+
+    $has_default = intval($wpdb->get_var("SELECT COUNT(*) FROM $table_name WHERE is_default = 1")) > 0;
+
+    foreach (botwriter_get_default_templates() as $template) {
+        $name = isset($template['name']) ? (string) $template['name'] : '';
+        if ($name === '' || isset($existing_lookup[$name])) {
+            continue;
+        }
+
+        $is_default = intval($template['is_default'] ?? 0);
+        if ($is_default === 1 && $has_default) {
+            $is_default = 0;
+        }
+
+        $wpdb->insert(
+            $table_name,
+            array(
+                'name' => $name,
+                'content' => (string) ($template['content'] ?? ''),
+                'is_default' => $is_default,
+            )
+        );
+
+        $existing_lookup[$name] = true;
+        if ($is_default === 1) {
+            $has_default = true;
+        }
     }
 }
 

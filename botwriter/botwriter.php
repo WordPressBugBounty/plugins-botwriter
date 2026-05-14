@@ -1,9 +1,9 @@
 <?php
 /* 
-Plugin Name: BotWriter – AI Writer & Content Generator
+Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.3.3
+Version: 3.3.4
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.3.3');
+    define('BOTWRITER_VERSION', '3.3.4');
 }
 
 // Plugin directory path (with trailing slash)
@@ -2290,6 +2290,22 @@ function botwriter_activate_apikey_and_defaults() {
     if (get_option('botwriter_ai_image_quality') === false) {
         update_option('botwriter_ai_image_quality', 'medium');
     }
+
+    if (get_option('botwriter_seo_featured_image_alt_enabled') === false) {
+        update_option('botwriter_seo_featured_image_alt_enabled', '1');
+    }
+
+    if (get_option('botwriter_seo_publish_faq_enabled') === false) {
+        update_option('botwriter_seo_publish_faq_enabled', '0');
+    }
+
+    if (get_option('botwriter_seo_publish_faq_mode') === false) {
+        update_option('botwriter_seo_publish_faq_mode', 'visible_schema');
+    }
+
+    if (get_option('botwriter_seo_social_meta_enabled') === false) {
+        update_option('botwriter_seo_social_meta_enabled', '0');
+    }
 }
 
 
@@ -2633,6 +2649,11 @@ function botwriter_get_template($template_id = null) {
 function botwriter_get_all_templates() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'botwriter_templates';
+
+    if (function_exists('botwriter_ensure_default_templates_exist')) {
+        botwriter_ensure_default_templates_exist();
+    }
+
     return $wpdb->get_results("SELECT * FROM $table_name ORDER BY name DESC", ARRAY_A);
 }
 
@@ -3894,11 +3915,46 @@ function botwriter_generate_post($data){
         }
     }
 
+    $seo_faq_result = array(
+        'enabled' => false,
+        'generated' => false,
+        'mode' => 'disabled',
+        'visible' => null,
+    );
+    if (get_option('botwriter_seo_publish_faq_enabled', '0') === '1') {
+        $seo_faq_result['enabled'] = true;
+        $faq_mode = sanitize_key((string) get_option('botwriter_seo_publish_faq_mode', 'visible_schema'));
+        if ($faq_mode !== 'visible_schema' && $faq_mode !== 'schema_only') {
+            $faq_mode = 'visible_schema';
+        }
+
+        $faq_visible = $faq_mode === 'schema_only' ? 0 : 1;
+        $seo_faq_result['mode'] = $faq_mode;
+        $seo_faq_result['visible'] = $faq_visible;
+
+        if (function_exists('botwriter_seo_generate_faq_for_post')) {
+            $faq_generated = (bool) botwriter_seo_generate_faq_for_post($post_id);
+            $seo_faq_result['generated'] = $faq_generated;
+            if ($faq_generated) {
+                update_post_meta($post_id, '_botwriter_seo_faq_visible', $faq_visible);
+                if (function_exists('botwriter_seo_compute_score')) {
+                    botwriter_seo_compute_score($post_id, true);
+                }
+            }
+        } else {
+            $seo_faq_result['mode'] = 'function_missing';
+        }
+    }
+
     botwriter_log('SEO publish post-processing summary', array(
         'post_id' => $post_id,
         'internal_links_strategy' => (string) ($seo_internal_links_result['strategy'] ?? 'unknown'),
         'internal_links_inserted' => intval($seo_internal_links_result['inserted'] ?? 0),
         'internal_links_updated' => !empty($seo_internal_links_result['updated']) ? 1 : 0,
+        'faq_enabled' => !empty($seo_faq_result['enabled']) ? 1 : 0,
+        'faq_generated' => !empty($seo_faq_result['generated']) ? 1 : 0,
+        'faq_mode' => (string) ($seo_faq_result['mode'] ?? 'disabled'),
+        'faq_visible' => isset($seo_faq_result['visible']) ? intval($seo_faq_result['visible']) : -1,
     ));
 
     // Persist image prompt in post meta so regeneration never depends on logs.
@@ -5017,7 +5073,21 @@ function botwriter_attach_image_to_post($post_id, $image_url, $post_title, $tran
             wp_update_attachment_metadata($attach_id, $attach_data);
             set_post_thumbnail($post_id, $attach_id);
 
-            // Apply stock photo attribution as image caption and alt text
+            // Deterministic featured-image ALT: fill empty ALT from post title.
+            if (get_option('botwriter_seo_featured_image_alt_enabled', '1') === '1') {
+                $current_alt = trim((string) get_post_meta($attach_id, '_wp_attachment_image_alt', true));
+                if ($current_alt === '') {
+                    $fallback_alt = sanitize_text_field($post_title);
+                    if ($fallback_alt === '') {
+                        $fallback_alt = sanitize_text_field((string) get_the_title($post_id));
+                    }
+                    if ($fallback_alt !== '') {
+                        update_post_meta($attach_id, '_wp_attachment_image_alt', $fallback_alt);
+                    }
+                }
+            }
+
+            // Apply stock photo attribution as image caption.
             if (!empty($image_attribution) && is_array($image_attribution)) {
                 $attribution_mode = get_option('botwriter_stockphoto_attribution', 'caption');
                 if ($attribution_mode !== 'disabled') {
@@ -5047,9 +5117,6 @@ function botwriter_attach_image_to_post($post_id, $image_url, $post_title, $tran
                             'post_excerpt' => $caption,
                         ));
                     }
-
-                    // Always set a descriptive alt text from the post title
-                    update_post_meta($attach_id, '_wp_attachment_image_alt', sanitize_text_field($post_title));
 
                     // Store full attribution data as post meta for later use
                     update_post_meta($attach_id, '_botwriter_image_attribution', $image_attribution);

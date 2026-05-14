@@ -1,10 +1,10 @@
-=== BotWriter – AI Writer & Content Generator ===
+=== BotWriter – AI Writer & SEO Content Generator ===
 Contributors: estebandezafra
 Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.3.3
+Stable tag: 3.3.4
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -331,6 +331,15 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.4 =
+* SEO settings updated with a cleaner publish-time actions workflow.
+* AI SEO meta generation now auto-syncs to excerpt and active SEO plugin fields from a single toggle.
+* Internal links post-processing now runs deterministic-first, with AI used only as fallback when deterministic insertion finds no links.
+* Added deterministic featured image ALT autofill on publish (fills empty ALT with post title).
+* Added optional publish-time FAQ generation with output mode control: visible block + schema or schema-only (disabled by default).
+* Added optional Open Graph + Twitter Cards output with anti-duplicate safeguards when major SEO plugins are active (disabled by default).
+* Added a new default template: SEO 2026 Optimized Article.
+
 = 3.3.3 =
 * Stock Images is now the default image provider on first plugin installation.
 * Preferred stock bank now defaults to Random on first plugin installation.
