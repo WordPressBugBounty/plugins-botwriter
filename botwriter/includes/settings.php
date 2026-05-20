@@ -768,6 +768,18 @@ function botwriter_ajax_save_settings() {
             }
             $value = botwriter_encrypt_api_key_generic($value);
         }
+    } elseif ($field === 'botwriter_ai_image_size') {
+        $raw_value = sanitize_text_field($value);
+        $value = function_exists('botwriter_normalize_ai_image_size')
+            ? (string) botwriter_normalize_ai_image_size($raw_value)
+            : $raw_value;
+
+        botwriter_log('Settings save: image size normalized', array(
+            'field' => $field,
+            'raw_value' => $raw_value,
+            'saved_value' => $value,
+            'changed' => ($raw_value !== $value),
+        ));
     } elseif ($field === 'botwriter_gemini_image_model') {
         $raw_value = sanitize_text_field($value);
         $value = function_exists('botwriter_normalize_image_model')
@@ -1615,7 +1627,9 @@ function botwriter_get_all_settings() {
     }
 
     return array(
-        'botwriter_ai_image_size' => get_option('botwriter_ai_image_size', 'square'),
+        'botwriter_ai_image_size' => function_exists('botwriter_normalize_ai_image_size')
+            ? botwriter_normalize_ai_image_size((string) get_option('botwriter_ai_image_size', 'square'))
+            : get_option('botwriter_ai_image_size', 'square'),
         'botwriter_ai_image_quality' => get_option('botwriter_ai_image_quality', 'medium'),
         'botwriter_ai_image_style' => get_option('botwriter_ai_image_style', 'realistic'),
         'botwriter_ai_image_style_custom' => get_option('botwriter_ai_image_style_custom', ''),

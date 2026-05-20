@@ -482,6 +482,10 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         $body      = wp_remote_retrieve_body( $response );
         $data      = json_decode( $body, true );
 
+        if ( is_array( $data ) && ! empty( $data['site_token'] ) ) {
+            update_option( 'botwriter_site_token', sanitize_text_field( (string) $data['site_token'] ) );
+        }
+
         botwriter_log( '[Woo AI] Worker response', [
             'http_code'    => $http_code,
             'status'       => $data['status'] ?? 'unknown',
@@ -490,6 +494,68 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
 
         if ( $http_code !== 200 || ( isset( $data['status'] ) && $data['status'] === 'error' ) ) {
             $msg = $data['error'] ?? "HTTP {$http_code}";
+
+            $token_issue = in_array( $msg, array( 'invalid_site_token', 'token_required' ), true )
+                || stripos( (string) $msg, 'site token mismatch' ) !== false
+                || stripos( (string) $msg, 'token_witryny' ) !== false;
+
+            // Self-heal stale token after plugin reinstall/domain re-pair: clear local token and retry once.
+            if ( $token_issue && ! empty( $payload['site_token'] ) ) {
+                delete_option( 'botwriter_site_token' );
+
+                $retry_payload = $payload;
+                $retry_payload['site_token'] = '';
+
+                botwriter_log( '[Woo AI] Site token mismatch detected. Retrying request with empty site_token.', [
+                    'provider' => $provider,
+                    'error'    => $msg,
+                ] );
+
+                $retry_response = wp_remote_post( BOTWRITER_API_URL . 'woo', array(
+                    'timeout'   => $timeout,
+                    'sslverify' => $ssl_verify,
+                    'headers'   => array( 'Content-Type' => 'application/json' ),
+                    'body'      => wp_json_encode( $retry_payload ),
+                ) );
+
+                if ( is_wp_error( $retry_response ) ) {
+                    return $retry_response;
+                }
+
+                $retry_http_code = wp_remote_retrieve_response_code( $retry_response );
+                $retry_body      = wp_remote_retrieve_body( $retry_response );
+                $retry_data      = json_decode( $retry_body, true );
+
+                if ( is_array( $retry_data ) && ! empty( $retry_data['site_token'] ) ) {
+                    update_option( 'botwriter_site_token', sanitize_text_field( (string) $retry_data['site_token'] ) );
+                }
+
+                botwriter_log( '[Woo AI] Worker retry response', [
+                    'http_code'    => $retry_http_code,
+                    'status'       => $retry_data['status'] ?? 'unknown',
+                    'body_preview' => mb_substr( $retry_body, 0, 1000 ),
+                ] );
+
+                if ( $retry_http_code !== 200 || ( isset( $retry_data['status'] ) && $retry_data['status'] === 'error' ) ) {
+                    $retry_msg = $retry_data['error'] ?? "HTTP {$retry_http_code}";
+                    return new WP_Error( 'api_error', $retry_msg );
+                }
+
+                $retry_content = $retry_data['content'] ?? '';
+                if ( empty( $retry_content ) ) {
+                    return new WP_Error( 'empty_response', 'AI returned an empty response.' );
+                }
+
+                if ( ! empty( $retry_data['warning'] ) && function_exists( 'botwriter_announcements_add' ) ) {
+                    botwriter_announcements_add(
+                        __( 'Service notice', 'botwriter' ),
+                        $retry_data['warning']
+                    );
+                }
+
+                return $retry_content;
+            }
+
             return new WP_Error( 'api_error', $msg );
         }
 

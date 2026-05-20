@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.3.4
+Version: 3.3.5
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.3.4');
+    define('BOTWRITER_VERSION', '3.3.5');
 }
 
 // Plugin directory path (with trailing slash)
@@ -597,6 +597,39 @@ function botwriter_get_current_image_model_by_provider($provider) {
 }
 
 /**
+ * Normalize image size values to the canonical semantic set.
+ *
+ * Legacy values such as square_hd or landscape_16_9 may still exist in
+ * older installations/options. The direct /images endpoint expects only
+ * landscape|square|portrait.
+ *
+ * @param string $size Raw size value.
+ * @return string
+ */
+function botwriter_normalize_ai_image_size($size) {
+    $normalized = strtolower(trim((string) $size));
+
+    if ($normalized === '' || $normalized === 'square' || $normalized === 'square_hd'
+        || $normalized === '1:1' || $normalized === '1024x1024') {
+        return 'square';
+    }
+
+    if ($normalized === 'landscape' || $normalized === 'landscape_4_3' || $normalized === 'landscape_16_9'
+        || $normalized === '4:3' || $normalized === '16:9' || $normalized === '1536x1024'
+        || $normalized === '1792x1024') {
+        return 'landscape';
+    }
+
+    if ($normalized === 'portrait' || $normalized === 'portrait_4_3' || $normalized === 'portrait_16_9'
+        || $normalized === '3:4' || $normalized === '9:16' || $normalized === '1024x1536'
+        || $normalized === '1024x1792') {
+        return 'portrait';
+    }
+
+    return 'square';
+}
+
+/**
  * Return current image settings used for regeneration.
  * Uses active plugin settings at execution time.
  *
@@ -605,6 +638,7 @@ function botwriter_get_current_image_model_by_provider($provider) {
 function botwriter_get_current_image_generation_settings() {
     $provider = (string) get_option('botwriter_image_provider', 'stockphoto');
     $model = botwriter_get_current_image_model_by_provider($provider);
+    $size = botwriter_normalize_ai_image_size((string) get_option('botwriter_ai_image_size', 'square'));
     $stockphoto_preferred = sanitize_key((string) get_option('botwriter_stockphoto_preferred', 'random'));
     $allowed_preferred = array('pixabay', 'pexels', 'unsplash', 'openverse', 'random');
     if (!in_array($stockphoto_preferred, $allowed_preferred, true)) {
@@ -614,7 +648,7 @@ function botwriter_get_current_image_generation_settings() {
     return array(
         'provider' => $provider,
         'model' => $model,
-        'size' => (string) get_option('botwriter_ai_image_size', 'square'),
+        'size' => $size,
         'quality' => (string) get_option('botwriter_ai_image_quality', 'medium'),
         'style' => (string) get_option('botwriter_ai_image_style', 'realistic'),
         'style_custom' => (string) get_option('botwriter_ai_image_style_custom', ''),
@@ -4187,7 +4221,7 @@ function botwriter_send1_data_to_server($data) {
     $data["user_domainname"] = esc_url(get_site_url());
     $data['site_token'] = get_option('botwriter_site_token', ''); 
 
-    $data["ai_image_size"]=get_option('botwriter_ai_image_size');
+    $data["ai_image_size"] = botwriter_normalize_ai_image_size((string) get_option('botwriter_ai_image_size', 'square'));
     $data["ai_image_quality"]=get_option('botwriter_ai_image_quality');
     $data["ai_image_style"]=get_option('botwriter_ai_image_style', 'realistic');
     $data["ai_image_style_custom"]=get_option('botwriter_ai_image_style_custom', '');
@@ -4204,6 +4238,11 @@ function botwriter_send1_data_to_server($data) {
     // Provider selections
     $data['text_provider'] = get_option('botwriter_text_provider', 'openai');
     $data['image_provider'] = get_option('botwriter_image_provider', 'stockphoto');
+
+    // Global provider "none" always means no AI images, regardless of legacy task flags.
+    if ($data['image_provider'] === 'none') {
+        $data['disable_ai_images'] = 1;
+    }
     
     // Stock photo settings (sent always, used only when image_provider=stockphoto)
     $data['stockphoto_preferred'] = botwriter_get_current_image_model_by_provider('stockphoto');

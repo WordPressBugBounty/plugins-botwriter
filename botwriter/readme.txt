@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.3.4
+Stable tag: 3.3.5
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -331,6 +331,10 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.5 =
+* Fixed WooCommerce AI token recovery: when the server returns invalid_site_token, Woo now clears the stale local token, retries once, and stores the new site_token returned by the API.
+* Improved Woo token-sync resilience after reinstall, reconnect, or domain re-pair operations.
+
 = 3.3.4 =
 * SEO settings updated with a cleaner publish-time actions workflow.
 * AI SEO meta generation now auto-syncs to excerpt and active SEO plugin fields from a single toggle.
