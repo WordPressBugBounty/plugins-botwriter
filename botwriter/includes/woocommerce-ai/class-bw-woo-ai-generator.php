@@ -19,7 +19,7 @@ class BotWriter_Woo_AI_Generator {
     const MAX_TOKENS_DESCRIPTION = 2048;
 
     /** Max tokens for shorter generations (summary, tags, etc). */
-    const MAX_TOKENS_SHORT = 512;
+    const MAX_TOKENS_SHORT = 2048;
 
     /** Temperature for content generation. */
     const TEMPERATURE = 0.7;
@@ -360,6 +360,10 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         }
 
         $decoded = json_decode( $trimmed, true );
+        if ( is_string( $decoded ) ) {
+            return trim( $decoded );
+        }
+
         if ( ! is_array( $decoded ) ) {
             return $trimmed;
         }

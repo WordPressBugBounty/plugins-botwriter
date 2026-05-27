@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.3.6
+Version: 3.3.7
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.3.6');
+    define('BOTWRITER_VERSION', '3.3.7');
 }
 
 // Plugin directory path (with trailing slash)
@@ -1447,7 +1447,13 @@ function botwriter_call_editor_worker($provider, $api_key, $model, $prompt, $max
 
         if (is_wp_error($response)) {
             if ($index === $endpoint_total - 1) {
-                return $response;
+                return new WP_Error('editor_worker_network', $response->get_error_message(), array(
+                    'provider' => (string) $provider,
+                    'worker_provider' => (string) $worker_provider,
+                    'model' => (string) $model,
+                    'endpoint' => (string) $remote_url,
+                    'transport_code' => (string) $response->get_error_code(),
+                ));
             }
             continue;
         }
@@ -1480,7 +1486,14 @@ function botwriter_call_editor_worker($provider, $api_key, $model, $prompt, $max
             if ($error_message === '') {
                 $error_message = "HTTP {$http_code}";
             }
-            return new WP_Error('editor_worker_error', $error_message);
+            return new WP_Error('editor_worker_error', $error_message, array(
+                'provider' => (string) $provider,
+                'worker_provider' => (string) $worker_provider,
+                'model' => (string) $model,
+                'endpoint' => (string) $remote_url,
+                'http_code' => (int) $http_code,
+                'worker_error_code' => is_array($data) ? (string) ($data['error_code'] ?? '') : '',
+            ));
         }
 
         $content = is_array($data) ? (string) ($data['content'] ?? '') : '';
@@ -2327,6 +2340,10 @@ function botwriter_activate_apikey_and_defaults() {
 
     if (get_option('botwriter_seo_featured_image_alt_enabled') === false) {
         update_option('botwriter_seo_featured_image_alt_enabled', '1');
+    }
+
+    if (get_option('botwriter_seo_publish_focus_keyword_enabled') === false) {
+        update_option('botwriter_seo_publish_focus_keyword_enabled', '0');
     }
 
     if (get_option('botwriter_seo_publish_faq_enabled') === false) {
@@ -3949,6 +3966,34 @@ function botwriter_generate_post($data){
         }
     }
 
+    $seo_focus_keyword_result = array(
+        'enabled' => false,
+        'generated' => false,
+        'length' => 0,
+    );
+    if (
+        function_exists('botwriter_generate_seo_focus_keyword')
+        && function_exists('botwriter_is_seo_publish_focus_keyword_enabled')
+        && botwriter_is_seo_publish_focus_keyword_enabled()
+    ) {
+        $seo_focus_keyword_result['enabled'] = true;
+        $post_language = $data['post_language'] ?? '';
+        $focus_source_content = (string) get_post_field('post_content', $post_id);
+        $focus_keyword = botwriter_generate_seo_focus_keyword(
+            (string) ($data['aigenerated_title'] ?? ''),
+            $focus_source_content,
+            $post_language
+        );
+
+        if (!empty($focus_keyword) && function_exists('botwriter_apply_seo_focus_keyword')) {
+            botwriter_apply_seo_focus_keyword($post_id, (string) $focus_keyword);
+            $seo_focus_keyword_result['generated'] = true;
+            $seo_focus_keyword_result['length'] = function_exists('mb_strlen')
+                ? mb_strlen((string) $focus_keyword)
+                : strlen((string) $focus_keyword);
+        }
+    }
+
     $seo_faq_result = array(
         'enabled' => false,
         'generated' => false,
@@ -3985,6 +4030,9 @@ function botwriter_generate_post($data){
         'internal_links_strategy' => (string) ($seo_internal_links_result['strategy'] ?? 'unknown'),
         'internal_links_inserted' => intval($seo_internal_links_result['inserted'] ?? 0),
         'internal_links_updated' => !empty($seo_internal_links_result['updated']) ? 1 : 0,
+        'focus_keyword_enabled' => !empty($seo_focus_keyword_result['enabled']) ? 1 : 0,
+        'focus_keyword_generated' => !empty($seo_focus_keyword_result['generated']) ? 1 : 0,
+        'focus_keyword_length' => intval($seo_focus_keyword_result['length'] ?? 0),
         'faq_enabled' => !empty($seo_faq_result['enabled']) ? 1 : 0,
         'faq_generated' => !empty($seo_faq_result['generated']) ? 1 : 0,
         'faq_mode' => (string) ($seo_faq_result['mode'] ?? 'disabled'),

@@ -28,6 +28,183 @@ function botwriter_seo_bulk_log($message, $context = array()) {
     }
 }
 
+function botwriter_seo_bulk_provider_label($provider) {
+    $provider = sanitize_key((string) $provider);
+    $map = array(
+        'openai' => 'OpenAI',
+        'anthropic' => 'Anthropic',
+        'google' => 'Google Gemini',
+        'mistral' => 'Mistral',
+        'groq' => 'Groq',
+        'openrouter' => 'OpenRouter',
+    );
+    return isset($map[$provider]) ? $map[$provider] : ucfirst($provider);
+}
+
+function botwriter_seo_bulk_action_success($changed = true, $extra = array()) {
+    $result = array(
+        'ok' => true,
+        'changed' => (bool) $changed,
+        'error_code' => '',
+        'error_type' => '',
+        'error_label' => '',
+        'error_message' => '',
+    );
+    if (is_array($extra)) {
+        $result = array_merge($result, $extra);
+    }
+    return $result;
+}
+
+function botwriter_seo_bulk_action_error($code, $message, $type = 'unknown', $label = '') {
+    $message = trim(wp_strip_all_tags((string) $message));
+    return array(
+        'ok' => false,
+        'changed' => false,
+        'error_code' => sanitize_key((string) $code),
+        'error_type' => sanitize_key((string) $type),
+        'error_label' => $label !== '' ? (string) $label : __('Could not apply action', 'botwriter'),
+        'error_message' => $message,
+    );
+}
+
+function botwriter_seo_bulk_normalize_action_result($raw) {
+    if (is_array($raw)) {
+        return array(
+            'ok' => !empty($raw['ok']),
+            'changed' => !empty($raw['changed']),
+            'error_code' => sanitize_key((string) ($raw['error_code'] ?? '')),
+            'error_type' => sanitize_key((string) ($raw['error_type'] ?? '')),
+            'error_label' => (string) ($raw['error_label'] ?? ''),
+            'error_message' => trim(wp_strip_all_tags((string) ($raw['error_message'] ?? ''))),
+        );
+    }
+
+    if (is_bool($raw)) {
+        return $raw
+            ? botwriter_seo_bulk_action_success(true)
+            : botwriter_seo_bulk_action_error(
+                'no_change_applied',
+                __('The action did not produce a visible change on this post.', 'botwriter'),
+                'skip',
+                __('No change applied', 'botwriter')
+            );
+    }
+
+    return botwriter_seo_bulk_action_error(
+        'invalid_action_result',
+        __('Unexpected action response format.', 'botwriter'),
+        'unknown',
+        __('Unexpected response', 'botwriter')
+    );
+}
+
+function botwriter_seo_bulk_action_error_from_ai($ai, $fallback_message = '') {
+    $error_code = sanitize_key((string) ($ai['error_code'] ?? 'ai_request_failed'));
+    $error_type = sanitize_key((string) ($ai['error_type'] ?? 'server'));
+    $error_label = (string) ($ai['error_label'] ?? __('AI service error', 'botwriter'));
+    $error_message = trim((string) ($ai['error_message'] ?? $ai['error'] ?? ''));
+    if ($error_message === '') {
+        $error_message = $fallback_message !== ''
+            ? $fallback_message
+            : __('Could not get a valid response from the AI service.', 'botwriter');
+    }
+
+    return botwriter_seo_bulk_action_error($error_code, $error_message, $error_type, $error_label);
+}
+
+function botwriter_seo_bulk_classify_ai_error($error_code, $error_message, $error_data = array()) {
+    $code = sanitize_key((string) $error_code);
+    $message = trim(wp_strip_all_tags((string) $error_message));
+    $data = is_array($error_data) ? $error_data : array();
+    $http_code = isset($data['http_code']) ? (int) $data['http_code'] : 0;
+    $worker_error_code = sanitize_key((string) ($data['worker_error_code'] ?? ''));
+    $haystack = strtolower(trim($code . ' ' . $worker_error_code . ' ' . $message . ' http ' . $http_code));
+
+    $type = 'server';
+    $label = __('AI service error', 'botwriter');
+    $friendly = '';
+
+    $looks_like_auth =
+        strpos($haystack, 'api key') !== false
+        || strpos($haystack, 'unauthorized') !== false
+        || strpos($haystack, 'invalid_api_key') !== false
+        || strpos($haystack, 'invalid key') !== false
+        || $http_code === 401
+        || $http_code === 403;
+
+    if (strpos($haystack, 'missing api key') !== false || strpos($haystack, 'missing_api_key') !== false) {
+        $type = 'configuration';
+        $label = __('Missing API key', 'botwriter');
+        $friendly = __('Missing API key for the selected AI provider.', 'botwriter');
+    } elseif (
+        strpos($haystack, 'quota') !== false
+        || strpos($haystack, 'insufficient_quota') !== false
+        || strpos($haystack, 'billing') !== false
+        || strpos($haystack, 'credits') !== false
+        || strpos($haystack, 'payment') !== false
+    ) {
+        $type = 'quota';
+        $label = __('Quota exceeded', 'botwriter');
+        $friendly = __('AI quota or billing limit reached. Check your provider plan and try again.', 'botwriter');
+    } elseif (
+        strpos($haystack, 'rate limit') !== false
+        || strpos($haystack, 'too many requests') !== false
+        || $http_code === 429
+    ) {
+        $type = 'rate_limit';
+        $label = __('Rate limit reached', 'botwriter');
+        $friendly = __('AI provider rate limit reached. Retry in a few minutes.', 'botwriter');
+    } elseif (
+        strpos($haystack, 'model') !== false
+        && (
+            strpos($haystack, 'overloaded') !== false
+            || strpos($haystack, 'unavailable') !== false
+            || strpos($haystack, 'not found') !== false
+            || strpos($haystack, 'unsupported') !== false
+            || strpos($haystack, 'does not exist') !== false
+        )
+    ) {
+        $type = 'model';
+        $label = __('Model unavailable', 'botwriter');
+        $friendly = __('The selected model is unavailable, saturated, or unsupported right now.', 'botwriter');
+    } elseif (
+        strpos($haystack, 'timeout') !== false
+        || strpos($haystack, 'timed out') !== false
+        || strpos($haystack, 'connection') !== false
+        || strpos($haystack, 'network') !== false
+        || $code === 'editor_worker_network'
+    ) {
+        $type = 'transport';
+        $label = __('Network error', 'botwriter');
+        $friendly = __('Network/transport error while contacting the AI service.', 'botwriter');
+    } elseif ($looks_like_auth) {
+        $type = 'provider_auth';
+        $label = __('Authentication failed', 'botwriter');
+        $friendly = __('AI authentication failed. Verify API key permissions and provider.', 'botwriter');
+    } elseif ($http_code >= 500) {
+        $type = 'server';
+        $label = __('Temporary server error', 'botwriter');
+        $friendly = __('Temporary AI service error (server side). Please retry shortly.', 'botwriter');
+    }
+
+    if ($friendly === '') {
+        $friendly = $message !== ''
+            ? $message
+            : __('The AI service returned an unknown error.', 'botwriter');
+    } elseif ($message !== '' && stripos($friendly, $message) === false) {
+        $friendly .= ' ' . sprintf(__('Details: %s', 'botwriter'), $message);
+    }
+
+    return array(
+        'error_code' => $code !== '' ? $code : 'ai_request_failed',
+        'error_type' => $type,
+        'error_label' => $label,
+        'error_message' => $friendly,
+        'http_code' => $http_code,
+    );
+}
+
 /**
  * Normalize editor worker responses across legacy/new formats.
  *
@@ -38,11 +215,20 @@ function botwriter_seo_bulk_log($message, $context = array()) {
  */
 function botwriter_seo_bulk_ai_extract_text($resp) {
     if (is_wp_error($resp)) {
+        $classified = botwriter_seo_bulk_classify_ai_error(
+            (string) $resp->get_error_code(),
+            (string) $resp->get_error_message(),
+            $resp->get_error_data()
+        );
         return array(
             'ok' => false,
             'text' => '',
             'format' => 'wp_error',
-            'error' => $resp->get_error_message(),
+            'error' => (string) ($classified['error_message'] ?? ''),
+            'error_code' => (string) ($classified['error_code'] ?? 'ai_request_failed'),
+            'error_type' => (string) ($classified['error_type'] ?? 'server'),
+            'error_label' => (string) ($classified['error_label'] ?? __('AI service error', 'botwriter')),
+            'error_message' => (string) ($classified['error_message'] ?? ''),
         );
     }
     if (is_string($resp)) {
@@ -52,6 +238,10 @@ function botwriter_seo_bulk_ai_extract_text($resp) {
             'text' => $text,
             'format' => 'string',
             'error' => $text === '' ? 'empty_string' : '',
+            'error_code' => $text === '' ? 'empty_response' : '',
+            'error_type' => $text === '' ? 'empty_response' : '',
+            'error_label' => $text === '' ? __('Empty response', 'botwriter') : '',
+            'error_message' => $text === '' ? __('AI returned an empty response.', 'botwriter') : '',
         );
     }
     if (is_array($resp)) {
@@ -66,6 +256,10 @@ function botwriter_seo_bulk_ai_extract_text($resp) {
             'text' => $text,
             'format' => 'array',
             'error' => (string) ($resp['error'] ?? ($ok ? '' : 'empty_or_not_ok')),
+            'error_code' => $ok ? '' : sanitize_key((string) ($resp['error_code'] ?? 'empty_or_not_ok')),
+            'error_type' => $ok ? '' : sanitize_key((string) ($resp['error_type'] ?? 'server')),
+            'error_label' => $ok ? '' : (string) ($resp['error_label'] ?? __('AI service error', 'botwriter')),
+            'error_message' => $ok ? '' : trim(wp_strip_all_tags((string) ($resp['error_message'] ?? $resp['error'] ?? ''))),
         );
     }
     return array(
@@ -73,6 +267,10 @@ function botwriter_seo_bulk_ai_extract_text($resp) {
         'text' => '',
         'format' => gettype($resp),
         'error' => 'unsupported_response_format',
+        'error_code' => 'unsupported_response_format',
+        'error_type' => 'unknown',
+        'error_label' => __('Unsupported response', 'botwriter'),
+        'error_message' => __('Unsupported AI response format.', 'botwriter'),
     );
 }
 
@@ -91,6 +289,9 @@ function botwriter_seo_bulk_ai_request($action, $post_id, $config, $prompt, $max
         'ok' => !empty($ai['ok']) ? 1 : 0,
         'format' => (string) ($ai['format'] ?? ''),
         'error' => (string) ($ai['error'] ?? ''),
+        'error_code' => (string) ($ai['error_code'] ?? ''),
+        'error_type' => (string) ($ai['error_type'] ?? ''),
+        'error_message' => (string) ($ai['error_message'] ?? ''),
         'text_len' => strlen((string) ($ai['text'] ?? '')),
         'elapsed_ms' => round((microtime(true) - $t) * 1000),
     ));
@@ -271,6 +472,8 @@ add_filter('botwriter_seo_job_batch_size_actions', function ($size, $state) {
 function botwriter_seo_bulk_recent_result_status($apply) {
     $ok = !empty($apply['ok']);
     $changed = !empty($apply['changed']);
+    $error_type = sanitize_key((string) ($apply['error_type'] ?? ''));
+    $error_label = trim((string) ($apply['error_label'] ?? ''));
 
     if ($ok && $changed) {
         return array('success', __('Changed successfully', 'botwriter'));
@@ -280,7 +483,11 @@ function botwriter_seo_bulk_recent_result_status($apply) {
         return array('info', __('Processed without visible change', 'botwriter'));
     }
 
-    return array('warn', __('No change applied', 'botwriter'));
+    if ($error_type === 'skip') {
+        return array('info', $error_label !== '' ? $error_label : __('Skipped', 'botwriter'));
+    }
+
+    return array('warn', $error_label !== '' ? $error_label : __('No change applied', 'botwriter'));
 }
 
 function botwriter_seo_bulk_recent_result_detail($apply) {
@@ -303,6 +510,11 @@ function botwriter_seo_bulk_recent_result_detail($apply) {
         return $undo_type === 'none'
             ? __('The action ran, but it did not produce a visible difference on this post.', 'botwriter')
             : __('The action finished, but there was no stored content/meta difference to save.', 'botwriter');
+    }
+
+    $error_message = trim((string) ($apply['error_message'] ?? ''));
+    if ($error_message !== '') {
+        return $error_message;
     }
 
     return __('The action could not apply a change to this post. Check the filters or logs if you expected an update.', 'botwriter');
@@ -342,6 +554,7 @@ add_filter('botwriter_seo_job_run_actions', function ($result, $state, $batch_si
             $apply = botwriter_seo_apply_action($action, $id, $args);
             $ok = !empty($apply['ok']);
             $changed = isset($apply['changed']) ? !empty($apply['changed']) : $ok;
+            $is_skip = !$ok && sanitize_key((string) ($apply['error_type'] ?? '')) === 'skip';
             $title = get_the_title($id);
             list($result_tone, $result_label) = botwriter_seo_bulk_recent_result_status($apply);
             $result_detail = botwriter_seo_bulk_recent_result_detail($apply);
@@ -350,6 +563,8 @@ add_filter('botwriter_seo_job_run_actions', function ($result, $state, $batch_si
                 'post_id' => $id,
                 'ok' => $ok ? 1 : 0,
                 'changed' => $changed ? 1 : 0,
+                'error_code' => (string) ($apply['error_code'] ?? ''),
+                'error_type' => (string) ($apply['error_type'] ?? ''),
                 'elapsed_ms' => round((microtime(true) - $t_item) * 1000),
             ));
             $recent[] = array(
@@ -358,8 +573,12 @@ add_filter('botwriter_seo_job_run_actions', function ($result, $state, $batch_si
                 'result_tone' => $result_tone,
                 'result_label' => $result_label,
                 'detail'    => $result_detail,
-                'status'    => $ok ? ($changed ? 'good' : 'skipped') : 'bad',
-                'message'   => $ok ? ($changed ? __('Updated', 'botwriter') : __('Processed', 'botwriter')) : __('No change', 'botwriter'),
+                'status'    => $ok ? ($changed ? 'good' : 'skipped') : ($is_skip ? 'skipped' : 'bad'),
+                'message'   => $ok
+                    ? ($changed ? __('Updated', 'botwriter') : __('Processed', 'botwriter'))
+                    : ($is_skip ? __('Skipped', 'botwriter') : __('Failed', 'botwriter')),
+                'error_code' => (string) ($apply['error_code'] ?? ''),
+                'error_type' => (string) ($apply['error_type'] ?? ''),
                 'edit_url'  => get_edit_post_link($id, 'raw'),
                 'view_url'  => get_permalink($id),
                 'ts'        => time(),
@@ -474,40 +693,45 @@ function botwriter_seo_apply_action($action, $post_id, $args = array()) {
         $snapshot = botwriter_seo_bulk_undo_capture_snapshot($action, $post_id, $args);
     }
 
-    $ok = false;
+    $raw_result = false;
 
     switch ($action) {
         case 'regen_meta_description':
-            $ok = botwriter_seo_action_regen_meta_description($post_id);
+            $raw_result = botwriter_seo_action_regen_meta_description($post_id);
             break;
         case 'refresh_intro':
-            $ok = botwriter_seo_action_refresh_intro($post_id, $args);
+            $raw_result = botwriter_seo_action_refresh_intro($post_id, $args);
             break;
         case 'expand_content':
-            $ok = botwriter_seo_action_expand_content($post_id, $args);
+            $raw_result = botwriter_seo_action_expand_content($post_id, $args);
             break;
         case 'normalize_headings':
-            $ok = botwriter_seo_action_normalize_headings($post_id, $args);
+            $raw_result = botwriter_seo_action_normalize_headings($post_id, $args);
             break;
         case 'regen_seo_title':
-            $ok = botwriter_seo_action_regen_seo_title($post_id);
+            $raw_result = botwriter_seo_action_regen_seo_title($post_id);
             break;
         case 'rewrite_slug':
-            $ok = botwriter_seo_action_rewrite_slug($post_id, $args);
+            $raw_result = botwriter_seo_action_rewrite_slug($post_id, $args);
             break;
         case 'add_external_references':
-            $ok = botwriter_seo_action_add_external_references($post_id, $args);
+            $raw_result = botwriter_seo_action_add_external_references($post_id, $args);
             break;
         case 'regen_alt_text':
-            $ok = botwriter_seo_action_regen_alt_text($post_id);
+            $raw_result = botwriter_seo_action_regen_alt_text($post_id);
             break;
         case 'rebuild_internal_links':
-            $ok = botwriter_seo_action_rebuild_internal_links($post_id);
+            $raw_result = botwriter_seo_action_rebuild_internal_links($post_id);
             break;
         case 'regen_faq':
             if (!function_exists('botwriter_seo_generate_faq_for_post')) {
                 botwriter_seo_bulk_log('regen_faq skipped (function missing)', array('post_id' => (int) $post_id));
-                $ok = false;
+                $raw_result = botwriter_seo_bulk_action_error(
+                    'faq_function_missing',
+                    __('FAQ generator function is not available in this installation.', 'botwriter'),
+                    'configuration',
+                    __('FAQ engine unavailable', 'botwriter')
+                );
                 break;
             }
             $t = microtime(true);
@@ -523,11 +747,24 @@ function botwriter_seo_apply_action($action, $post_id, $args = array()) {
                 'faq_visible' => (!isset($args['faq_visible']) || !empty($args['faq_visible'])) ? 1 : 0,
                 'elapsed_ms' => round((microtime(true) - $t) * 1000),
             ));
+            $raw_result = $ok
+                ? botwriter_seo_bulk_action_success(true)
+                : botwriter_seo_bulk_action_error(
+                    'faq_not_generated',
+                    __('FAQ was not generated for this post.', 'botwriter'),
+                    'skip',
+                    __('No FAQ generated', 'botwriter')
+                );
             break;
         case 'embed_index':
             if (!function_exists('botwriter_seo_embedding_index_post')) {
                 botwriter_seo_bulk_log('embed_index skipped (function missing)', array('post_id' => (int) $post_id));
-                $ok = false;
+                $raw_result = botwriter_seo_bulk_action_error(
+                    'embedding_function_missing',
+                    __('Embedding index function is not available in this installation.', 'botwriter'),
+                    'configuration',
+                    __('Embedding engine unavailable', 'botwriter')
+                );
                 break;
             }
             $t = microtime(true);
@@ -537,20 +774,41 @@ function botwriter_seo_apply_action($action, $post_id, $args = array()) {
                 'ok' => $ok ? 1 : 0,
                 'elapsed_ms' => round((microtime(true) - $t) * 1000),
             ));
+            $raw_result = $ok
+                ? botwriter_seo_bulk_action_success(true)
+                : botwriter_seo_bulk_action_error(
+                    'embedding_not_updated',
+                    __('Could not update semantic embedding for this post.', 'botwriter'),
+                    'skip',
+                    __('Embedding not updated', 'botwriter')
+                );
             break;
         case 'optimize_images':
             if (!function_exists('botwriter_seo_action_optimize_images')) {
                 botwriter_seo_bulk_log('optimize_images skipped (function missing)', array('post_id' => (int) $post_id));
-                $ok = false;
+                $raw_result = botwriter_seo_bulk_action_error(
+                    'image_optimizer_missing',
+                    __('Image optimizer function is not available in this installation.', 'botwriter'),
+                    'configuration',
+                    __('Image optimizer unavailable', 'botwriter')
+                );
                 break;
             }
-            $ok = (bool) botwriter_seo_action_optimize_images($post_id, $args);
+            $raw_result = (bool) botwriter_seo_action_optimize_images($post_id, $args);
             break;
         default:
             botwriter_seo_bulk_log('unknown action', array('action' => $action, 'post_id' => (int) $post_id));
-            $ok = false;
+            $raw_result = botwriter_seo_bulk_action_error(
+                'unknown_action',
+                sprintf(__('Unknown bulk action: %s', 'botwriter'), (string) $action),
+                'configuration',
+                __('Unknown action', 'botwriter')
+            );
             break;
     }
+
+    $normalized = botwriter_seo_bulk_normalize_action_result($raw_result);
+    $ok = !empty($normalized['ok']);
 
     $changed = false;
     $undo_saved = false;
@@ -560,7 +818,7 @@ function botwriter_seo_apply_action($action, $post_id, $args = array()) {
             $undo_saved = botwriter_seo_bulk_undo_store_snapshot($run_id, $post_id, $undo_type, $snapshot);
         }
     } else {
-        $changed = (bool) $ok;
+        $changed = !empty($normalized['changed']);
     }
 
     botwriter_seo_bulk_log('apply action result', array(
@@ -568,6 +826,9 @@ function botwriter_seo_apply_action($action, $post_id, $args = array()) {
         'post_id' => (int) $post_id,
         'ok' => $ok ? 1 : 0,
         'changed' => $changed ? 1 : 0,
+        'error_code' => (string) ($normalized['error_code'] ?? ''),
+        'error_type' => (string) ($normalized['error_type'] ?? ''),
+        'error_message' => (string) ($normalized['error_message'] ?? ''),
         'undo_type' => $undo_type,
         'undo_run_id' => $run_id,
         'undo_saved' => $undo_saved ? 1 : 0,
@@ -576,6 +837,10 @@ function botwriter_seo_apply_action($action, $post_id, $args = array()) {
     return array(
         'ok' => (bool) $ok,
         'changed' => $changed,
+        'error_code' => (string) ($normalized['error_code'] ?? ''),
+        'error_type' => (string) ($normalized['error_type'] ?? ''),
+        'error_label' => (string) ($normalized['error_label'] ?? ''),
+        'error_message' => (string) ($normalized['error_message'] ?? ''),
         'undo_saved' => $undo_saved,
         'undo_type' => $undo_type,
     );
@@ -585,55 +850,72 @@ function botwriter_seo_action_regen_meta_description($post_id) {
     $post = get_post($post_id);
     if (!$post) {
         botwriter_seo_bulk_log('regen_meta_description skipped (post not found)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'post_not_found',
+            __('Post not found.', 'botwriter'),
+            'skip',
+            __('Post not found', 'botwriter')
+        );
     }
     $config = botwriter_seo_ai_config();
     if (empty($config['key'])) {
         botwriter_seo_bulk_log('regen_meta_description skipped (missing API key)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'missing_api_key',
+            sprintf(
+                /* translators: %s: provider name */
+                __('Missing API key for SEO Bulk provider: %s.', 'botwriter'),
+                botwriter_seo_bulk_provider_label((string) ($config['provider'] ?? 'openai'))
+            ),
+            'configuration',
+            __('Missing API key', 'botwriter')
+        );
     }
     $excerpt = wp_strip_all_tags($post->post_content);
     if (function_exists('mb_substr')) { $excerpt = mb_substr($excerpt, 0, 2200, 'UTF-8'); }
     $prompt = "Write a single SEO meta description (max 158 chars) in the SAME LANGUAGE as the article. Be specific, descriptive, no quotes.\n\n"
         . "TITLE: " . $post->post_title . "\n\n"
         . "CONTENT:\n" . $excerpt;
-    $t = microtime(true);
-    botwriter_seo_bulk_log('AI call start: regen_meta_description', array(
-        'post_id' => (int) $post_id,
-        'provider' => (string) ($config['provider'] ?? ''),
-        'model' => (string) ($config['model'] ?? ''),
-        'prompt_len' => strlen($prompt),
-    ));
-    $resp = botwriter_call_editor_worker($config['provider'], $config['key'], $config['model'], $prompt, 200, 0.6);
-    $ai = botwriter_seo_bulk_ai_extract_text($resp);
-    botwriter_seo_bulk_log('AI call end: regen_meta_description', array(
-        'post_id' => (int) $post_id,
-        'ok' => !empty($ai['ok']) ? 1 : 0,
-        'format' => (string) ($ai['format'] ?? ''),
-        'error' => (string) ($ai['error'] ?? ''),
-        'text_len' => strlen((string) ($ai['text'] ?? '')),
-        'elapsed_ms' => round((microtime(true) - $t) * 1000),
-    ));
-    if (empty($ai['ok']) || empty($ai['text'])) { return false; }
+    $ai = botwriter_seo_bulk_ai_request('regen_meta_description', $post_id, $config, $prompt, 200, 0.6);
+    if (empty($ai['ok']) || empty($ai['text'])) {
+        return botwriter_seo_bulk_action_error_from_ai(
+            $ai,
+            __('Could not generate SEO meta description.', 'botwriter')
+        );
+    }
     $desc = trim(wp_strip_all_tags($ai['text']));
     if (function_exists('mb_substr')) { $desc = mb_substr($desc, 0, 158, 'UTF-8'); }
     botwriter_seo_set_meta($post_id, 'desc', $desc);
     botwriter_seo_compute_score($post_id, true);
     botwriter_seo_bulk_log('regen_meta_description updated', array('post_id' => (int) $post_id, 'desc_len' => strlen($desc)));
-    return true;
+    return botwriter_seo_bulk_action_success(true);
 }
 
 function botwriter_seo_action_refresh_intro($post_id, $args = array()) {
     $post = get_post($post_id);
     if (!$post || trim((string) $post->post_content) === '') {
         botwriter_seo_bulk_log('refresh_intro skipped (post missing or empty)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'post_empty_or_missing',
+            __('Post is missing or has empty content.', 'botwriter'),
+            'skip',
+            __('Post has no content', 'botwriter')
+        );
     }
 
     $config = botwriter_seo_ai_config();
     if (empty($config['key'])) {
         botwriter_seo_bulk_log('refresh_intro skipped (missing API key)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'missing_api_key',
+            sprintf(
+                /* translators: %s: provider name */
+                __('Missing API key for SEO Bulk provider: %s.', 'botwriter'),
+                botwriter_seo_bulk_provider_label((string) ($config['provider'] ?? 'openai'))
+            ),
+            'configuration',
+            __('Missing API key', 'botwriter')
+        );
     }
 
     $intro_paragraphs = max(1, min(3, (int) ($args['intro_paragraphs'] ?? 2)));
@@ -660,18 +942,31 @@ function botwriter_seo_action_refresh_intro($post_id, $args = array()) {
 
     $ai = botwriter_seo_bulk_ai_request('refresh_intro', $post_id, $config, $prompt, 420, 0.7);
     if (empty($ai['ok']) || empty($ai['text'])) {
-        return false;
+        return botwriter_seo_bulk_action_error_from_ai(
+            $ai,
+            __('Could not regenerate the post introduction.', 'botwriter')
+        );
     }
 
     $replacement = botwriter_seo_bulk_clean_ai_html($ai['text'], true);
     if ($replacement === '') {
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'empty_replacement',
+            __('AI returned an empty introduction.', 'botwriter'),
+            'skip',
+            __('Empty AI output', 'botwriter')
+        );
     }
 
     $updated = botwriter_seo_bulk_replace_first_paragraphs($post->post_content, $replacement, $intro_paragraphs);
     if (trim($updated) === trim((string) $post->post_content)) {
         botwriter_seo_bulk_log('refresh_intro skipped (content unchanged)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'content_unchanged',
+            __('Introduction rewrite produced no content difference.', 'botwriter'),
+            'skip',
+            __('No visible change', 'botwriter')
+        );
     }
 
     $ok = botwriter_seo_bulk_update_post_content($post_id, $updated);
@@ -686,20 +981,41 @@ function botwriter_seo_action_refresh_intro($post_id, $args = array()) {
             'keyword' => $keyword,
         ));
     }
-    return $ok;
+    return $ok
+        ? botwriter_seo_bulk_action_success(true)
+        : botwriter_seo_bulk_action_error(
+            'content_update_failed',
+            __('Could not save updated introduction content.', 'botwriter'),
+            'server',
+            __('Content update failed', 'botwriter')
+        );
 }
 
 function botwriter_seo_action_expand_content($post_id, $args = array()) {
     $post = get_post($post_id);
     if (!$post || trim((string) $post->post_content) === '') {
         botwriter_seo_bulk_log('expand_content skipped (post missing or empty)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'post_empty_or_missing',
+            __('Post is missing or has empty content.', 'botwriter'),
+            'skip',
+            __('Post has no content', 'botwriter')
+        );
     }
 
     $config = botwriter_seo_ai_config();
     if (empty($config['key'])) {
         botwriter_seo_bulk_log('expand_content skipped (missing API key)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'missing_api_key',
+            sprintf(
+                /* translators: %s: provider name */
+                __('Missing API key for SEO Bulk provider: %s.', 'botwriter'),
+                botwriter_seo_bulk_provider_label((string) ($config['provider'] ?? 'openai'))
+            ),
+            'configuration',
+            __('Missing API key', 'botwriter')
+        );
     }
 
     $target_words = max(300, min(2500, (int) ($args['target_words'] ?? 450)));
@@ -713,7 +1029,12 @@ function botwriter_seo_action_expand_content($post_id, $args = array()) {
             'current_words' => $current_words,
             'target_words' => $target_words,
         ));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'already_above_target',
+            __('Post is already above the target word count.', 'botwriter'),
+            'skip',
+            __('Already above target', 'botwriter')
+        );
     }
 
     $needed_words = max(100, min(450, $target_words - $current_words + 40));
@@ -731,12 +1052,20 @@ function botwriter_seo_action_expand_content($post_id, $args = array()) {
 
     $ai = botwriter_seo_bulk_ai_request('expand_content', $post_id, $config, $prompt, 650, 0.7);
     if (empty($ai['ok']) || empty($ai['text'])) {
-        return false;
+        return botwriter_seo_bulk_action_error_from_ai(
+            $ai,
+            __('Could not generate a supporting section.', 'botwriter')
+        );
     }
 
     $section = botwriter_seo_bulk_clean_ai_html($ai['text']);
     if ($section === '') {
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'empty_generated_section',
+            __('AI returned an empty section.', 'botwriter'),
+            'skip',
+            __('Empty AI output', 'botwriter')
+        );
     }
     if (stripos($section, '<h2') === false && stripos($section, '<h3') === false) {
         $section = '<h2>' . esc_html__('Additional details', 'botwriter') . '</h2>' . $section;
@@ -744,7 +1073,12 @@ function botwriter_seo_action_expand_content($post_id, $args = array()) {
     if (stripos($section, '<p') === false) {
         $text = trim(wp_strip_all_tags($section));
         if ($text === '') {
-            return false;
+            return botwriter_seo_bulk_action_error(
+                'invalid_generated_section',
+                __('AI generated invalid section markup.', 'botwriter'),
+                'skip',
+                __('Invalid AI output', 'botwriter')
+            );
         }
         $section = '<h2>' . esc_html__('Additional details', 'botwriter') . '</h2><p>' . esc_html($text) . '</p>';
     }
@@ -758,7 +1092,14 @@ function botwriter_seo_action_expand_content($post_id, $args = array()) {
             'target_words' => $target_words,
         ));
     }
-    return $ok;
+    return $ok
+        ? botwriter_seo_bulk_action_success(true)
+        : botwriter_seo_bulk_action_error(
+            'content_update_failed',
+            __('Could not save expanded content.', 'botwriter'),
+            'server',
+            __('Content update failed', 'botwriter')
+        );
 }
 
 function botwriter_seo_action_normalize_headings($post_id, $args = array()) {
@@ -964,12 +1305,26 @@ function botwriter_seo_action_regen_alt_text($post_id) {
     $post = get_post($post_id);
     if (!$post || !class_exists('DOMDocument')) {
         botwriter_seo_bulk_log('regen_alt_text skipped (post missing or DOMDocument unavailable)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'post_or_dom_missing',
+            __('Post not found or DOM parser unavailable.', 'botwriter'),
+            'skip',
+            __('Cannot process images', 'botwriter')
+        );
     }
     $config = botwriter_seo_ai_config();
     if (empty($config['key'])) {
         botwriter_seo_bulk_log('regen_alt_text skipped (missing API key)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'missing_api_key',
+            sprintf(
+                /* translators: %s: provider name */
+                __('Missing API key for SEO Bulk provider: %s.', 'botwriter'),
+                botwriter_seo_bulk_provider_label((string) ($config['provider'] ?? 'openai'))
+            ),
+            'configuration',
+            __('Missing API key', 'botwriter')
+        );
     }
 
     $dom = new DOMDocument('1.0', 'UTF-8');
@@ -986,7 +1341,12 @@ function botwriter_seo_action_regen_alt_text($post_id) {
     }
     if (!$needs) {
         botwriter_seo_bulk_log('regen_alt_text skipped (no missing alt)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'no_missing_alt',
+            __('No images without ALT text were found.', 'botwriter'),
+            'skip',
+            __('Nothing to fix', 'botwriter')
+        );
     }
 
     botwriter_seo_bulk_log('regen_alt_text targets found', array(
@@ -1000,6 +1360,7 @@ function botwriter_seo_action_regen_alt_text($post_id) {
     $changed = false;
     $ai_ok = 0;
     $ai_fail = 0;
+    $last_ai_error = array();
     foreach ($needs as $img) {
         $prompt = "Write a concise (max 12 words) descriptive ALT text in the same language as the article context. No quotes, no period.\n\n"
             . "ARTICLE TITLE: " . $context . "\n"
@@ -1015,6 +1376,7 @@ function botwriter_seo_action_regen_alt_text($post_id) {
             $ai_ok++;
         } else {
             $ai_fail++;
+            $last_ai_error = $ai;
         }
         botwriter_seo_bulk_log('AI call: regen_alt_text image', array(
             'post_id' => (int) $post_id,
@@ -1027,15 +1389,34 @@ function botwriter_seo_action_regen_alt_text($post_id) {
     }
     if (!$changed) {
         botwriter_seo_bulk_log('regen_alt_text ended without changes', array('post_id' => (int) $post_id, 'ai_ok' => $ai_ok, 'ai_fail' => $ai_fail));
-        return false;
+        if (!empty($last_ai_error)) {
+            return botwriter_seo_bulk_action_error_from_ai(
+                $last_ai_error,
+                __('Could not generate ALT text for images.', 'botwriter')
+            );
+        }
+        return botwriter_seo_bulk_action_error(
+            'alt_not_updated',
+            __('Could not update ALT text for this post.', 'botwriter'),
+            'skip',
+            __('No ALT changes applied', 'botwriter')
+        );
     }
     $body = $dom->getElementsByTagName('div')->item(0);
     $html = '';
     foreach ($body->childNodes as $n) { $html .= $dom->saveHTML($n); }
-    wp_update_post(array('ID' => $post_id, 'post_content' => $html));
+    $saved = wp_update_post(array('ID' => $post_id, 'post_content' => $html), true);
+    if (is_wp_error($saved)) {
+        return botwriter_seo_bulk_action_error(
+            'content_update_failed',
+            $saved->get_error_message(),
+            'server',
+            __('Content update failed', 'botwriter')
+        );
+    }
     botwriter_seo_compute_score($post_id, true);
     botwriter_seo_bulk_log('regen_alt_text updated', array('post_id' => (int) $post_id, 'ai_ok' => $ai_ok, 'ai_fail' => $ai_fail));
-    return true;
+    return botwriter_seo_bulk_action_success(true);
 }
 
 function botwriter_seo_action_rebuild_internal_links($post_id) {
@@ -1065,12 +1446,26 @@ function botwriter_seo_action_regen_seo_title($post_id) {
     $post = get_post($post_id);
     if (!$post) {
         botwriter_seo_bulk_log('regen_seo_title skipped (post not found)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'post_not_found',
+            __('Post not found.', 'botwriter'),
+            'skip',
+            __('Post not found', 'botwriter')
+        );
     }
     $config = botwriter_seo_ai_config();
     if (empty($config['key'])) {
         botwriter_seo_bulk_log('regen_seo_title skipped (missing API key)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'missing_api_key',
+            sprintf(
+                /* translators: %s: provider name */
+                __('Missing API key for SEO Bulk provider: %s.', 'botwriter'),
+                botwriter_seo_bulk_provider_label((string) ($config['provider'] ?? 'openai'))
+            ),
+            'configuration',
+            __('Missing API key', 'botwriter')
+        );
     }
     $excerpt = wp_strip_all_tags($post->post_content);
     if (function_exists('mb_substr')) { $excerpt = mb_substr($excerpt, 0, 1500, 'UTF-8'); }
@@ -1079,32 +1474,28 @@ function botwriter_seo_action_regen_seo_title($post_id) {
         . "POST TITLE: " . $post->post_title . "\n"
         . "SITE NAME: " . $site . "\n\n"
         . "CONTENT:\n" . $excerpt;
-    $t = microtime(true);
-    botwriter_seo_bulk_log('AI call start: regen_seo_title', array(
-        'post_id' => (int) $post_id,
-        'provider' => (string) ($config['provider'] ?? ''),
-        'model' => (string) ($config['model'] ?? ''),
-        'prompt_len' => strlen($prompt),
-    ));
-    $resp = botwriter_call_editor_worker($config['provider'], $config['key'], $config['model'], $prompt, 80, 0.6);
-    $ai = botwriter_seo_bulk_ai_extract_text($resp);
-    botwriter_seo_bulk_log('AI call end: regen_seo_title', array(
-        'post_id' => (int) $post_id,
-        'ok' => !empty($ai['ok']) ? 1 : 0,
-        'format' => (string) ($ai['format'] ?? ''),
-        'error' => (string) ($ai['error'] ?? ''),
-        'text_len' => strlen((string) ($ai['text'] ?? '')),
-        'elapsed_ms' => round((microtime(true) - $t) * 1000),
-    ));
-    if (empty($ai['ok']) || empty($ai['text'])) { return false; }
+    $ai = botwriter_seo_bulk_ai_request('regen_seo_title', $post_id, $config, $prompt, 80, 0.6);
+    if (empty($ai['ok']) || empty($ai['text'])) {
+        return botwriter_seo_bulk_action_error_from_ai(
+            $ai,
+            __('Could not generate SEO title.', 'botwriter')
+        );
+    }
     $title = trim(wp_strip_all_tags($ai['text']));
     $title = trim($title, " .\"'");
-    if ($title === '') { return false; }
+    if ($title === '') {
+        return botwriter_seo_bulk_action_error(
+            'empty_generated_title',
+            __('AI returned an empty SEO title.', 'botwriter'),
+            'skip',
+            __('Empty AI output', 'botwriter')
+        );
+    }
     if (function_exists('mb_substr')) { $title = mb_substr($title, 0, 60, 'UTF-8'); }
     botwriter_seo_set_meta($post_id, 'title', $title);
     botwriter_seo_compute_score($post_id, true);
     botwriter_seo_bulk_log('regen_seo_title updated', array('post_id' => (int) $post_id, 'title_len' => strlen($title)));
-    return true;
+    return botwriter_seo_bulk_action_success(true);
 }
 
 /**
@@ -1117,77 +1508,125 @@ function botwriter_seo_action_regen_seo_title($post_id) {
 function botwriter_seo_action_rewrite_slug($post_id, $args = array()) {
     if (empty($args['confirm_destructive'])) {
         botwriter_seo_bulk_log('rewrite_slug skipped (destructive confirm missing)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'destructive_confirm_missing',
+            __('Slug rewrite requires explicit destructive confirmation.', 'botwriter'),
+            'skip',
+            __('Confirmation required', 'botwriter')
+        );
     }
     $post = get_post($post_id);
     if (!$post) {
         botwriter_seo_bulk_log('rewrite_slug skipped (post not found)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'post_not_found',
+            __('Post not found.', 'botwriter'),
+            'skip',
+            __('Post not found', 'botwriter')
+        );
     }
     if (!in_array($post->post_type, array('post', 'page'), true)) {
         botwriter_seo_bulk_log('rewrite_slug skipped (unsupported post type)', array('post_id' => (int) $post_id, 'post_type' => (string) $post->post_type));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'unsupported_post_type',
+            __('Slug rewrite only supports posts and pages.', 'botwriter'),
+            'skip',
+            __('Unsupported content type', 'botwriter')
+        );
     }
     if ($post->post_status !== 'publish') {
         botwriter_seo_bulk_log('rewrite_slug skipped (not published)', array('post_id' => (int) $post_id, 'post_status' => (string) $post->post_status));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'post_not_published',
+            __('Slug rewrite only runs on published posts.', 'botwriter'),
+            'skip',
+            __('Not published', 'botwriter')
+        );
     }
 
     $config = botwriter_seo_ai_config();
     if (empty($config['key'])) {
         botwriter_seo_bulk_log('rewrite_slug skipped (missing API key)', array('post_id' => (int) $post_id));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'missing_api_key',
+            sprintf(
+                /* translators: %s: provider name */
+                __('Missing API key for SEO Bulk provider: %s.', 'botwriter'),
+                botwriter_seo_bulk_provider_label((string) ($config['provider'] ?? 'openai'))
+            ),
+            'configuration',
+            __('Missing API key', 'botwriter')
+        );
     }
 
-    $kw = (string) get_post_meta($post_id, '_botwriter_seo_focus_keyword', true);
+    $kw = (string) get_post_meta($post_id, '_botwriter_seo_primary_keyword', true);
     $prompt = "Suggest ONE short SEO-friendly URL slug (3-6 lowercase words, hyphen-separated, ASCII, no stopwords like 'the', 'and', 'of') in the SAME LANGUAGE as the post title. Only output the slug, nothing else.\n\n"
         . "POST TITLE: " . $post->post_title . "\n"
         . ($kw !== '' ? ("FOCUS KEYWORD: " . $kw . "\n") : '')
         . "CURRENT SLUG: " . $post->post_name;
-    $t = microtime(true);
-    botwriter_seo_bulk_log('AI call start: rewrite_slug', array(
-        'post_id' => (int) $post_id,
-        'provider' => (string) ($config['provider'] ?? ''),
-        'model' => (string) ($config['model'] ?? ''),
-        'prompt_len' => strlen($prompt),
-        'current_slug' => (string) $post->post_name,
-    ));
-    $resp = botwriter_call_editor_worker($config['provider'], $config['key'], $config['model'], $prompt, 30, 0.4);
-    $ai = botwriter_seo_bulk_ai_extract_text($resp);
-    botwriter_seo_bulk_log('AI call end: rewrite_slug', array(
-        'post_id' => (int) $post_id,
-        'ok' => !empty($ai['ok']) ? 1 : 0,
-        'format' => (string) ($ai['format'] ?? ''),
-        'error' => (string) ($ai['error'] ?? ''),
-        'text_len' => strlen((string) ($ai['text'] ?? '')),
-        'elapsed_ms' => round((microtime(true) - $t) * 1000),
-    ));
-    if (empty($ai['ok']) || empty($ai['text'])) { return false; }
+    $ai = botwriter_seo_bulk_ai_request('rewrite_slug', $post_id, $config, $prompt, 30, 0.4);
+    if (empty($ai['ok']) || empty($ai['text'])) {
+        return botwriter_seo_bulk_action_error_from_ai(
+            $ai,
+            __('Could not generate a new slug.', 'botwriter')
+        );
+    }
     $slug = trim(wp_strip_all_tags($ai['text']));
     $slug = preg_replace('~[^a-z0-9\-]+~', '-', strtolower(remove_accents($slug)));
     $slug = trim(preg_replace('~-+~', '-', $slug), '-');
     if ($slug === '' || $slug === $post->post_name) {
         botwriter_seo_bulk_log('rewrite_slug skipped (same/empty slug)', array('post_id' => (int) $post_id, 'suggested_slug' => (string) $slug));
-        return false;
+        return botwriter_seo_bulk_action_error(
+            'slug_unchanged',
+            __('Generated slug was empty or equal to the current slug.', 'botwriter'),
+            'skip',
+            __('No slug change', 'botwriter')
+        );
     }
     if (function_exists('mb_substr')) { $slug = mb_substr($slug, 0, 75, 'UTF-8'); }
     // wp_unique_post_slug guarantees uniqueness within the post type.
     $unique = wp_unique_post_slug($slug, $post_id, $post->post_status, $post->post_type, $post->post_parent);
-    wp_update_post(array('ID' => $post_id, 'post_name' => $unique));
+    $saved = wp_update_post(array('ID' => $post_id, 'post_name' => $unique), true);
+    if (is_wp_error($saved)) {
+        return botwriter_seo_bulk_action_error(
+            'slug_update_failed',
+            $saved->get_error_message(),
+            'server',
+            __('Slug update failed', 'botwriter')
+        );
+    }
     botwriter_seo_bulk_log('rewrite_slug updated', array(
         'post_id' => (int) $post_id,
         'old_slug' => (string) $post->post_name,
         'new_slug' => (string) $unique,
     ));
-    return true;
+    return botwriter_seo_bulk_action_success(true);
 }
 
 /**
  * Resolve current AI config from BotWriter options.
  */
 function botwriter_seo_ai_config() {
-    $provider = get_option('botwriter_seo_ai_provider', 'openai');
-    $model = get_option('botwriter_seo_ai_model', '');
+    // Optional override values saved in SEO settings.
+    $provider_override = sanitize_key((string) get_option('botwriter_seo_ai_provider', ''));
+    $model_override = trim((string) get_option('botwriter_seo_ai_model', ''));
+
+    // Default behavior: inherit provider/model from global Text AI settings.
+    $provider = $provider_override !== ''
+        ? $provider_override
+        : sanitize_key((string) get_option('botwriter_text_provider', 'openai'));
+    if ($provider === '') {
+        $provider = 'openai';
+    }
+
+    $model = $model_override;
+    if ($model === '') {
+        if (function_exists('botwriter_get_current_text_model')) {
+            $model = (string) botwriter_get_current_text_model();
+        } else {
+            $model = (string) get_option("botwriter_{$provider}_model", '');
+        }
+    }
 
     // Prefer the shared provider-aware helper from botwriter.php.
     $key = '';
@@ -1207,6 +1646,9 @@ function botwriter_seo_ai_config() {
         }
     }
 
-    if (!$model) { $model = get_option('botwriter_openai_model', 'gpt-4o-mini'); }
+    if ($model === '') {
+        $model = (string) get_option('botwriter_openai_model', 'gpt-5.4-mini');
+    }
+
     return array('provider' => $provider, 'model' => $model, 'key' => $key);
 }

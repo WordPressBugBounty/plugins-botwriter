@@ -1311,6 +1311,174 @@ function botwriter_sanitize_meta_description( $text ) {
 }
 
 /**
+ * Whether publish-time focus keyword generation is enabled.
+ *
+ * @return bool
+ */
+function botwriter_is_seo_publish_focus_keyword_enabled() {
+    return get_option( 'botwriter_seo_publish_focus_keyword_enabled', '0' ) === '1';
+}
+
+/**
+ * Sanitize an AI-generated focus keyword.
+ *
+ * @param string $text Raw keyword candidate.
+ * @return string
+ */
+function botwriter_sanitize_focus_keyword( $text ) {
+    $text = wp_strip_all_tags( (string) $text );
+    $text = preg_replace( '/\s+/', ' ', $text );
+    $text = trim( (string) $text, " \t\n\r\0\x0B,.;:!?\"'()[]{}" );
+
+    if ( $text === '' ) {
+        return '';
+    }
+
+    if ( function_exists( 'mb_substr' ) ) {
+        $text = mb_substr( $text, 0, 80, 'UTF-8' );
+    } else {
+        $text = substr( $text, 0, 80 );
+    }
+
+    return trim( $text );
+}
+
+/**
+ * Generate a primary SEO focus keyword using the configured AI text provider.
+ *
+ * @param string $title Post title.
+ * @param string $content Post HTML content.
+ * @param string $language_code Post language code (e.g. 'es', 'en').
+ * @return string|false
+ */
+function botwriter_generate_seo_focus_keyword( $title, $content, $language_code = '' ) {
+    global $botwriter_languages;
+
+    if ( ! function_exists( 'botwriter_is_seo_publish_focus_keyword_enabled' ) || ! botwriter_is_seo_publish_focus_keyword_enabled() ) {
+        return false;
+    }
+
+    $plain = wp_strip_all_tags( (string) $content );
+    $plain = preg_replace( '/\s+/', ' ', $plain );
+    if ( function_exists( 'mb_substr' ) ) {
+        $plain = mb_substr( (string) $plain, 0, 900, 'UTF-8' );
+    } else {
+        $plain = substr( (string) $plain, 0, 900 );
+    }
+
+    $lang_name = '';
+    if ( ! empty( $language_code ) && isset( $botwriter_languages[ $language_code ] ) ) {
+        $lang_name = (string) $botwriter_languages[ $language_code ];
+    }
+
+    $prompt  = "You are an SEO strategist.\n";
+    $prompt .= "Suggest exactly ONE primary focus keyword for the blog post below.\n";
+    $prompt .= "Rules:\n";
+    $prompt .= "- Return only the keyword phrase, no quotes, no markdown, no explanations.\n";
+    $prompt .= "- Use 1 to 4 words.\n";
+    $prompt .= "- Match the article language.\n";
+    $prompt .= "- Keep it natural and specific to search intent.\n";
+    if ( $lang_name !== '' ) {
+        $prompt .= "- Language must be: {$lang_name}.\n";
+    }
+    $prompt .= "\nTitle: {$title}\n";
+    $prompt .= "Content excerpt: {$plain}\n\n";
+    $prompt .= "Return only the focus keyword.";
+
+    $provider = get_option( 'botwriter_text_provider', 'openai' );
+    $api_key = botwriter_get_provider_api_key( $provider );
+    if ( empty( $api_key ) ) {
+        botwriter_log( 'SEO Focus keyword: No API key for provider ' . $provider, array(), 'warning' );
+        return false;
+    }
+
+    $model = botwriter_get_seo_translation_model( $provider );
+    $text = botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, 60, 0.4 );
+
+    if ( is_wp_error( $text ) ) {
+        botwriter_log( 'SEO Focus keyword API error', [
+            'provider' => $provider,
+            'error' => $text->get_error_message(),
+        ], 'error' );
+        return false;
+    }
+
+    $keyword = botwriter_sanitize_focus_keyword( (string) $text );
+    if ( $keyword === '' ) {
+        botwriter_log( 'SEO Focus keyword empty after sanitization', [
+            'provider' => $provider,
+            'raw_length' => strlen( (string) $text ),
+        ], 'warning' );
+        return false;
+    }
+
+    return $keyword;
+}
+
+/**
+ * Save focus keyword to BotWriter + compatible SEO plugin fields.
+ *
+ * @param int    $post_id Post ID.
+ * @param string $focus_keyword Focus keyword.
+ * @return void
+ */
+function botwriter_apply_seo_focus_keyword( $post_id, $focus_keyword ) {
+    if ( ! $post_id || $focus_keyword === '' ) {
+        return;
+    }
+
+    $focus_keyword = botwriter_sanitize_focus_keyword( $focus_keyword );
+    if ( $focus_keyword === '' ) {
+        return;
+    }
+
+    // Always persist native BotWriter focus key used by score checks.
+    update_post_meta( $post_id, '_botwriter_seo_primary_keyword', $focus_keyword );
+
+    if ( function_exists( 'botwriter_seo_set_meta' ) ) {
+        botwriter_seo_set_meta( $post_id, 'focus', $focus_keyword );
+    }
+
+    $yoast_available = defined( 'WPSEO_VERSION' )
+        || class_exists( 'WPSEO_Meta' )
+        || metadata_exists( 'post', $post_id, '_yoast_wpseo_focuskw' );
+    if ( $yoast_available ) {
+        update_post_meta( $post_id, '_yoast_wpseo_focuskw', $focus_keyword );
+        if ( class_exists( 'WPSEO_Meta' ) && is_callable( [ 'WPSEO_Meta', 'set_value' ] ) ) {
+            call_user_func( [ 'WPSEO_Meta', 'set_value' ], 'focuskw', $focus_keyword, $post_id );
+        }
+    }
+
+    if ( class_exists( 'RankMath' ) || metadata_exists( 'post', $post_id, 'rank_math_focus_keyword' ) ) {
+        update_post_meta( $post_id, 'rank_math_focus_keyword', $focus_keyword );
+    }
+
+    if ( function_exists( 'aioseo' ) || metadata_exists( 'post', $post_id, '_aioseop_keywords' ) ) {
+        update_post_meta( $post_id, '_aioseop_keywords', $focus_keyword );
+    }
+
+    if ( defined( 'SEOPRESS_VERSION' ) ) {
+        update_post_meta( $post_id, '_seopress_analysis_target_kw', $focus_keyword );
+    }
+
+    if ( function_exists( 'the_seo_framework' ) ) {
+        update_post_meta( $post_id, '_genesis_keywords', $focus_keyword );
+    }
+
+    botwriter_log( 'SEO Focus keyword applied to post', [
+        'post_id' => $post_id,
+        'length'  => function_exists( 'mb_strlen' ) ? mb_strlen( $focus_keyword ) : strlen( $focus_keyword ),
+        'plugins' => implode( ', ', array_filter( [
+            $yoast_available ? 'Yoast' : '',
+            class_exists( 'RankMath' ) ? 'RankMath' : '',
+            function_exists( 'aioseo' ) ? 'AIOSEO' : '',
+            defined( 'SEOPRESS_VERSION' ) ? 'SEOPress' : '',
+            function_exists( 'the_seo_framework' ) ? 'TSF' : '',
+        ] ) ) ?: 'none (native only)',
+    ] );
+}
+
+/**
  * Save SEO meta description to the post's excerpt and to popular SEO plugin fields.
  *
  * Supports: Yoast SEO, Rank Math, All in One SEO, SEOPress, The SEO Framework.

@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.3.6
+Stable tag: 3.3.7
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -332,6 +332,9 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.7 =
+* SEO Bulk Actions now inherit the global Text AI provider/model by default, with optional provider/model overrides available in SEO Settings.
+
 = 3.3.6 =
 * Added official BotWriter AI Writer page link to plugin description.
 

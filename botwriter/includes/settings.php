@@ -719,6 +719,7 @@ function botwriter_ajax_save_settings() {
         'botwriter_seo_auto_internal_links_max_links',
         'botwriter_seo_ai_internal_links_enabled',
         'botwriter_seo_featured_image_alt_enabled',
+        'botwriter_seo_publish_focus_keyword_enabled',
         'botwriter_seo_publish_faq_enabled',
         'botwriter_seo_publish_faq_mode',
         'botwriter_seo_social_meta_enabled',
@@ -812,6 +813,7 @@ function botwriter_ajax_save_settings() {
         || $field === 'botwriter_seo_auto_internal_links_enabled'
         || $field === 'botwriter_seo_ai_internal_links_enabled'
         || $field === 'botwriter_seo_featured_image_alt_enabled'
+        || $field === 'botwriter_seo_publish_focus_keyword_enabled'
         || $field === 'botwriter_seo_publish_faq_enabled'
         || $field === 'botwriter_seo_social_meta_enabled'
         || $field === 'botwriter_seo_translation_enabled' || $field === 'botwriter_seo_translate_title'
@@ -1504,6 +1506,14 @@ function botwriter_settings_meta_box_handler() {
 
             <div class="form-row checkbox-row">
                 <label>
+                    <input type="checkbox" name="botwriter_seo_publish_focus_keyword_enabled" value="1" <?php checked($settings['botwriter_seo_publish_focus_keyword_enabled'], '1'); ?> class="botwriter-autosave">
+                    <strong><?php esc_html_e('Generate and sync focus keyword on publish', 'botwriter'); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, BotWriter generates one primary focus keyword and synchronizes it to BotWriter native SEO plus compatible plugin fields (Yoast, Rank Math, AIOSEO, SEOPress, TSF).', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row checkbox-row">
+                <label>
                     <input type="checkbox" name="botwriter_seo_publish_faq_enabled" value="1" <?php checked($settings['botwriter_seo_publish_faq_enabled'], '1'); ?> class="botwriter-autosave">
                     <strong><?php esc_html_e('Generate FAQ + FAQ schema on publish', 'botwriter'); ?></strong>
                 </label>
@@ -1651,6 +1661,7 @@ function botwriter_get_all_settings() {
         'botwriter_seo_auto_internal_links_max_links' => get_option('botwriter_seo_auto_internal_links_max_links', '3'),
         'botwriter_seo_ai_internal_links_enabled' => get_option('botwriter_seo_ai_internal_links_enabled', '0'),
         'botwriter_seo_featured_image_alt_enabled' => get_option('botwriter_seo_featured_image_alt_enabled', '1'),
+        'botwriter_seo_publish_focus_keyword_enabled' => get_option('botwriter_seo_publish_focus_keyword_enabled', '0'),
         'botwriter_seo_publish_faq_enabled' => get_option('botwriter_seo_publish_faq_enabled', '0'),
         'botwriter_seo_publish_faq_mode' => get_option('botwriter_seo_publish_faq_mode', 'visible_schema'),
         'botwriter_seo_social_meta_enabled' => get_option('botwriter_seo_social_meta_enabled', '0'),
