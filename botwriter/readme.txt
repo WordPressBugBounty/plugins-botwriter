@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 4.0
 Tested up to: 7.0
-Stable tag: 3.3.5
+Stable tag: 3.3.6
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -44,6 +44,7 @@ BotWriter is capable of creating entire blog content in minutes! Check out the e
 How to Auto-Generate Articles from an RSS Feed | BotWriter + NASA RSS
 [youtube https://youtu.be/7aq0496XwY0]
 
+For full documentation and more information, visit the [official BotWriter AI Writer page](https://wpbotwriter.com).
 
 == Key Features ==
 
@@ -331,6 +332,9 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.3.6 =
+* Added official BotWriter AI Writer page link to plugin description.
+
 = 3.3.5 =
 * Fixed WooCommerce AI token recovery: when the server returns invalid_site_token, Woo now clears the stale local token, retries once, and stores the new site_token returned by the API.
 * Improved Woo token-sync resilience after reinstall, reconnect, or domain re-pair operations.
