@@ -229,6 +229,7 @@ class BotWriter_Woo_AI_Preview {
      * ----------------------------------------------------------------*/
 
     private function apply_seo_meta( $product_id, $meta_description ) {
+        $meta_description = $this->normalize_structured_seo_text( $meta_description, 'seo_meta' );
         $meta_description = sanitize_text_field( $meta_description );
 
         // Always store in BotWriter's own meta key (fallback when no SEO plugin).
@@ -282,6 +283,7 @@ class BotWriter_Woo_AI_Preview {
      * ----------------------------------------------------------------*/
 
     private function apply_seo_title( $product_id, $seo_title ) {
+        $seo_title = $this->normalize_structured_seo_text( $seo_title, 'seo_title' );
         $seo_title = sanitize_text_field( $seo_title );
 
         // Always store in BotWriter's own meta key (fallback when no SEO plugin).
@@ -311,6 +313,129 @@ class BotWriter_Woo_AI_Preview {
         if ( function_exists( 'the_seo_framework' ) ) {
             update_post_meta( $product_id, '_genesis_title', $seo_title );
         }
+    }
+
+    /**
+     * Normalize structured AI output (JSON arrays/objects) into plain SEO text.
+     *
+     * @param string $content Raw AI response content.
+     * @param string $field   Supported values: seo_title, seo_meta.
+     * @return string
+     */
+    private function normalize_structured_seo_text( $content, $field ) {
+        $candidate = trim( (string) $content );
+        if ( $candidate === '' ) {
+            return '';
+        }
+
+        $candidate = preg_replace( '/^```(?:html|json)?\s*/i', '', $candidate );
+        $candidate = preg_replace( '/\s*```$/', '', $candidate );
+        $candidate = trim( (string) $candidate );
+
+        for ( $depth = 0; $depth < 2; $depth++ ) {
+            $decoded = json_decode( $candidate, true );
+            if ( json_last_error() !== JSON_ERROR_NONE ) {
+                break;
+            }
+
+            if ( is_string( $decoded ) ) {
+                $candidate = trim( $decoded );
+                continue;
+            }
+
+            if ( is_array( $decoded ) ) {
+                $extracted = $this->extract_structured_seo_text_value( $decoded, $field );
+                if ( $extracted !== '' ) {
+                    return $extracted;
+                }
+            }
+
+            break;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * Extract SEO text from decoded payloads that may contain nested wrappers.
+     *
+     * @param array  $payload Decoded JSON payload.
+     * @param string $field   Supported values: seo_title, seo_meta.
+     * @return string
+     */
+    private function extract_structured_seo_text_value( $payload, $field ) {
+        $preferred = [
+            'seo_title' => [ 'seo_title', 'title', 'text', 'content' ],
+            'seo_meta'  => [ 'seo_meta', 'meta_description', 'description', 'text', 'content' ],
+        ];
+
+        $keys = isset( $preferred[ $field ] ) ? $preferred[ $field ] : [ 'text', 'content' ];
+
+        foreach ( $keys as $key ) {
+            if ( ! array_key_exists( $key, $payload ) ) {
+                continue;
+            }
+
+            $value = $this->pick_structured_seo_text_value( $payload[ $key ], $keys, 0 );
+            if ( $value !== '' ) {
+                return $value;
+            }
+        }
+
+        foreach ( $payload as $value ) {
+            $candidate = $this->pick_structured_seo_text_value( $value, $keys, 0 );
+            if ( $candidate !== '' ) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Recursively pick the first useful scalar text from nested decoded values.
+     *
+     * @param mixed $value Candidate value.
+     * @param array $keys  Preferred keys.
+     * @param int   $depth Recursion depth guard.
+     * @return string
+     */
+    private function pick_structured_seo_text_value( $value, $keys, $depth = 0 ) {
+        if ( $depth > 4 ) {
+            return '';
+        }
+
+        if ( is_string( $value ) ) {
+            return trim( $value );
+        }
+
+        if ( is_scalar( $value ) && ! is_bool( $value ) ) {
+            return trim( (string) $value );
+        }
+
+        if ( ! is_array( $value ) ) {
+            return '';
+        }
+
+        foreach ( $keys as $key ) {
+            if ( ! array_key_exists( $key, $value ) ) {
+                continue;
+            }
+
+            $candidate = $this->pick_structured_seo_text_value( $value[ $key ], $keys, $depth + 1 );
+            if ( $candidate !== '' ) {
+                return $candidate;
+            }
+        }
+
+        foreach ( $value as $item ) {
+            $candidate = $this->pick_structured_seo_text_value( $item, $keys, $depth + 1 );
+            if ( $candidate !== '' ) {
+                return $candidate;
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -348,9 +473,13 @@ class BotWriter_Woo_AI_Preview {
             case 'title':
             case 'tags':
             case 'alt_tags':
-            case 'seo_meta':
-            case 'seo_title':
                 return sanitize_text_field( $content );
+
+            case 'seo_meta':
+                return sanitize_text_field( $this->normalize_structured_seo_text( $content, 'seo_meta' ) );
+
+            case 'seo_title':
+                return sanitize_text_field( $this->normalize_structured_seo_text( $content, 'seo_title' ) );
 
             default:
                 return sanitize_text_field( $content );

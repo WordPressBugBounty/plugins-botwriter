@@ -359,15 +359,39 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
             return '';
         }
 
-        $decoded = json_decode( $trimmed, true );
-        if ( is_string( $decoded ) ) {
-            return trim( $decoded );
+        $candidate = $trimmed;
+        for ( $depth = 0; $depth < 2; $depth++ ) {
+            $decoded = json_decode( $candidate, true );
+            if ( json_last_error() !== JSON_ERROR_NONE ) {
+                break;
+            }
+
+            if ( is_string( $decoded ) ) {
+                $candidate = trim( $decoded );
+                continue;
+            }
+
+            if ( is_array( $decoded ) ) {
+                $extracted = $this->extract_generated_text_from_payload( $decoded, $field );
+                if ( $extracted !== '' ) {
+                    return $extracted;
+                }
+            }
+
+            break;
         }
 
-        if ( ! is_array( $decoded ) ) {
-            return $trimmed;
-        }
+        return $candidate;
+    }
 
+    /**
+     * Extract plain text from structured AI payloads (objects, arrays, nested wrappers).
+     *
+     * @param array  $payload Decoded JSON payload.
+     * @param string $field   Woo AI field being generated.
+     * @return string
+     */
+    private function extract_generated_text_from_payload( $payload, $field ) {
         $preferred_keys = [
             'description'          => [ 'html', 'description', 'content', 'text' ],
             'category_description' => [ 'html', 'description', 'content', 'text' ],
@@ -381,25 +405,117 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         ];
 
         $keys = isset( $preferred_keys[ $field ] ) ? $preferred_keys[ $field ] : [ 'content', 'text', 'html' ];
+
         foreach ( $keys as $key ) {
-            if ( ! array_key_exists( $key, $decoded ) ) {
+            if ( ! array_key_exists( $key, $payload ) ) {
                 continue;
             }
 
-            if ( is_string( $decoded[ $key ] ) ) {
-                return trim( $decoded[ $key ] );
-            }
-
-            if ( $field === 'tags' && is_array( $decoded[ $key ] ) ) {
-                return implode( ', ', array_map( 'strval', $decoded[ $key ] ) );
+            $value = $this->pick_generated_text_value( $payload[ $key ], $field, $keys, 0 );
+            if ( $value !== '' ) {
+                return $value;
             }
         }
 
-        if ( $field === 'tags' && array_values( $decoded ) === $decoded ) {
-            return implode( ', ', array_map( 'strval', $decoded ) );
+        if ( array_values( $payload ) === $payload ) {
+            if ( $field === 'tags' ) {
+                $tags = [];
+                foreach ( $payload as $item ) {
+                    $value = $this->pick_generated_text_value( $item, $field, $keys, 0 );
+                    if ( $value !== '' ) {
+                        $tags[] = $value;
+                    }
+                }
+
+                $tags = array_values( array_unique( array_filter( $tags ) ) );
+                if ( ! empty( $tags ) ) {
+                    return implode( ', ', $tags );
+                }
+            }
+
+            foreach ( $payload as $item ) {
+                $value = $this->pick_generated_text_value( $item, $field, $keys, 0 );
+                if ( $value !== '' ) {
+                    return $value;
+                }
+            }
         }
 
-        return $trimmed;
+        foreach ( $payload as $item ) {
+            $value = $this->pick_generated_text_value( $item, $field, $keys, 0 );
+            if ( $value !== '' ) {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Recursively pick the best text value from a decoded payload node.
+     *
+     * @param mixed  $value          Candidate value.
+     * @param string $field          Woo AI field being generated.
+     * @param array  $preferred_keys Candidate keys for nested objects.
+     * @param int    $depth          Recursion depth guard.
+     * @return string
+     */
+    private function pick_generated_text_value( $value, $field, $preferred_keys, $depth = 0 ) {
+        if ( $depth > 4 ) {
+            return '';
+        }
+
+        if ( is_string( $value ) ) {
+            return trim( $value );
+        }
+
+        if ( is_scalar( $value ) && ! is_bool( $value ) ) {
+            return trim( (string) $value );
+        }
+
+        if ( ! is_array( $value ) ) {
+            return '';
+        }
+
+        $is_list = array_values( $value ) === $value;
+
+        if ( $field === 'tags' && $is_list ) {
+            $tags = [];
+            foreach ( $value as $item ) {
+                if ( is_scalar( $item ) && ! is_bool( $item ) ) {
+                    $tag = trim( (string) $item );
+                } else {
+                    $tag = $this->pick_generated_text_value( $item, $field, $preferred_keys, $depth + 1 );
+                }
+
+                if ( $tag !== '' ) {
+                    $tags[] = $tag;
+                }
+            }
+
+            $tags = array_values( array_unique( array_filter( $tags ) ) );
+            return ! empty( $tags ) ? implode( ', ', $tags ) : '';
+        }
+
+        foreach ( $preferred_keys as $key ) {
+            if ( ! array_key_exists( $key, $value ) ) {
+                continue;
+            }
+
+            $candidate = $this->pick_generated_text_value( $value[ $key ], $field, $preferred_keys, $depth + 1 );
+            if ( $candidate !== '' ) {
+                return $candidate;
+            }
+        }
+
+        foreach ( $value as $item ) {
+            $candidate = $this->pick_generated_text_value( $item, $field, $preferred_keys, $depth + 1 );
+            if ( $candidate !== '' ) {
+                return $candidate;
+            }
+        }
+
+        return '';
     }
 
     /* ------------------------------------------------------------------
@@ -949,6 +1065,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
 
         $result = preg_replace( '/^```(?:html|json)?\s*/i', '', trim( $result ) );
         $result = preg_replace( '/\s*```$/', '', $result );
+        $result = $this->normalize_generated_response( $result, 'category_description' );
 
         botwriter_log( '[Woo AI] generate_category SUCCESS', [
             'provider' => $provider,

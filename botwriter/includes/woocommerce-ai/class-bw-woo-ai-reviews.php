@@ -633,31 +633,48 @@ class BotWriter_Woo_AI_Reviews {
      * ----------------------------------------------------------------*/
 
     private function parse_reviews_response( $text, $settings, $expected_count ) {
-        // Try to extract JSON array
-        $text = trim( $text );
+        $text = trim( (string) $text );
 
-        // Remove markdown code fences if present
+        // Remove markdown code fences if present.
         $text = preg_replace( '/^```(?:json)?\s*/i', '', $text );
         $text = preg_replace( '/\s*```$/', '', $text );
 
-        $decoded = json_decode( $text, true );
+        $decoded = $this->decode_reviews_json_payload( $text );
 
         if ( ! is_array( $decoded ) ) {
-            // Try to find JSON array in the text
-            if ( preg_match( '/\[.*\]/s', $text, $m ) ) {
-                $decoded = json_decode( $m[0], true );
+            // Fallback: try to extract JSON array substring from mixed text.
+            if ( preg_match( '/\[[\s\S]*\]/', $text, $m ) ) {
+                $decoded = $this->decode_reviews_json_payload( $m[0] );
             }
         }
 
-        if ( ! is_array( $decoded ) || empty( $decoded ) ) {
+        $items = is_array( $decoded ) ? $this->extract_review_items_from_payload( $decoded ) : [];
+
+        if ( empty( $items ) ) {
             return [];
         }
 
         $reviews = [];
-        foreach ( $decoded as $item ) {
+        foreach ( $items as $item ) {
+            if ( is_string( $item ) ) {
+                $content = sanitize_textarea_field( $item );
+                if ( $content === '' ) {
+                    continue;
+                }
+
+                $reviews[] = [
+                    'name'    => 'Customer',
+                    'rating'  => 5,
+                    'title'   => '',
+                    'content' => $content,
+                ];
+                continue;
+            }
+
             if ( ! is_array( $item ) ) {
                 continue;
             }
+
             $reviews[] = [
                 'name'    => sanitize_text_field( $item['name'] ?? 'Customer' ),
                 'rating'  => max( 1, min( 5, intval( $item['rating'] ?? 5 ) ) ),
@@ -667,6 +684,86 @@ class BotWriter_Woo_AI_Reviews {
         }
 
         return $reviews;
+    }
+
+    /**
+     * Decode JSON that may be stringified one extra time.
+     *
+     * @param string $payload Raw payload.
+     * @return array|mixed|null
+     */
+    private function decode_reviews_json_payload( $payload ) {
+        $candidate = trim( (string) $payload );
+        if ( $candidate === '' ) {
+            return null;
+        }
+
+        for ( $depth = 0; $depth < 2; $depth++ ) {
+            $decoded = json_decode( $candidate, true );
+            if ( json_last_error() !== JSON_ERROR_NONE ) {
+                return null;
+            }
+
+            if ( is_string( $decoded ) ) {
+                $candidate = trim( $decoded );
+                continue;
+            }
+
+            return $decoded;
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract review rows from wrapped payloads (reviews/items/data/content/result...).
+     *
+     * @param array $payload Decoded payload.
+     * @param int   $depth   Recursion depth guard.
+     * @return array
+     */
+    private function extract_review_items_from_payload( $payload, $depth = 0 ) {
+        if ( $depth > 4 || ! is_array( $payload ) ) {
+            return [];
+        }
+
+        $is_list = array_values( $payload ) === $payload;
+        if ( $is_list ) {
+            return $payload;
+        }
+
+        $wrapper_keys = [ 'reviews', 'items', 'data', 'result', 'output', 'content', 'text', 'response' ];
+        foreach ( $wrapper_keys as $key ) {
+            if ( ! array_key_exists( $key, $payload ) ) {
+                continue;
+            }
+
+            $candidate = $payload[ $key ];
+            if ( is_string( $candidate ) ) {
+                $decoded = $this->decode_reviews_json_payload( $candidate );
+                if ( is_array( $decoded ) ) {
+                    $items = $this->extract_review_items_from_payload( $decoded, $depth + 1 );
+                    if ( ! empty( $items ) ) {
+                        return $items;
+                    }
+                }
+                continue;
+            }
+
+            if ( is_array( $candidate ) ) {
+                $items = $this->extract_review_items_from_payload( $candidate, $depth + 1 );
+                if ( ! empty( $items ) ) {
+                    return $items;
+                }
+            }
+        }
+
+        // Single review object fallback.
+        if ( isset( $payload['content'] ) || isset( $payload['title'] ) || isset( $payload['rating'] ) || isset( $payload['name'] ) ) {
+            return [ $payload ];
+        }
+
+        return [];
     }
 
     /* ------------------------------------------------------------------
