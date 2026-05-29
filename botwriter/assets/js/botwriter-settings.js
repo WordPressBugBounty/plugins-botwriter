@@ -8,6 +8,21 @@ jQuery(document).ready(function($) {
     var ajaxUrl = botwriter_settings.ajax_url;
     var nonce = $('#botwriter_settings_nonce').val();
     var i18n = botwriter_settings.i18n;
+    var apiFieldByProvider = {
+        openai: 'botwriter_openai_api_key',
+        anthropic: 'botwriter_anthropic_api_key',
+        google: 'botwriter_google_api_key',
+        mistral: 'botwriter_mistral_api_key',
+        groq: 'botwriter_groq_api_key',
+        openrouter: 'botwriter_openrouter_api_key',
+        fal: 'botwriter_fal_api_key',
+        replicate: 'botwriter_replicate_api_key',
+        stability: 'botwriter_stability_api_key',
+        cloudflare: 'botwriter_cloudflare_api_key',
+        // Shared credentials for image providers
+        dalle: 'botwriter_openai_api_key',
+        gemini: 'botwriter_google_api_key'
+    };
 
     // Show save status indicator
     function showSaveStatus(status, message) {
@@ -20,11 +35,8 @@ jQuery(document).ready(function($) {
         }
     }
 
-    // Save a single field via AJAX
-    function saveField(fieldName, fieldValue) {
-        showSaveStatus('saving', i18n.saving);
-        
-        $.ajax({
+    function saveFieldRequest(fieldName, fieldValue) {
+        return $.ajax({
             url: ajaxUrl,
             type: 'POST',
             data: {
@@ -32,18 +44,76 @@ jQuery(document).ready(function($) {
                 nonce: nonce,
                 field: fieldName,
                 value: fieldValue
-            },
-            success: function(response) {
+            }
+        });
+    }
+
+    function getApiFieldByProvider(provider) {
+        return apiFieldByProvider[provider] || '';
+    }
+
+    function syncDuplicateApiKeyInputs(fieldName, fieldValue, $sourceInput) {
+        if (!fieldName || fieldName.indexOf('_api_key') === -1) {
+            return;
+        }
+
+        $('input[name="' + fieldName + '"]').not($sourceInput).each(function() {
+            if ($(this).val() !== fieldValue) {
+                $(this).val(fieldValue);
+            }
+        });
+    }
+
+    function findBestApiInput(fieldName, $context) {
+        var $inputs = $('input[name="' + fieldName + '"]');
+        if (!$inputs.length) {
+            return $inputs;
+        }
+
+        var $visibleWithValue = $inputs.filter(':visible').filter(function() {
+            return $.trim($(this).val()) !== '';
+        });
+        if ($visibleWithValue.length) {
+            return $visibleWithValue.first();
+        }
+
+        var $visible = $inputs.filter(':visible');
+        if ($visible.length) {
+            return $visible.first();
+        }
+
+        if ($context && $context.length) {
+            var $contextInput = $context.find('input[name="' + fieldName + '"]');
+            if ($contextInput.length) {
+                return $contextInput.first();
+            }
+        }
+
+        var $anyWithValue = $inputs.filter(function() {
+            return $.trim($(this).val()) !== '';
+        });
+        if ($anyWithValue.length) {
+            return $anyWithValue.first();
+        }
+
+        return $inputs.first();
+    }
+
+    // Save a single field via AJAX
+    function saveField(fieldName, fieldValue) {
+        showSaveStatus('saving', i18n.saving);
+
+        saveFieldRequest(fieldName, fieldValue)
+            .done(function(response) {
                 if (response.success) {
                     showSaveStatus('saved', i18n.saved);
                 } else {
                     showSaveStatus('error', response.data.message || i18n.error);
                 }
-            },
-            error: function() {
+            })
+            .fail(function() {
                 showSaveStatus('error', i18n.connection_error);
-            }
-        });
+            });
     }
 
     // Handle input changes with debounce
@@ -57,6 +127,9 @@ jQuery(document).ready(function($) {
         } else {
             fieldValue = $el.val();
         }
+
+        // Keep duplicated shared API key inputs (OpenAI/Google in text+image tabs) synchronized.
+        syncDuplicateApiKeyInputs(fieldName, fieldValue, $el);
 
         // Clear previous timeout
         if (saveTimeout) {
@@ -91,7 +164,8 @@ jQuery(document).ready(function($) {
         }
         var fieldName = $(this).attr('name');
         var fieldValue = $(this).val();
-        if (fieldValue) {
+        if (fieldName) {
+            syncDuplicateApiKeyInputs(fieldName, fieldValue, $(this));
             saveField(fieldName, fieldValue);
         }
     });
@@ -402,24 +476,64 @@ jQuery(document).ready(function($) {
         
         var $btn = $(this);
         var $wrapper = $btn.closest('.api-key-wrapper');
-        var $result;
-        var $input;
+        var $result = $btn.closest('.form-row').find('.test-api-result').first();
+        var $input = $wrapper.find('.api-key-input');
         var provider = $btn.data('provider');
+        var apiFieldName = getApiFieldByProvider(provider);
         var apiKey;
 
-        // DALL-E uses OpenAI's API key, Gemini (image) uses Google's API key
-        if (provider === 'dalle') {
-            $result = $btn.siblings('.test-api-result');
-            $input = $('input[name="botwriter_openai_api_key"]');
-            apiKey = $input.val();
-        } else if (provider === 'gemini') {
-            $result = $btn.siblings('.test-api-result');
-            $input = $('input[name="botwriter_google_api_key"]');
-            apiKey = $input.val();
-        } else {
-            $result = $wrapper.find('.test-api-result');
-            $input = $wrapper.find('.api-key-input');
-            apiKey = $input.val();
+        if (!$result.length) {
+            $result = $btn.siblings('.test-api-result').first();
+        }
+
+        if (apiFieldName) {
+            $input = findBestApiInput(apiFieldName, $btn.closest('.provider-config-section'));
+        }
+
+        apiKey = $input.length ? $input.val() : '';
+
+        function resetTestButtonState() {
+            $btn.prop('disabled', false).removeClass('testing');
+            $btn.find('.dashicons').removeClass('dashicons-update spin').addClass('dashicons-yes-alt');
+        }
+
+        function runApiTestRequest() {
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'botwriter_test_api_key',
+                    nonce: nonce,
+                    provider: provider,
+                    api_key: apiKey
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $result.removeClass('error').addClass('success').html(
+                            '<span class="dashicons dashicons-yes-alt"></span> ' + response.data.message
+                        );
+                        
+                        // If models were returned, reload page to show updated models list
+                        if (response.data.models && response.data.models.length > 0) {
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        }
+                    } else {
+                        $result.removeClass('success').addClass('error').html(
+                            '<span class="dashicons dashicons-dismiss"></span> ' + response.data.message
+                        );
+                    }
+                },
+                error: function() {
+                    $result.removeClass('success').addClass('error').html(
+                        '<span class="dashicons dashicons-dismiss"></span> ' + i18n.connection_error
+                    );
+                },
+                complete: function() {
+                    resetTestButtonState();
+                }
+            });
         }
 
         // Validate input
@@ -443,44 +557,36 @@ jQuery(document).ready(function($) {
         $btn.find('.dashicons').removeClass('dashicons-yes-alt').addClass('dashicons-update spin');
         $result.removeClass('success error').html('');
 
-        $.ajax({
-            url: ajaxUrl,
-            type: 'POST',
-            data: {
-                action: 'botwriter_test_api_key',
-                nonce: nonce,
-                provider: provider,
-                api_key: apiKey
-            },
-            success: function(response) {
-                if (response.success) {
-                    $result.removeClass('error').addClass('success').html(
-                        '<span class="dashicons dashicons-yes-alt"></span> ' + response.data.message
-                    );
-                    
-                    // If models were returned, reload page to show updated models list
-                    if (response.data.models && response.data.models.length > 0) {
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1500);
-                    }
-                } else {
+        // Persist API key before testing to avoid losing recent edits on model-refresh reload.
+        showSaveStatus('saving', i18n.saving);
+        saveFieldRequest(apiFieldName, apiKey)
+            .done(function(saveResponse) {
+                if (!saveResponse || !saveResponse.success) {
+                    var saveError = (saveResponse && saveResponse.data && saveResponse.data.message)
+                        ? saveResponse.data.message
+                        : i18n.error;
+
+                    showSaveStatus('error', saveError);
                     $result.removeClass('success').addClass('error').html(
-                        '<span class="dashicons dashicons-dismiss"></span> ' + response.data.message
+                        '<span class="dashicons dashicons-dismiss"></span> ' + saveError
                     );
+                    resetTestButtonState();
+                    return;
                 }
-            },
-            error: function() {
+
+                syncDuplicateApiKeyInputs(apiFieldName, apiKey, $input);
+                showSaveStatus('saved', i18n.saved);
+                runApiTestRequest();
+            })
+            .fail(function() {
+                showSaveStatus('error', i18n.connection_error);
                 $result.removeClass('success').addClass('error').html(
                     '<span class="dashicons dashicons-dismiss"></span> ' + i18n.connection_error
                 );
-            },
-            complete: function() {
-                // Reset button state
-                $btn.prop('disabled', false).removeClass('testing');
-                $btn.find('.dashicons').removeClass('dashicons-update spin').addClass('dashicons-yes-alt');
-            }
-        });
+                resetTestButtonState();
+            });
+        
+        return false;
     });
 
     // Test Model functionality

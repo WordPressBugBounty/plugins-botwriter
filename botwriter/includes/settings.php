@@ -1784,14 +1784,17 @@ function botwriter_decrypt_api_key($encrypted_api_key) {
     }
 
     if (!defined('AUTH_KEY')) {
-        return '';
+        // Fallback: support legacy/plain-text keys if AUTH_KEY is unavailable.
+        $plain_fallback = base64_decode($encrypted_api_key, true);
+        return ($plain_fallback === false) ? $encrypted_api_key : '';
     }
 
     $key = hash('sha256', AUTH_KEY, true);
-    $encrypted = base64_decode($encrypted_api_key);
+    $encrypted = base64_decode($encrypted_api_key, true);
 
-    if (!$encrypted) {
-        return '';
+    if ($encrypted === false) {
+        // Legacy/plain-text values should still render in settings fields.
+        return $encrypted_api_key;
     }
 
     $decrypted = openssl_decrypt($encrypted, 'AES-256-ECB', $key, 0);
