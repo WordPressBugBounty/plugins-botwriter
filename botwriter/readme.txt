@@ -2,9 +2,9 @@
 Contributors: estebandezafra
 Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
-Requires at least: 4.0
+Requires at least: 5.5
 Tested up to: 7.0
-Stable tag: 3.3.9
+Stable tag: 3.4.0
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -24,7 +24,7 @@ Whether you need an **AI writer** to keep your blog updated on autopilot, or an 
 🔹 Image style presets (realistic, cartoon, anime, 3D, watercolor...)
 🔹 Smart image optimization for Google Discover (WebP, resize, compress)
 🔹 WooCommerce AI Content Optimizer — bulk-optimize product titles, descriptions, tags, SEO & more
-🔹 AI Review Generator for WooCommerce products
+🔹 Demo Review Generator for WooCommerce layout and staging tests
 🔹 **NEW:** Regenerate featured images on existing posts for better SEO and ai writer workflows
 🔹 Optimize your blog to rank higher on Google
 🔹 Set it up in minutes and let AI do the rest
@@ -34,7 +34,7 @@ In this video, we'll show you how to set up BotWriter in just a few steps so you
 
 BotWriter has been designed to simplify content creation for blogs, websites, and online stores. As a **WordPress AI writer** with multi-provider architecture, you can choose the best AI for each job. Use GPT-5 for creative writing, Claude for technical content, or Gemini for multilingual articles. Pair them with cutting-edge image models like Flux 2 Pro, Google's Nano Banana, or Stable Diffusion.
 
-For **WooCommerce** store owners, BotWriter includes a dedicated AI Content Optimizer that bulk-optimizes product titles, descriptions, tags, image ALT text, SEO metadata and more—all from a single dashboard. It also generates AI-powered product reviews and SEO-optimized category descriptions to help your store rank higher.
+For **WooCommerce** store owners, BotWriter includes a dedicated AI Content Optimizer that bulk-optimizes product titles, descriptions, tags, image ALT text, SEO metadata and more—all from a single dashboard. It can also generate simulated demo/test reviews for staging and layout checks, plus SEO-optimized category descriptions.
 
 BotWriter is also an **AI writer for blogs** that can automatically generate and publish posts based on keywords, RSS feeds, or news sources—making it the ideal tool for AI-powered SEO content creation.
 
@@ -79,7 +79,7 @@ Bulk-optimize your entire product catalog with AI:
 * **9 content fields:** titles, descriptions, short descriptions, tags, image ALT text, review summaries, SEO meta descriptions, SEO titles and category descriptions
 * **Bulk Optimizer:** select products, choose fields and AI provider, preview all changes before applying
 * **Category Optimizer:** generate SEO-friendly category descriptions using product data as context
-* **AI Review Generator:** create realistic product reviews with configurable ratings, length, tone, reviewer names and date spread
+* **Demo Review Generator:** create simulated WooCommerce review data for staging, layout checks, star rating display tests, schema markup tests, and store design previews
 * **Full Backup & Revert:** automatic backup before every change, per-field or full revert, visual before/after diff
 * **Optimization History:** browse all past optimizations with filters, search and pagination
 * **Advanced product filters:** filter by status, category, stock, type, word count, price, tag count, review count and more
@@ -131,7 +131,7 @@ Unlike other AI WordPress plugins, BotWriter supports **multiple AI providers** 
 Looking for the **best AI writer for WordPress**? Here's what sets BotWriter apart:
 
 * **Multi-provider freedom:** switch between 7+ AI text providers and 9 image generators (including free stock photo banks)—no vendor lock-in
-* **WooCommerce native:** the only AI writer for WordPress with a dedicated WooCommerce product optimizer, review generator, and category description tool
+* **WooCommerce native:** includes a dedicated WooCommerce product optimizer, demo review generator, and category description tool
 * **True automation:** schedule posts daily or weekly, generate bulk content series, or publish instantly with Write Now
 * **Full SEO stack:** AI-generated meta descriptions, SEO titles, slug translation, image optimization for Core Web Vitals
 
@@ -144,7 +144,7 @@ BotWriter is the ideal AI writer for WordPress for:
 * **SEO agencies** that need to produce high-volume, optimized content for client sites
 * **Affiliate marketers** building niche sites with AI-generated review articles and comparisons
 * **Niche site builders** creating topical authority with bulk content series
-* **WooCommerce store owners** looking to optimize product descriptions, tags, SEO metadata, and generate reviews
+* **WooCommerce store owners** looking to optimize product descriptions, tags, SEO metadata, and test review layouts before launch
 * **Content marketers** scaling their output across multiple blogs and languages
 * **News aggregation sites** that rewrite trending stories automatically
 
@@ -155,7 +155,7 @@ BotWriter can be used for:
 
 * **AI auto blogging** — Automatically publish fresh articles on a schedule you define
 * **AI-powered SEO content creation** — Generate keyword-rich, well-structured articles optimized for search engines
-* **WooCommerce content automation** — Bulk-optimize product titles, descriptions, tags, SEO metadata, and generate AI reviews
+* **WooCommerce content automation** — Bulk-optimize product titles, descriptions, tags, SEO metadata, and generate demo review data for staging/layout testing
 * **News aggregation blogs** — Pull and rewrite trending news stories for your niche
 * **Affiliate niche websites** — Create product reviews, comparisons, and buying guides at scale
 * **RSS feed rewriting** — Transform any RSS feed into unique, original blog posts
@@ -210,7 +210,7 @@ BotWriter can:
 * Generate instant posts with the "Write Now" feature
 * Apply article templates for consistent formatting
 * Optimize WooCommerce product titles, descriptions, tags, SEO metadata and image ALT text
-* Generate AI-powered customer reviews for WooCommerce products
+* Generate simulated demo/test review data for WooCommerce staging and layout checks
 * Create SEO-optimized WooCommerce category descriptions
 
 = How do article templates work? =
@@ -300,7 +300,7 @@ Absolutely. BotWriter is built for AI-powered SEO content creation. Every articl
 Yes! BotWriter includes a dedicated **WooCommerce AI Content Optimizer** that can bulk-optimize your entire product catalog. It generates AI-written product titles, descriptions, short descriptions, tags, image ALT text, SEO meta descriptions, SEO titles, review summaries and category descriptions. Everything is previewed before applying, and you can revert any change at any time.
 
 = Can BotWriter generate product reviews? =
-Yes. The AI Review Generator creates realistic WooCommerce reviews with configurable star ratings, review length, tone, reviewer names, and date spread. Reviews are inserted as standard WooCommerce comments with proper rating metadata.
+BotWriter can generate simulated WooCommerce review data for demo, staging, design, layout, star rating display, and schema markup testing. These generated reviews must not be presented as real customer reviews on a live production store. BotWriter stores an internal demo/test marker in comment metadata so generated reviews can be deleted later from the WooCommerce AI screen.
 
 = How does BotWriter route AI requests? =
 All AI requests—both for blog content and WooCommerce product optimization—are routed through the BotWriter cloud service at api.wpbotwriter.com. It manages the full generation pipeline: text generation, automatic image prompt creation from the article content, image generation (which can use a completely different AI provider than the text), error recovery, automatic retries, and result delivery—so your WordPress site doesn't need to keep long-running HTTP connections open or deal with provider-specific error handling.
@@ -332,6 +332,9 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.4.0 =
+* Various fixes and SEO workflow improvements.
+
 = 3.3.8 =
 * WooCommerce AI SEO output is now normalized before save/apply: BotWriter cleans JSON/array wrappers (for example `[ { "seo_title": "..." } ]`) and stores plain SEO title/meta text.
 * Improved handling of nested/double-encoded JSON responses in Woo SEO title and meta description generation.
@@ -417,16 +420,16 @@ All external service usage is detailed in the "External Services" section below.
 * Updated readme to accurately describe the SaaS architecture
 
 = 3.0.1 =
-🌟 **AI Review Generator for WooCommerce**
-* Generate realistic AI-powered product reviews with configurable settings
+🌟 **Demo Review Generator for WooCommerce**
+* Generate simulated demo/test product review data with configurable settings
 * Configurable star rating distribution (1★–5★ percentages)
 * Review length options: short, medium, long, or mixed with custom percentages
 * Content style/tone selection: natural, enthusiastic, professional, casual
-* Optional minor cons inclusion for authenticity
+* Optional minor cons inclusion for natural variety
 * Auto-generated or custom reviewer names
 * Date scheduling: all today or spread over past N days
-* Optional verified owner badge
-* Delete only AI-generated reviews (tracked via metadata)
+* Internal demo/test metadata for cleanup
+* Delete only BotWriter-generated demo reviews (tracked via metadata)
 * Product filter by review count, rating, and category
 
 📊 **Optimization History**

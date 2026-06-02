@@ -628,6 +628,75 @@
     width: 40px;
 }
 
+.bw-rev-safety-notice {
+    margin: 0 0 18px;
+    padding: 10px 14px;
+}
+
+.bw-rev-safety-notice p {
+    margin: 6px 0;
+}
+
+.bw-rev-consent-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.62);
+}
+
+.bw-rev-consent-modal.is-visible {
+    display: flex;
+}
+
+.bw-rev-consent-dialog {
+    width: min(680px, 100%);
+    max-height: 88vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 24px;
+}
+
+.bw-rev-consent-dialog h2 {
+    margin: 0 0 12px;
+    font-size: 20px;
+    line-height: 1.3;
+}
+
+.bw-rev-consent-dialog p {
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.bw-rev-consent-check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 18px 0;
+    padding: 12px;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    background: #f6f7f7;
+    font-weight: 600;
+}
+
+.bw-rev-consent-check input {
+    margin-top: 2px;
+}
+
+.bw-rev-production-warning {
+    padding: 10px 12px;
+    border-left: 4px solid #d63638;
+    background: #fcf0f1;
+    color: #8a2424;
+    font-weight: 600;
+}
+
 /* ================================================================
  *  Diff Modal
  * ================================================================ */

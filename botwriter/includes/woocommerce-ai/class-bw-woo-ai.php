@@ -143,7 +143,7 @@ class BotWriter_Woo_AI {
         $tabs = [
             'bulk'       => __( 'Bulk Optimizer', 'botwriter' ),
             'categories' => __( 'Categories', 'botwriter' ),
-            'reviews'    => __( 'Reviews', 'botwriter' ),
+            'reviews'    => __( 'Demo Reviews', 'botwriter' ),
             'history'    => __( 'History', 'botwriter' ),
             'settings'   => __( 'Settings', 'botwriter' ),
         ];
@@ -506,11 +506,15 @@ class BotWriter_Woo_AI {
             true
         );
 
+        $environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( wp_get_environment_type() ) : 'production';
+
         wp_localize_script( 'bw-woo-ai-js', 'bw_woo_ai', [
             'ajax_url'      => admin_url( 'admin-ajax.php' ),
             'nonce'         => wp_create_nonce( self::NONCE_ACTION ),
             'batch_size'    => absint( get_option( 'bw_woo_ai_batch_size', 5 ) ),
             'request_delay' => floatval( get_option( 'bw_woo_ai_request_delay', 2 ) ),
+            'environment'   => $environment,
+            'is_production' => ( 'production' === $environment ),
             'i18n'          => [
                 'generating'   => __( 'Generating…', 'botwriter' ),
                 'done'         => __( 'Done!', 'botwriter' ),
@@ -535,8 +539,10 @@ class BotWriter_Woo_AI {
                 'rev_error'          => __( 'Error generating reviews.', 'botwriter' ),
                 'rev_no_products'    => __( 'Please select at least one product.', 'botwriter' ),
                 'rev_settings_saved' => __( 'Review settings saved.', 'botwriter' ),
-                'rev_deleted'        => __( 'AI reviews deleted.', 'botwriter' ),
-                'rev_confirm_delete' => __( 'Delete all AI-generated reviews for this product?', 'botwriter' ),
+                'rev_deleted'        => __( 'BotWriter demo reviews deleted.', 'botwriter' ),
+                'rev_confirm_delete' => __( 'Delete all BotWriter demo/test reviews for this product?', 'botwriter' ),
+                'rev_confirm_delete_all' => __( 'Delete all BotWriter demo/test reviews from all products?', 'botwriter' ),
+                'rev_demo_ack_required'  => __( 'Please confirm that you understand these are simulated test reviews before continuing.', 'botwriter' ),
             ],
         ] );
     }
@@ -565,6 +571,7 @@ class BotWriter_Woo_AI {
             'bw_woo_ai_generate_reviews'     => [ $this->reviews, 'ajax_generate_reviews' ],
             'bw_woo_ai_apply_reviews'        => [ $this->reviews, 'ajax_apply_reviews' ],
             'bw_woo_ai_delete_ai_reviews'    => [ $this->reviews, 'ajax_delete_ai_reviews' ],
+            'bw_woo_ai_delete_all_ai_reviews'=> [ $this->reviews, 'ajax_delete_all_ai_reviews' ],
         ];
 
         foreach ( $actions as $action => $callback ) {

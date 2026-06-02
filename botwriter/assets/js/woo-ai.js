@@ -1157,8 +1157,45 @@
     var revGenerating = false;
     var revPreviewData = {};   // pid -> { reviews: [...] }
     var revCurrentPage = 1;
+    var revDisclaimerAccepted = false;
 
     /* --- Step navigation --- */
+
+    function revUpdateDemoControls() {
+        $('#bw-rev-generate').prop('disabled', !revDisclaimerAccepted);
+    }
+
+    function revShowDisclaimer() {
+        $('#bw-rev-ack-checkbox').prop('checked', false);
+        $('#bw-rev-ack-button').prop('disabled', true);
+        $('#bw-rev-consent-modal').addClass('is-visible');
+        revUpdateDemoControls();
+        setTimeout(function () {
+            $('#bw-rev-ack-checkbox').trigger('focus');
+        }, 50);
+    }
+
+    function revRequireDisclaimer() {
+        if (revDisclaimerAccepted) {
+            return true;
+        }
+        revShowDisclaimer();
+        alert(i18n.rev_demo_ack_required || 'Please confirm that you understand these are simulated test reviews before continuing.');
+        return false;
+    }
+
+    $(document).on('change', '#bw-rev-ack-checkbox', function () {
+        $('#bw-rev-ack-button').prop('disabled', !this.checked);
+    });
+
+    $(document).on('click', '#bw-rev-ack-button', function () {
+        if (!$('#bw-rev-ack-checkbox').is(':checked')) {
+            return;
+        }
+        revDisclaimerAccepted = true;
+        $('#bw-rev-consent-modal').removeClass('is-visible');
+        revUpdateDemoControls();
+    });
 
     function showRevStep(step) {
         $('.bw-rev-step').hide();
@@ -1253,7 +1290,7 @@
                 html += '<td><strong>' + escHtml(p.name) + '</strong></td>';
                 html += '<td>' + reviewCount + '</td>';
                 html += '<td>' + avgRating + '</td>';
-                html += '<td><button type="button" class="button button-small bw-rev-delete-btn" data-id="' + p.id + '" title="Delete AI reviews">🗑️</button></td>';
+                html += '<td><button type="button" class="button button-small bw-rev-delete-btn" data-id="' + p.id + '" title="Delete BotWriter demo reviews">🗑️</button></td>';
                 html += '</tr>';
             });
 
@@ -1454,6 +1491,10 @@
     /* --- Generate reviews (preview mode, no insert) --- */
 
     $(document).on('click', '#bw-rev-generate', function () {
+        if (!revRequireDisclaimer()) {
+            return;
+        }
+
         var productIds = Object.keys(revSelectedProducts);
         if (!productIds.length) {
             alert(i18n.rev_no_products || 'No products selected');
@@ -1513,7 +1554,7 @@
                 revGenerating = false;
                 $('.bw-progress-text').text(i18n.done || 'Done!');
                 $('#bw-rev-apply, #bw-rev-prev-4').show();
-                $('#bw-rev-generate').prop('disabled', false);
+                revUpdateDemoControls();
 
                 return;
             }
@@ -1525,7 +1566,8 @@
 
             post('bw_woo_ai_generate_reviews', {
                 product_id: pid,
-                provider: provider
+                provider: provider,
+                demo_ack: revDisclaimerAccepted ? '1' : '0'
             }, function (data) {
                 done++;
                 successCount++;
@@ -1630,6 +1672,10 @@
     /* --- Apply approved reviews --- */
 
     $(document).on('click', '#bw-rev-apply', function () {
+        if (!revRequireDisclaimer()) {
+            return;
+        }
+
         var approvedPids = [];
         $('.bw-rev-card[data-approved="1"]').each(function () {
             var pid = String($(this).data('pid'));
@@ -1664,7 +1710,8 @@
 
             post('bw_woo_ai_apply_reviews', {
                 product_id: pid,
-                reviews: reviews
+                reviews: reviews,
+                demo_ack: revDisclaimerAccepted ? '1' : '0'
             }, function (data) {
                 totalInserted += (data.inserted || 0);
                 var $card = $('#bw-rev-compact-' + pid);
@@ -1684,7 +1731,7 @@
         applyNext(0);
     });
 
-    // Delete AI reviews for a product
+    // Delete BotWriter demo/test reviews for a product
     $(document).on('click', '.bw-rev-delete-btn', function () {
         if (!confirm(i18n.rev_confirm_delete || 'Delete all AI-generated reviews for this product?')) return;
         var $btn = $(this);
@@ -1697,6 +1744,23 @@
             revLoadProducts();
         }, function (err) {
             $btn.prop('disabled', false).text('🗑️');
+            alert(err);
+        });
+    });
+
+    // Delete all BotWriter demo/test reviews.
+    $(document).on('click', '#bw-rev-delete-all', function () {
+        if (!confirm(i18n.rev_confirm_delete_all || 'Delete all BotWriter demo/test reviews from all products?')) return;
+        var $btn = $(this);
+        var label = $btn.text();
+        $btn.prop('disabled', true).text('Deleting...');
+
+        post('bw_woo_ai_delete_all_ai_reviews', {}, function (data) {
+            $btn.prop('disabled', false).text(label);
+            alert((i18n.rev_deleted || 'Deleted') + ' (' + data.deleted + ')');
+            revLoadProducts();
+        }, function (err) {
+            $btn.prop('disabled', false).text(label);
             alert(err);
         });
     });
@@ -1734,6 +1798,7 @@
 
         // Reviews tab: load products and categories
         if ($('.bw-woo-reviews-wrap').length) {
+            revShowDisclaimer();
             revLoadCategoryDropdown();
             revLoadProducts();
             // Trigger rating total calculation
