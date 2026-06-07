@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class BotWriter_Woo_AI_Generator {
 
     /** Max tokens for description generation. */
-    const MAX_TOKENS_DESCRIPTION = 2048;
+    const MAX_TOKENS_DESCRIPTION = 4096;
 
     /** Max tokens for shorter generations (summary, tags, etc). */
     const MAX_TOKENS_SHORT = 2048;
@@ -705,17 +705,72 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         $model_options = array(
             'openai'     => array( 'botwriter_openai_model', 'gpt-4o-mini' ),
             'anthropic'  => array( 'botwriter_anthropic_model', 'claude-haiku-4-20250414' ),
-            'google'     => array( 'botwriter_google_model', 'gemini-2.0-flash' ),
+            'google'     => array( 'botwriter_google_model', 'gemini-2.5-flash' ),
             'mistral'    => array( 'botwriter_mistral_model', 'mistral-small-latest' ),
             'groq'       => array( 'botwriter_groq_model', 'llama-3.3-70b-versatile' ),
-            'openrouter' => array( 'botwriter_openrouter_model', 'google/gemini-2.0-flash-001' ),
+            'openrouter' => array( 'botwriter_openrouter_model', 'google/gemini-2.5-flash' ),
         );
 
         if ( isset( $model_options[ $provider ] ) ) {
-            return get_option( $model_options[ $provider ][0], $model_options[ $provider ][1] );
+            $option_name = $model_options[ $provider ][0];
+            $default_model = $model_options[ $provider ][1];
+            $configured_model = (string) get_option( $option_name, $default_model );
+            $normalized_model = $this->normalize_provider_model( $provider, $configured_model );
+
+            if ( $normalized_model !== $configured_model ) {
+                botwriter_log( '[Woo AI] Normalized deprecated provider model', array(
+                    'provider'   => $provider,
+                    'from_model' => $configured_model,
+                    'to_model'   => $normalized_model,
+                ) );
+            }
+
+            return $normalized_model;
         }
 
         return null;
+    }
+
+    /**
+     * Normalize deprecated provider model aliases to currently supported models.
+     *
+     * @param string $provider Provider key.
+     * @param string $model    Configured model.
+     * @return string
+     */
+    private function normalize_provider_model( $provider, $model ) {
+        $provider = strtolower( (string) $provider );
+        $model = trim( (string) $model );
+
+        if ( $model === '' ) {
+            return $model;
+        }
+
+        $deprecated_map = array(
+            'google' => array(
+                'gemini-2.0-flash'        => 'gemini-2.5-flash',
+                'gemini-2.0-flash-lite'   => 'gemini-2.5-flash-lite',
+                'gemini-1.5-flash'        => 'gemini-2.5-flash',
+                'gemini-1.5-pro'          => 'gemini-2.5-pro',
+                'models/gemini-2.0-flash' => 'gemini-2.5-flash',
+                'models/gemini-1.5-flash' => 'gemini-2.5-flash',
+                'models/gemini-1.5-pro'   => 'gemini-2.5-pro',
+            ),
+            'openrouter' => array(
+                'google/gemini-2.0-flash'          => 'google/gemini-2.5-flash',
+                'google/gemini-2.0-flash-001'      => 'google/gemini-2.5-flash',
+                'google/gemini-2.0-flash-exp:free' => 'google/gemini-2.5-flash',
+            ),
+        );
+
+        if ( ! isset( $deprecated_map[ $provider ] ) ) {
+            return $model;
+        }
+
+        $key = strtolower( $model );
+        return isset( $deprecated_map[ $provider ][ $key ] )
+            ? $deprecated_map[ $provider ][ $key ]
+            : $model;
     }
 
     /* ------------------------------------------------------------------

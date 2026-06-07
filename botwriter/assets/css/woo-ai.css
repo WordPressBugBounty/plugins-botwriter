@@ -140,6 +140,104 @@
     margin-top: 15px;
 }
 
+.bw-history-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 18px;
+}
+
+.bw-history-heading > div:first-child {
+    min-width: 0;
+}
+
+.bw-woo-activity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 390px;
+    padding: 10px 12px;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    background: #f6f7f7;
+    color: #50575e;
+    font-size: 12px;
+}
+
+.bw-woo-activity .spinner {
+    float: none;
+    margin: 0;
+}
+
+.bw-woo-activity.is-loaded {
+    display: block;
+    padding: 0;
+    background: transparent;
+    border: 0;
+}
+
+.bw-woo-activity-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(92px, 1fr));
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.bw-woo-activity-metric {
+    padding: 8px 12px;
+    border-right: 1px solid #dcdcde;
+}
+
+.bw-woo-activity-metric:last-child {
+    border-right: 0;
+}
+
+.bw-woo-activity-metric span,
+.bw-woo-activity-metric strong {
+    display: block;
+}
+
+.bw-woo-activity-metric span {
+    margin-bottom: 2px;
+    color: #646970;
+    font-size: 11px;
+}
+
+.bw-woo-activity-metric strong {
+    color: #1d2327;
+    font-size: 16px;
+    line-height: 1.25;
+}
+
+.bw-woo-activity p {
+    margin: 5px 0 0;
+    color: #646970;
+    font-size: 11px;
+    text-align: right;
+}
+
+.bw-woo-activity.has-error {
+    min-width: 0;
+}
+
+@media screen and (max-width: 782px) {
+    .bw-history-heading {
+        display: block;
+    }
+
+    .bw-woo-activity {
+        min-width: 0;
+        margin-top: 14px;
+    }
+
+    .bw-woo-activity p {
+        text-align: left;
+    }
+}
+
 /* ================================================================
  *  Tab Navigation
  * ================================================================ */

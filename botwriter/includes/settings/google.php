@@ -25,7 +25,6 @@ function botwriter_get_google_info() {
             'gemini-2.5-flash' => 'FREE or $0.30/1M input, $2.50/1M output',
             'gemini-2.5-flash-lite' => 'FREE or $0.10/1M input, $0.40/1M output',
             'gemini-2.5-pro' => 'FREE or $1.25/1M input, $10/1M output',
-            'gemini-2.0-flash' => 'FREE or $0.10/1M input, $0.40/1M output',
         ],
         'features' => [
             __('Generous FREE tier - no credit card required!', 'botwriter'),

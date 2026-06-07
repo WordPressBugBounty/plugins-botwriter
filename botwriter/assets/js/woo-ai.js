@@ -678,6 +678,36 @@
         };
     }
 
+    function formatUsageMonth(month) {
+        if (!month || !/^\d{4}-\d{2}$/.test(month)) return '';
+        var parts = month.split('-');
+        var date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+        return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    }
+
+    function loadWooActivity() {
+        var $wrap = $('#bw-woo-activity');
+        if (!$wrap.length) return;
+
+        post('bw_woo_ai_get_usage', {}, function (data) {
+            var current = parseInt(data.current, 10) || 0;
+            var previous = parseInt(data.previous, 10) || 0;
+            var recordedTotal = parseInt(data.recorded_total, 10) || 0;
+            var previousLabel = formatUsageMonth(data.previous_month) || i18n.woo_activity_previous;
+            var retention = parseInt(data.retention_months, 10) || 1;
+            var periodLabel = i18n.woo_activity_period.replace('%d', retention);
+            var html = '<div class="bw-woo-activity-metrics">';
+            html += '<div class="bw-woo-activity-metric"><span>' + escHtml(i18n.woo_activity_this_month) + '</span><strong>' + current.toLocaleString() + '</strong></div>';
+            html += '<div class="bw-woo-activity-metric"><span>' + escHtml(previousLabel) + '</span><strong>' + previous.toLocaleString() + '</strong></div>';
+            html += '<div class="bw-woo-activity-metric"><span>' + escHtml(periodLabel) + '</span><strong>' + recordedTotal.toLocaleString() + '</strong></div>';
+            html += '</div>';
+            html += '<p>' + escHtml(i18n.woo_activity_note) + '</p>';
+            $wrap.html(html).addClass('is-loaded');
+        }, function () {
+            $wrap.html('<span class="dashicons dashicons-info-outline"></span><span>' + escHtml(i18n.woo_activity_unavailable) + '</span>').addClass('has-error');
+        });
+    }
+
     function loadHistory(page) {
         var $wrap = $('#bw-history-table-wrap');
         if (!$wrap.length) return;
@@ -1778,6 +1808,7 @@
             loadCategories();
         }
         if ($('#bw-history-table-wrap').length) {
+            loadWooActivity();
             loadHistoryCategoryDropdown();
             loadHistory(1);
         }

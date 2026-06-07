@@ -22,8 +22,16 @@ class BotWriter_Woo_AI_History {
     public function render() {
         ?>
         <div class="bw-woo-card">
-            <h3><?php esc_html_e( 'Optimization History', 'botwriter' ); ?></h3>
-            <p class="description"><?php esc_html_e( 'Products that have been optimized with AI. You can revert any product to its original content.', 'botwriter' ); ?></p>
+            <div class="bw-history-heading">
+                <div>
+                    <h3><?php esc_html_e( 'Optimization History', 'botwriter' ); ?></h3>
+                    <p class="description"><?php esc_html_e( 'Products that have been optimized with AI. You can revert any product to its original content.', 'botwriter' ); ?></p>
+                </div>
+                <div id="bw-woo-activity" class="bw-woo-activity" aria-live="polite">
+                    <span class="spinner is-active"></span>
+                    <span><?php esc_html_e( 'Loading WooCommerce AI activity...', 'botwriter' ); ?></span>
+                </div>
+            </div>
 
             <div class="bw-history-filters" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:15px;">
                 <select id="bw-history-filter-category" style="min-width:180px;">
@@ -44,6 +52,56 @@ class BotWriter_Woo_AI_History {
             </div>
         </div>
         <?php
+    }
+
+    /* ------------------------------------------------------------------
+     * AJAX: get WooCommerce AI request activity
+     * ----------------------------------------------------------------*/
+
+    public function ajax_get_usage() {
+        BotWriter_Woo_AI::verify_request();
+
+        $domain = preg_replace( '#^https?://#', '', home_url() );
+        $domain = rtrim( (string) $domain, '/' );
+        $payload = [
+            'domain'     => $domain,
+            'api_key'    => (string) get_option( 'botwriter_api_key', '' ),
+            'site_token' => (string) get_option( 'botwriter_site_token', '' ),
+        ];
+
+        $response = wp_remote_post( BOTWRITER_API_URL . 'usage', [
+            'timeout'   => 20,
+            'sslverify' => true,
+            'headers'   => [ 'Content-Type' => 'application/json' ],
+            'body'      => wp_json_encode( $payload ),
+        ] );
+
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( [ 'message' => $response->get_error_message() ] );
+        }
+
+        $http_code = wp_remote_retrieve_response_code( $response );
+        $data      = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        if ( 200 !== $http_code || ! is_array( $data ) ) {
+            $message = is_array( $data ) && ! empty( $data['error_message'] )
+                ? wp_strip_all_tags( (string) $data['error_message'] )
+                : __( 'WooCommerce AI activity is temporarily unavailable.', 'botwriter' );
+            wp_send_json_error( [ 'message' => $message ] );
+        }
+
+        $history = isset( $data['woo_history'] ) && is_array( $data['woo_history'] )
+            ? $data['woo_history']
+            : [];
+
+        wp_send_json_success( [
+            'current'          => isset( $data['woo']['used'] ) ? absint( $data['woo']['used'] ) : 0,
+            'current_month'    => isset( $history['current_month'] ) ? sanitize_text_field( $history['current_month'] ) : gmdate( 'Y-m' ),
+            'previous'         => isset( $history['previous'] ) ? absint( $history['previous'] ) : 0,
+            'previous_month'   => isset( $history['previous_month'] ) ? sanitize_text_field( $history['previous_month'] ) : '',
+            'recorded_total'   => isset( $history['recorded_total'] ) ? absint( $history['recorded_total'] ) : absint( $data['woo']['used'] ?? 0 ),
+            'retention_months' => isset( $history['retention_months'] ) ? absint( $history['retention_months'] ) : 1,
+        ] );
     }
 
     /* ------------------------------------------------------------------

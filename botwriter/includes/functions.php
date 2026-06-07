@@ -581,7 +581,7 @@ function botwriter_get_seo_translation_model($provider) {
         'google'     => 'gemini-2.5-flash',
         'mistral'    => 'mistral-small-latest',
         'groq'       => 'llama-3.3-70b-versatile',
-        'openrouter' => 'google/gemini-2.0-flash-001',
+        'openrouter' => 'google/gemini-2.5-flash',
     );
     return $fast_models[$provider] ?? 'gpt-4o-mini';
 }

@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 5.5
 Tested up to: 7.0
-Stable tag: 3.4.0
+Stable tag: 3.4.1
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,7 +34,7 @@ In this video, we'll show you how to set up BotWriter in just a few steps so you
 
 BotWriter has been designed to simplify content creation for blogs, websites, and online stores. As a **WordPress AI writer** with multi-provider architecture, you can choose the best AI for each job. Use GPT-5 for creative writing, Claude for technical content, or Gemini for multilingual articles. Pair them with cutting-edge image models like Flux 2 Pro, Google's Nano Banana, or Stable Diffusion.
 
-For **WooCommerce** store owners, BotWriter includes a dedicated AI Content Optimizer that bulk-optimizes product titles, descriptions, tags, image ALT text, SEO metadata and more—all from a single dashboard. It can also generate simulated demo/test reviews for staging and layout checks, plus SEO-optimized category descriptions.
+For **WooCommerce** store owners, BotWriter includes a dedicated AI Content Optimizer that bulk-optimizes product titles, descriptions, tags, image ALT text, SEO metadata and more—all from a single dashboard. It can also generate simulated demo/test reviews for staging and layout checks, plus SEO-optimized category descriptions  to help your store rank higher.
 
 BotWriter is also an **AI writer for blogs** that can automatically generate and publish posts based on keywords, RSS feeds, or news sources—making it the ideal tool for AI-powered SEO content creation.
 
@@ -332,8 +332,13 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.4.1 =
+* Added WooCommerce AI request activity summary to the Optimization History screen.
+* Added current-month, previous-month, and retained seven-month request totals.
+
+
 = 3.4.0 =
-* Various fixes and SEO workflow improvements.
+* Various fixes and improvements to improve SEO workflows.
 
 = 3.3.8 =
 * WooCommerce AI SEO output is now normalized before save/apply: BotWriter cleans JSON/array wrappers (for example `[ { "seo_title": "..." } ]`) and stores plain SEO title/meta text.
