@@ -22,10 +22,10 @@ function botwriter_get_openai_info() {
         'pricing_url' => 'https://openai.com/api/pricing/',
         'free_credits' => __('$5 free credits for new accounts (limited time offers may vary)', 'botwriter'),
         'pricing_summary' => [
-            'gpt-5-mini' => '$0.25/1M input, $2.00/1M output',
-            'gpt-5-nano' => '$0.05/1M input, $0.40/1M output',
-            'gpt-4o' => '~$5/1M input, $15/1M output',
-            'gpt-4o-mini' => '~$0.15/1M input, $0.60/1M output',
+            'gpt-5.5' => '$5.00/1M input, $30.00/1M output',
+            'gpt-5.4' => '$2.50/1M input, $15.00/1M output',
+            'gpt-5.4-mini' => '$0.75/1M input, $4.50/1M output',
+            'gpt-5.4-nano' => '$0.20/1M input, $1.25/1M output',
         ],
         'features' => [
             __('Industry-leading models for complex tasks', 'botwriter'),

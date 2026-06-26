@@ -362,11 +362,11 @@ $botwriter_languages = [
  */
 function botwriter_get_text_providers() {
     return [
-        'openai' => 'OpenAI (GPT-4o, GPT-4.1)',
+        'openai' => 'OpenAI (GPT-5.5, GPT-5.4)',
         'anthropic' => 'Anthropic (Claude)',
         'google' => 'Google (Gemini)',
         'mistral' => 'Mistral AI',
-        'groq' => 'Groq (Llama, Mixtral)',
+        'groq' => 'Groq (Llama, Qwen, GPT-OSS)',
         'openrouter' => 'OpenRouter (Multiple)',
     ];
 }
@@ -577,7 +577,7 @@ function botwriter_translate_slugs($title, $tags = '', $language = 'en') {
 function botwriter_get_seo_translation_model($provider) {
     $fast_models = array(
         'openai'     => 'gpt-4o-mini',
-        'anthropic'  => 'claude-haiku-4-20250414',
+        'anthropic'  => 'claude-haiku-4-5-20251001',
         'google'     => 'gemini-2.5-flash',
         'mistral'    => 'mistral-small-latest',
         'groq'       => 'llama-3.3-70b-versatile',

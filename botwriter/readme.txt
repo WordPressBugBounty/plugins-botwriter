@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 5.5
 Tested up to: 7.0
-Stable tag: 3.4.1
+Stable tag: 3.4.2
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -50,7 +50,7 @@ For full documentation and more information, visit the [official BotWriter AI Wr
 
 **Multi-Provider AI Text Generation**
 Choose from 7 different AI providers for text generation:
-* **OpenAI:** GPT-5, GPT-4.1, GPT-4o series
+* **OpenAI:** GPT-5.5, GPT-5.4, GPT-5.4 mini/nano
 * **Anthropic:** Claude Sonnet 4.5, Claude Haiku
 * **Google:** Gemini 2.5 Pro, Gemini 2.5 Flash
 * **Mistral:** Mistral Large, Mistral Small
@@ -332,6 +332,11 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.4.2 =
+* Updated bundled Bootstrap assets to 5.3.8 and jQuery UI base CSS to 1.14.2.
+* Refreshed curated text model lists for OpenAI, Anthropic, Google Gemini, Mistral, Groq and OpenRouter.
+* Removed obsolete Gemini Flash-Lite preview and legacy Magistral options from default model lists.
+
 = 3.4.1 =
 * Added WooCommerce AI request activity summary to the Optimization History screen.
 * Added current-month, previous-month, and retained seven-month request totals.
@@ -560,7 +565,7 @@ All external service usage is detailed in the "External Services" section below.
 
 🚀 **Multi-Provider Text Generation**
 * Support for 7 AI text providers
-* OpenAI: GPT-5, GPT-5-mini, GPT-4.1, GPT-4o series
+* OpenAI: GPT-5.5, GPT-5.4, GPT-5.4 mini/nano
 * Anthropic: Claude Sonnet 4.5, Claude Haiku
 * Google: Gemini 2.5 Pro, Gemini 2.5 Flash
 * Mistral: Mistral Large, Mistral Small

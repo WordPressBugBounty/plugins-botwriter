@@ -704,7 +704,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
     private function get_provider_model( $provider ) {
         $model_options = array(
             'openai'     => array( 'botwriter_openai_model', 'gpt-4o-mini' ),
-            'anthropic'  => array( 'botwriter_anthropic_model', 'claude-haiku-4-20250414' ),
+            'anthropic'  => array( 'botwriter_anthropic_model', 'claude-haiku-4-5-20251001' ),
             'google'     => array( 'botwriter_google_model', 'gemini-2.5-flash' ),
             'mistral'    => array( 'botwriter_mistral_model', 'mistral-small-latest' ),
             'groq'       => array( 'botwriter_groq_model', 'llama-3.3-70b-versatile' ),

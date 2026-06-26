@@ -1688,12 +1688,12 @@ function botwriter_get_all_settings() {
         'botwriter_stability_api_key' => get_option('botwriter_stability_api_key', ''),
         'botwriter_cloudflare_api_key' => get_option('botwriter_cloudflare_api_key', ''),
         // Text models
-        'botwriter_openai_model' => get_option('botwriter_openai_model', 'gpt-5-mini'),
-        'botwriter_anthropic_model' => get_option('botwriter_anthropic_model', 'claude-sonnet-4-5-20250929'),
+        'botwriter_openai_model' => get_option('botwriter_openai_model', 'gpt-5.4-mini'),
+        'botwriter_anthropic_model' => get_option('botwriter_anthropic_model', 'claude-sonnet-4-6'),
         'botwriter_google_model' => get_option('botwriter_google_model', 'gemini-2.5-flash'),
         'botwriter_mistral_model' => get_option('botwriter_mistral_model', 'mistral-large-latest'),
         'botwriter_groq_model' => get_option('botwriter_groq_model', 'llama-3.3-70b-versatile'),
-        'botwriter_openrouter_model' => get_option('botwriter_openrouter_model', 'anthropic/claude-sonnet-4'),
+        'botwriter_openrouter_model' => get_option('botwriter_openrouter_model', 'anthropic/claude-sonnet-4.6'),
         // Image models
         'botwriter_dalle_model' => function_exists('botwriter_get_current_image_model_by_provider')
             ? botwriter_get_current_image_model_by_provider('dalle')
