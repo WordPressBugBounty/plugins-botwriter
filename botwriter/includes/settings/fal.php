@@ -136,6 +136,7 @@ function botwriter_render_fal_settings($settings, $is_active) {
                     <span class="test-api-result"></span>
                 </div>
                 <p class="description"><?php esc_html_e('Get your API key from the Fal.ai dashboard', 'botwriter'); ?></p>
+                <?php botwriter_api_key_transmission_notice(); ?>
             </div>
             <div class="form-row">
                 <label><?php esc_html_e('Model:', 'botwriter'); ?></label>

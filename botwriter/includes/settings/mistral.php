@@ -71,6 +71,7 @@ function botwriter_render_mistral_settings($settings, $is_active) {
                     <span class="test-api-result"></span>
                 </div>
                 <p class="description"><?php esc_html_e('Get your API key from the Mistral AI Console', 'botwriter'); ?></p>
+                <?php botwriter_api_key_transmission_notice(); ?>
             </div>
             <div class="form-row">
                 <label><?php esc_html_e('Model:', 'botwriter'); ?></label>

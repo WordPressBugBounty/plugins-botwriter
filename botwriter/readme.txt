@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 5.5
 Tested up to: 7.0
-Stable tag: 3.4.2
+Stable tag: 3.4.4
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -121,7 +121,13 @@ Need content immediately? The "Write Now" feature creates and publishes a single
 **Your API Keys, Your Control**
 BotWriter lets you bring your own API keys and pay the AI providers directly.
 
-All AI requests are routed through the BotWriter cloud service at api.wpbotwriter.com, which handles request queuing, long-running AI sessions, error recovery, retries, and delivery coordination. This architecture ensures reliable content generation even on shared hosting environments with strict timeout limits.
+All AI generation requests are routed through the BotWriter cloud service at api.wpbotwriter.com, which handles request queuing, long-running AI sessions, error recovery, retries, and delivery coordination. This architecture ensures reliable content generation even on shared hosting environments with strict timeout limits.
+
+**Sent to BotWriter Platform:** site URL/domain, site_token, plugin version, task configuration, prompts, selected provider/model settings, and the provider API keys needed to process generation requests.
+
+**Sent to selected AI provider:** prompts, generation settings, and the selected provider API key are used by the BotWriter cloud service to call the provider you configured.
+
+API keys may be transmitted to the BotWriter Worker service only for generation routing. Provider API keys are stored encrypted in your WordPress database. For queued generation jobs, key material may be encrypted temporarily while the job is pending and removed after processing; synchronous generation requests are used for the request and are not stored permanently by BotWriter.
 
 
 == Why BotWriter? ==
@@ -314,12 +320,14 @@ Yes. All content generation requests are routed through the BotWriter cloud serv
 Every request to the cloud service includes:
 * **site_token** — a unique UUID auto-provisioned on first contact, used to identify and authenticate the site
 * **domain** — the site URL
-* **Provider settings** — selected AI provider, model, and your provider API keys (forwarded securely to the cloud service for processing on your behalf)
+* **Provider settings** — selected AI provider, model, and the provider API keys needed for generation routing
 
 BotWriter connects to:
 * **api.wpbotwriter.com** — cloud processing service (API endpoint) for AI request queuing, execution, and delivery
 * **Your configured AI providers** (OpenAI, Anthropic, Google, Fal.ai, Replicate, etc.) — called by the cloud service on your behalf using your API keys
 * **Optional:** News APIs and RSS feeds for content sources
+
+API keys may be transmitted securely to the BotWriter Worker service only to process AI generation requests. Provider keys are stored encrypted in your WordPress database. For queued jobs, key material may be encrypted temporarily while the job is pending and removed after processing; synchronous generation requests are used for the request and are not stored permanently by BotWriter.
 
 All external service usage is detailed in the "External Services" section below.
 
@@ -332,6 +340,15 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.4.4 =
+* Fixed BotWriter Copilot floating widget visibility in the WordPress page editor (now matches post editor behavior).
+* Aligned editor-assistant permission checks for page editing roles.
+
+= 3.4.3 =
+* Added explicit API-key transmission notices in provider settings to improve transparency.
+* Expanded External Services disclosure with detailed key-routing and processing behavior.
+* Enforced SSL certificate verification in plugin settings (SSL bypass option removed).
+
 = 3.4.2 =
 * Updated bundled Bootstrap assets to 5.3.8 and jQuery UI base CSS to 1.14.2.
 * Refreshed curated text model lists for OpenAI, Anthropic, Google Gemini, Mistral, Groq and OpenRouter.
@@ -651,7 +668,11 @@ Endpoints used:
 - **Queue Request:** `https://api.wpbotwriter.com/redis_api_cola.php` — Submits content generation requests to the processing queue
 - **Retrieve Results:** `https://api.wpbotwriter.com/redis_api_finish.php` — Retrieves completed content from the queue
 
-**Data transmitted to api.wpbotwriter.com:** site URL, site_token (a unique UUID auto-provisioned on first contact, used to identify the site — see FAQ), plugin version, task configuration (prompts, language, length, provider preferences), and the AI provider API keys you configure. API keys are encrypted in your WordPress database (AES-256 using your site's AUTH_KEY) and transmitted securely over HTTPS to the cloud service, which uses them only for the duration of the request and does not store them permanently.
+**Sent to BotWriter Platform:** site URL, site_token (a unique UUID auto-provisioned on first contact, used to identify the site — see FAQ), plugin version, task configuration (prompts, language, length, provider preferences), selected provider/model settings, and the provider API keys needed to process generation requests. Remote requests use HTTPS with SSL certificate verification enforced by the plugin.
+
+**Sent to selected AI provider:** the BotWriter cloud service uses the selected provider API key to call the AI provider you configured. The provider receives the prompts and generation settings required to complete the request.
+
+**API key handling:** API keys may be transmitted to the BotWriter Worker service only for generation routing. Provider API keys are encrypted in your WordPress database (AES-256 using your site's AUTH_KEY). For queued jobs, key material may be encrypted temporarily while the job is pending and removed after processing; synchronous generation requests are used for the request and are not stored permanently by BotWriter.
 
 **2. Text Generation Providers** *(called by the cloud service on your behalf)*
 When configured, the cloud service connects to these AI providers for text generation using your API keys:

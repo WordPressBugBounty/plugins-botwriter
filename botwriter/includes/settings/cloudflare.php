@@ -114,6 +114,7 @@ function botwriter_render_cloudflare_settings($settings, $is_active) {
                     <?php esc_html_e('Create a token with "Workers AI" read permission', 'botwriter'); ?>
                     <br><a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank"><?php esc_html_e('Create API Token', 'botwriter'); ?> →</a>
                 </p>
+                <?php botwriter_api_key_transmission_notice(); ?>
             </div>
             
             <div class="form-row">

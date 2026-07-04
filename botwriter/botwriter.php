@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.4.2
+Version: 3.4.4
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.4.2');
+    define('BOTWRITER_VERSION', '3.4.4');
 }
 
 // Plugin directory path (with trailing slash)
@@ -182,6 +182,55 @@ add_action( 'plugins_loaded', function () {
     $bw_woo_ai = new BotWriter_Woo_AI();
     $bw_woo_ai->init();
 } );
+
+/**
+ * Determine whether the editor assistant supports the current post type.
+ *
+ * @param string $post_type Post type slug.
+ * @return bool
+ */
+function botwriter_editor_assistant_supports_post_type($post_type) {
+    $supported_post_types = apply_filters('botwriter_editor_assistant_post_types', array('post', 'page'));
+    return in_array((string) $post_type, array_map('strval', (array) $supported_post_types), true);
+}
+
+/**
+ * Check if current user can edit posts for the given post type.
+ *
+ * @param string $post_type Post type slug.
+ * @return bool
+ */
+function botwriter_editor_assistant_can_edit_post_type($post_type) {
+    $post_type_object = get_post_type_object((string) $post_type);
+    if ($post_type_object && !empty($post_type_object->cap->edit_posts)) {
+        return current_user_can($post_type_object->cap->edit_posts);
+    }
+
+    return current_user_can('edit_posts') || current_user_can('edit_pages');
+}
+
+/**
+ * Decide if editor assistant assets should be loaded for a screen.
+ *
+ * @param WP_Screen|null $screen Current admin screen.
+ * @return bool
+ */
+function botwriter_should_enqueue_editor_assistant($screen) {
+    if (!$screen || (string) $screen->base !== 'post') {
+        return false;
+    }
+
+    $post_type = (string) ($screen->post_type ?? '');
+    if ($post_type === '' || !botwriter_editor_assistant_supports_post_type($post_type)) {
+        return false;
+    }
+
+    if (get_option('botwriter_editor_assistant_enabled', '1') !== '1') {
+        return false;
+    }
+
+    return botwriter_editor_assistant_can_edit_post_type($post_type);
+}
 
 
 // Enqueque JS Files
@@ -398,8 +447,8 @@ function botwriter_enqueue_scripts() {
         ));
     }
 
-    // Floating AI assistant widget (post editor)
-    if ($screen && $screen->base === 'post' && (string) $screen->post_type === 'post' && current_user_can('edit_posts') && get_option('botwriter_editor_assistant_enabled', '1') === '1') {
+    // Floating AI assistant widget (post/page editor)
+    if (botwriter_should_enqueue_editor_assistant($screen)) {
         wp_register_script('botwriter_editor_assistant', $my_plugin_dir . 'assets/js/editor-ai-assistant.js', array('jquery'), BOTWRITER_VERSION, true);
         wp_enqueue_script('botwriter_editor_assistant');
         wp_localize_script('botwriter_editor_assistant', 'botwriter_editor_ai', array(
@@ -1534,15 +1583,14 @@ function botwriter_editor_strip_wrapping_quotes($text) {
  * AJAX: generate post editor assistant output for selected field.
  */
 function botwriter_editor_assistant_generate_ajax() {
-    if (!current_user_can('edit_posts')) {
-        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
-    }
-
     check_ajax_referer('botwriter_editor_assistant_nonce', 'nonce');
 
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
     if ($post_id > 0 && !current_user_can('edit_post', $post_id)) {
         wp_send_json_error(array('message' => __('You cannot edit this post.', 'botwriter')));
+    }
+    if ($post_id <= 0 && !current_user_can('edit_posts') && !current_user_can('edit_pages')) {
+        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
     }
 
     $allowed_targets = array('text', 'title', 'tags', 'excerpt', 'seo_meta', 'internal_links');
@@ -1842,10 +1890,6 @@ function botwriter_editor_render_readability_checks_html($readability_report) {
  * AJAX: return SEO and readability report sections for editor widget.
  */
 function botwriter_editor_assistant_get_seo_report_ajax() {
-    if (!current_user_can('edit_posts')) {
-        wp_send_json_error(array('message' => __('Permission denied.', 'botwriter')));
-    }
-
     check_ajax_referer('botwriter_editor_assistant_nonce', 'nonce');
 
     $post_id = isset($_POST['post_id']) ? absint(wp_unslash($_POST['post_id'])) : 0;
@@ -1896,7 +1940,7 @@ function botwriter_enqueue_styles(){
         wp_enqueue_style('botwriter_welcome_banner');
     }
 
-    if ($screen && $screen->base === 'post' && (string) $screen->post_type === 'post' && current_user_can('edit_posts') && get_option('botwriter_editor_assistant_enabled', '1') === '1') {
+    if (botwriter_should_enqueue_editor_assistant($screen)) {
         wp_register_style('botwriter_editor_assistant', $my_plugin_dir . 'assets/css/editor-ai-assistant.css', array(), filemtime(plugin_dir_path(__FILE__) . 'assets/css/editor-ai-assistant.css'));
         wp_enqueue_style('botwriter_editor_assistant');
     }
@@ -2327,7 +2371,7 @@ function botwriter_activate_apikey_and_defaults() {
         update_option('botwriter_ai_image_size', 'square');
     }
     
-    if (get_option('botwriter_sslverify') === false) {
+    if (get_option('botwriter_sslverify') !== 'yes') {
         update_option('botwriter_sslverify', 'yes');
     }
 

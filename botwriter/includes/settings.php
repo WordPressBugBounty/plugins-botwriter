@@ -46,6 +46,17 @@ add_action('wp_ajax_botwriter_debug_log_fetch', 'botwriter_ajax_debug_log_fetch'
 add_action('wp_ajax_botwriter_debug_log_clear', 'botwriter_ajax_debug_log_clear');
 
 /**
+ * Render the provider API key transmission disclosure used by provider settings tabs.
+ */
+function botwriter_api_key_transmission_notice() {
+    ?>
+    <div class="notice notice-warning inline botwriter-api-key-disclosure">
+        <p><?php esc_html_e('BotWriter may transmit this API key securely to the BotWriter Worker service to process AI generation requests. Only enable this if you trust this service.', 'botwriter'); ?></p>
+    </div>
+    <?php
+}
+
+/**
  * AJAX handler to test API key connectivity
  * Uses the /models endpoint which doesn't consume tokens
  */
@@ -704,7 +715,6 @@ function botwriter_ajax_save_settings() {
         'botwriter_image_max_width',
         'botwriter_image_compression',
         'botwriter_image_max_filesize',
-        'botwriter_sslverify',
         'botwriter_cron_active',
         'botwriter_paused_tasks',
         'botwriter_tags_disabled',
@@ -1310,21 +1320,6 @@ function botwriter_settings_meta_box_handler() {
                     <span class="suffix">%</span>
                 </div>
                 <p class="description"><?php esc_html_e('A candidate article is considered a duplicate if its title is at least this similar to a recently published one. Lower = stricter (more articles skipped). 0 disables title comparison. Default: 70.', 'botwriter'); ?></p>
-            </div>
-        </div>
-
-        <div class="general-settings-section">
-            <h4 class="section-title">
-                <span class="dashicons dashicons-admin-tools"></span>
-                <?php esc_html_e('Advanced Settings', 'botwriter'); ?>
-            </h4>
-
-            <div class="form-row checkbox-row warning-option">
-                <label>
-                    <input type="checkbox" name="botwriter_sslverify" value="no" <?php checked($settings['botwriter_sslverify'], 'no'); ?> class="botwriter-autosave">
-                    <span class="warning-text"><?php esc_html_e('Disable SSL Verification (not recommended)', 'botwriter'); ?></span>
-                </label>
-                <p class="description"><?php esc_html_e('Only enable this if you have SSL certificate issues with API connections.', 'botwriter'); ?></p>
             </div>
         </div>
 

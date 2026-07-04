@@ -107,6 +107,7 @@ function botwriter_render_gemini_settings($settings, $is_active) {
                     <button type="button" class="button toggle-api-key"><?php esc_html_e('Show', 'botwriter'); ?></button>
                 </div>
                 <p class="description"><?php esc_html_e('Get your API key from', 'botwriter'); ?> <a href="<?php echo esc_url($info['api_url']); ?>" target="_blank">Google AI Studio</a></p>
+                <?php botwriter_api_key_transmission_notice(); ?>
             </div>
 
             <div class="form-row">

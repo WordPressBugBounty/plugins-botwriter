@@ -69,6 +69,7 @@ function botwriter_render_google_settings($settings, $is_active) {
                     <span class="test-api-result"></span>
                 </div>
                 <p class="description"><?php esc_html_e('Your Google AI API key starts with "AIza"', 'botwriter'); ?></p>
+                <?php botwriter_api_key_transmission_notice(); ?>
             </div>
             <div class="form-row">
                 <label><?php esc_html_e('Model:', 'botwriter'); ?></label>

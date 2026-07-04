@@ -67,6 +67,7 @@ function botwriter_render_openai_settings($settings, $is_active) {
                     <span class="test-api-result"></span>
                 </div>
                 <p class="description"><?php esc_html_e('Your OpenAI API key starts with "sk-"', 'botwriter'); ?></p>
+                <?php botwriter_api_key_transmission_notice(); ?>
             </div>
             <div class="form-row">
                 <label><?php esc_html_e('Model:', 'botwriter'); ?></label>
