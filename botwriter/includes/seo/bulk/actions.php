@@ -9,6 +9,7 @@
  *  - expand_content (AI)
  *  - normalize_headings (deterministic HTML cleanup)
  *  - regen_alt_text (AI for images missing alt)
+ *  - rewrite_alt_text (AI rewrite for existing image alt)
  *  - rebuild_internal_links (calls postprocess engine)
  *  - add_external_references (SERP-powered references block)
  *  - regen_faq (AI; requires ai/faq.php)
@@ -458,7 +459,7 @@ add_filter('botwriter_seo_job_init_actions', function ($init, $args) {
 add_filter('botwriter_seo_job_batch_size_actions', function ($size, $state) {
     $args = is_array($state['args'] ?? null) ? $state['args'] : array();
     $action = sanitize_key($args['action'] ?? '');
-    $ai_actions = array('regen_meta_description', 'refresh_intro', 'expand_content', 'regen_seo_title', 'regen_alt_text', 'regen_faq', 'rewrite_slug');
+    $ai_actions = array('regen_meta_description', 'refresh_intro', 'expand_content', 'regen_seo_title', 'regen_alt_text', 'rewrite_alt_text', 'regen_faq', 'rewrite_slug');
     if (in_array($action, $ai_actions, true)) {
         return 1;
     }
@@ -650,6 +651,7 @@ function botwriter_seo_actions_default_filters($args) {
             }
             break;
         case 'regen_alt_text':
+        case 'rewrite_alt_text':
             // Force has-images filter so we don't process imageless posts.
             $args['has_images'] = 1;
             break;
@@ -719,6 +721,9 @@ function botwriter_seo_apply_action($action, $post_id, $args = array()) {
             break;
         case 'regen_alt_text':
             $raw_result = botwriter_seo_action_regen_alt_text($post_id);
+            break;
+        case 'rewrite_alt_text':
+            $raw_result = botwriter_seo_action_rewrite_alt_text($post_id);
             break;
         case 'rebuild_internal_links':
             $raw_result = botwriter_seo_action_rebuild_internal_links($post_id);
@@ -1302,9 +1307,20 @@ function botwriter_seo_action_add_external_references($post_id, $args = array())
 }
 
 function botwriter_seo_action_regen_alt_text($post_id) {
+    return botwriter_seo_action_alt_text($post_id, false);
+}
+
+function botwriter_seo_action_rewrite_alt_text($post_id) {
+    return botwriter_seo_action_alt_text($post_id, true);
+}
+
+function botwriter_seo_action_alt_text($post_id, $rewrite_existing = false) {
+    $rewrite_existing = (bool) $rewrite_existing;
+    $action_key = $rewrite_existing ? 'rewrite_alt_text' : 'regen_alt_text';
+
     $post = get_post($post_id);
     if (!$post || !class_exists('DOMDocument')) {
-        botwriter_seo_bulk_log('regen_alt_text skipped (post missing or DOMDocument unavailable)', array('post_id' => (int) $post_id));
+        botwriter_seo_bulk_log($action_key . ' skipped (post missing or DOMDocument unavailable)', array('post_id' => (int) $post_id));
         return botwriter_seo_bulk_action_error(
             'post_or_dom_missing',
             __('Post not found or DOM parser unavailable.', 'botwriter'),
@@ -1314,7 +1330,7 @@ function botwriter_seo_action_regen_alt_text($post_id) {
     }
     $config = botwriter_seo_ai_config();
     if (empty($config['key'])) {
-        botwriter_seo_bulk_log('regen_alt_text skipped (missing API key)', array('post_id' => (int) $post_id));
+        botwriter_seo_bulk_log($action_key . ' skipped (missing API key)', array('post_id' => (int) $post_id));
         return botwriter_seo_bulk_action_error(
             'missing_api_key',
             sprintf(
@@ -1335,23 +1351,31 @@ function botwriter_seo_action_regen_alt_text($post_id) {
     $imgs = $dom->getElementsByTagName('img');
     $needs = array();
     foreach ($imgs as $img) {
-        if (!$img->hasAttribute('alt') || trim((string) $img->getAttribute('alt')) === '') {
-            $needs[] = $img;
+        if (!($img instanceof DOMElement)) {
+            continue;
         }
+        $current_alt = trim((string) $img->getAttribute('alt'));
+        if (!$rewrite_existing && $current_alt !== '') {
+            continue;
+        }
+        $needs[] = $img;
     }
     if (!$needs) {
-        botwriter_seo_bulk_log('regen_alt_text skipped (no missing alt)', array('post_id' => (int) $post_id));
+        botwriter_seo_bulk_log($action_key . ' skipped (no images to process)', array('post_id' => (int) $post_id));
         return botwriter_seo_bulk_action_error(
-            'no_missing_alt',
-            __('No images without ALT text were found.', 'botwriter'),
+            $rewrite_existing ? 'no_images_to_rewrite' : 'no_missing_alt',
+            $rewrite_existing
+                ? __('No images were found to rewrite ALT text.', 'botwriter')
+                : __('No images without ALT text were found.', 'botwriter'),
             'skip',
             __('Nothing to fix', 'botwriter')
         );
     }
 
-    botwriter_seo_bulk_log('regen_alt_text targets found', array(
+    botwriter_seo_bulk_log($action_key . ' targets found', array(
         'post_id' => (int) $post_id,
-        'missing_alt_count' => count($needs),
+        'images_count' => count($needs),
+        'rewrite_existing' => $rewrite_existing ? 1 : 0,
         'provider' => (string) ($config['provider'] ?? ''),
         'model' => (string) ($config['model'] ?? ''),
     ));
@@ -1362,23 +1386,48 @@ function botwriter_seo_action_regen_alt_text($post_id) {
     $ai_fail = 0;
     $last_ai_error = array();
     foreach ($needs as $img) {
-        $prompt = "Write a concise (max 12 words) descriptive ALT text in the same language as the article context. No quotes, no period.\n\n"
-            . "ARTICLE TITLE: " . $context . "\n"
-            . "IMAGE FILENAME: " . basename((string) $img->getAttribute('src'));
+        $current_alt_raw = trim((string) $img->getAttribute('alt'));
+        if ($rewrite_existing) {
+            $prompt = "Rewrite the image ALT text for SEO and accessibility in the same language as the article context. Max 12 words. No quotes, no final period.\n\n"
+                . "ARTICLE TITLE: " . $context . "\n"
+                . "CURRENT ALT: " . ($current_alt_raw !== '' ? $current_alt_raw : '[empty]') . "\n"
+                . "IMAGE FILENAME: " . basename((string) $img->getAttribute('src'));
+        } else {
+            $prompt = "Write a concise (max 12 words) descriptive ALT text in the same language as the article context. No quotes, no period.\n\n"
+                . "ARTICLE TITLE: " . $context . "\n"
+                . "IMAGE FILENAME: " . basename((string) $img->getAttribute('src'));
+        }
+
         $t = microtime(true);
         $resp = botwriter_call_editor_worker($config['provider'], $config['key'], $config['model'], $prompt, 60, 0.5);
         $ai = botwriter_seo_bulk_ai_extract_text($resp);
         if (!empty($ai['ok']) && !empty($ai['text'])) {
             $alt = trim(wp_strip_all_tags($ai['text']));
             $alt = trim($alt, " .\"'");
+
+            if ($alt === '') {
+                $ai_fail++;
+                $last_ai_error = array(
+                    'error_code' => 'empty_response',
+                    'error_type' => 'empty_response',
+                    'error_label' => __('Empty response', 'botwriter'),
+                    'error_message' => __('AI returned an empty ALT text.', 'botwriter'),
+                );
+                continue;
+            }
+
+            $had_alt = $img->hasAttribute('alt');
+            $previous_alt = $had_alt ? trim((string) $img->getAttribute('alt')) : '';
+            if (!$had_alt || $previous_alt !== $alt) {
+                $changed = true;
+            }
             $img->setAttribute('alt', $alt);
-            $changed = true;
             $ai_ok++;
         } else {
             $ai_fail++;
             $last_ai_error = $ai;
         }
-        botwriter_seo_bulk_log('AI call: regen_alt_text image', array(
+        botwriter_seo_bulk_log('AI call: ' . $action_key . ' image', array(
             'post_id' => (int) $post_id,
             'ok' => !empty($ai['ok']) ? 1 : 0,
             'format' => (string) ($ai['format'] ?? ''),
@@ -1388,7 +1437,12 @@ function botwriter_seo_action_regen_alt_text($post_id) {
         ));
     }
     if (!$changed) {
-        botwriter_seo_bulk_log('regen_alt_text ended without changes', array('post_id' => (int) $post_id, 'ai_ok' => $ai_ok, 'ai_fail' => $ai_fail));
+        botwriter_seo_bulk_log($action_key . ' ended without changes', array('post_id' => (int) $post_id, 'ai_ok' => $ai_ok, 'ai_fail' => $ai_fail));
+
+        if ($ai_ok > 0) {
+            return botwriter_seo_bulk_action_success(false);
+        }
+
         if (!empty($last_ai_error)) {
             return botwriter_seo_bulk_action_error_from_ai(
                 $last_ai_error,
@@ -1415,7 +1469,7 @@ function botwriter_seo_action_regen_alt_text($post_id) {
         );
     }
     botwriter_seo_compute_score($post_id, true);
-    botwriter_seo_bulk_log('regen_alt_text updated', array('post_id' => (int) $post_id, 'ai_ok' => $ai_ok, 'ai_fail' => $ai_fail));
+    botwriter_seo_bulk_log($action_key . ' updated', array('post_id' => (int) $post_id, 'ai_ok' => $ai_ok, 'ai_fail' => $ai_fail));
     return botwriter_seo_bulk_action_success(true);
 }
 

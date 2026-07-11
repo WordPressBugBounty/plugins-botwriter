@@ -35,10 +35,18 @@ function botwriter_get_image_models_fallback_catalog() {
                 'all_models' => array(),
             ),
             'gemini' => array(
-                'default' => 'gemini-2.5-flash-image',
+                'default' => 'gemini-3.1-flash-lite-image',
                 'groups' => array(
-                    'Gemini Image' => array(
-                        'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image',
+                    'Gemini Image (Stable)' => array(
+                        'gemini-3.1-flash-lite-image' => 'Gemini 3.1 Flash Lite Image',
+                        'gemini-3.1-flash-image' => 'Gemini 3.1 Flash Image',
+                        'gemini-3-pro-image' => 'Gemini 3 Pro Image',
+                        'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image (legacy)',
+                    ),
+                    'Legacy aliases (auto-migrated)' => array(
+                        'gemini-3.1-flash-image-preview' => 'Gemini 3.1 Flash Image Preview (legacy alias)',
+                        'gemini-3-pro-image-preview' => 'Gemini 3 Pro Image Preview (legacy alias)',
+                        'gemini-2.5-flash-image-preview' => 'Gemini 2.5 Flash Image Preview (legacy alias)',
                     ),
                 ),
                 'all_models' => array(),
@@ -151,6 +159,18 @@ function botwriter_get_image_models_data() {
 }
 
 /**
+ * Reset image models to default catalog from JSON.
+ *
+ * @return bool True on success.
+ */
+function botwriter_reset_image_models_to_default() {
+    delete_option(BOTWRITER_IMAGE_MODELS_OPTION);
+
+    $models_data = botwriter_get_image_models_data();
+    return is_array($models_data) && !empty($models_data['providers']);
+}
+
+/**
  * Get grouped image models for a provider.
  *
  * @param string $provider Provider slug.
@@ -250,8 +270,9 @@ function botwriter_normalize_image_model($provider, $model) {
             'gemini-2.0-flash-exp-image-generation' => 'gemini-2.5-flash-image',
             'gemini-2.0-flash-image' => 'gemini-2.5-flash-image',
             'gemini-2.5-flash-image-preview' => 'gemini-2.5-flash-image',
-            'gemini-3.1-flash-image' => 'gemini-3.1-flash-image-preview',
-            'gemini-3-pro-image' => 'gemini-3-pro-image-preview',
+            'gemini-3.1-flash-lite-image-preview' => 'gemini-3.1-flash-lite-image',
+            'gemini-3.1-flash-image-preview' => 'gemini-3.1-flash-image',
+            'gemini-3-pro-image-preview' => 'gemini-3-pro-image',
         );
 
         $model_lc = strtolower($model);

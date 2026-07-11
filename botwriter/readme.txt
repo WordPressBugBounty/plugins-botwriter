@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 5.5
 Tested up to: 7.0
-Stable tag: 3.4.4
+Stable tag: 3.4.6
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -52,7 +52,7 @@ For full documentation and more information, visit the [official BotWriter AI Wr
 Choose from 7 different AI providers for text generation:
 * **OpenAI:** GPT-5.5, GPT-5.4, GPT-5.4 mini/nano
 * **Anthropic:** Claude Sonnet 4.5, Claude Haiku
-* **Google:** Gemini 2.5 Pro, Gemini 2.5 Flash
+* **Google:** Gemini 3.5 Flash, Gemini 3.1 Pro Preview, Gemini 2.5 Pro
 * **Mistral:** Mistral Large, Mistral Small
 * **Groq:** Llama 3.3 70B (ultra-fast inference)
 * **OpenRouter:** Access to 200+ models through one API
@@ -62,7 +62,7 @@ Choose from 7 different AI providers for text generation:
 7 image providers with 50+ models:
 * **📷 [FREE] Stock Images:** Search Pixabay, Pexels, Unsplash & Openverse — $0.00 per image, no API generation cost
 * **OpenAI DALL-E:** GPT-Image-1, DALL-E 3
-* **Google Gemini:** gemini-2.5-flash-image, gemini-3-pro-image-preview, gemini-3.1-flash-image-preview
+* **Google Gemini:** gemini-3.1-flash-lite-image, gemini-3.1-flash-image, gemini-3-pro-image, gemini-2.5-flash-image (legacy)
 * **Fal.ai:** Flux 2 Pro/Dev, Nano Banana Pro (Google Gemini), Seedream 4.5
 * **Replicate:** Flux 1.1 Pro, Ideogram V3, Imagen 4
 * **Stability AI:** Stable Diffusion 3.5, SDXL
@@ -140,19 +140,6 @@ Looking for the **best AI writer for WordPress**? Here's what sets BotWriter apa
 * **WooCommerce native:** includes a dedicated WooCommerce product optimizer, demo review generator, and category description tool
 * **True automation:** schedule posts daily or weekly, generate bulk content series, or publish instantly with Write Now
 * **Full SEO stack:** AI-generated meta descriptions, SEO titles, slug translation, image optimization for Core Web Vitals
-
-
-== Who Is BotWriter For? ==
-
-BotWriter is the ideal AI writer for WordPress for:
-
-* **Bloggers** who want to publish consistently without writing every post by hand
-* **SEO agencies** that need to produce high-volume, optimized content for client sites
-* **Affiliate marketers** building niche sites with AI-generated review articles and comparisons
-* **Niche site builders** creating topical authority with bulk content series
-* **WooCommerce store owners** looking to optimize product descriptions, tags, SEO metadata, and test review layouts before launch
-* **Content marketers** scaling their output across multiple blogs and languages
-* **News aggregation sites** that rewrite trending stories automatically
 
 
 == Use Cases ==
@@ -340,6 +327,16 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.4.6 =
+* Added a new SEO Bulk Action: Rewrite existing image ALT, to regenerate ALT text even when images already have ALT values.
+* Added SEO internal-links target scope setting with Any, Posts only, and Products only options.
+* Refreshed Google Gemini image models to stable IDs (gemini-3.1-flash-lite-image, gemini-3.1-flash-image, gemini-3-pro-image), keeping gemini-2.5-flash-image as legacy and adding backward-compatible alias normalization.
+
+= 3.4.5 =
+* Removed Gemini 2.5 Flash and Gemini 2.5 Flash-Lite from selectable text model catalogs.
+* Added automatic fallback normalization to Gemini 3.5 Flash for legacy saved model settings.
+* Hardened model catalog sanitization so deprecated Gemini 2.5 Flash aliases are not reintroduced as selectable options.
+
 = 3.4.4 =
 * Fixed BotWriter Copilot floating widget visibility in the WordPress page editor (now matches post editor behavior).
 * Aligned editor-assistant permission checks for page editing roles.

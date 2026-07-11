@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.4.4
+Version: 3.4.6
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.4.4');
+    define('BOTWRITER_VERSION', '3.4.6');
 }
 
 // Plugin directory path (with trailing slash)
@@ -609,7 +609,7 @@ function botwriter_get_current_image_model_by_provider($provider) {
     if ($default_model === '') {
         $fallback_defaults = array(
             'dalle' => 'gpt-image-1',
-            'gemini' => 'gemini-2.5-flash-image',
+            'gemini' => 'gemini-3.1-flash-lite-image',
             'fal' => 'fal-ai/flux-pro/v1.1',
             'replicate' => 'black-forest-labs/flux-1.1-pro',
             'stability' => 'sd3.5-large-turbo',
@@ -4343,15 +4343,19 @@ function botwriter_send1_data_to_server($data) {
     
     // Get current text model based on provider
     $text_provider = $data['text_provider'];
-    $text_model_defaults = [
-        'openai' => 'gpt-5.4-mini',
-        'anthropic' => 'claude-sonnet-4-6',
-        'google' => 'gemini-2.5-flash',
-        'mistral' => 'mistral-large-latest',
-        'groq' => 'llama-3.3-70b-versatile',
-        'openrouter' => 'anthropic/claude-sonnet-4.6',
-    ];
-    $data['text_model'] = get_option("botwriter_{$text_provider}_model", $text_model_defaults[$text_provider] ?? 'gpt-5.4-mini');
+    if (function_exists('botwriter_get_provider_text_model')) {
+        $data['text_model'] = botwriter_get_provider_text_model($text_provider);
+    } else {
+        $text_model_defaults = [
+            'openai' => 'gpt-5.4-mini',
+            'anthropic' => 'claude-sonnet-4-6',
+            'google' => 'gemini-3.5-flash',
+            'mistral' => 'mistral-large-latest',
+            'groq' => 'llama-3.3-70b-versatile',
+            'openrouter' => 'anthropic/claude-sonnet-4.6',
+        ];
+        $data['text_model'] = get_option("botwriter_{$text_provider}_model", $text_model_defaults[$text_provider] ?? 'gpt-5.4-mini');
+    }
     
     // Get current image model based on provider
     $image_provider = $data['image_provider'];
@@ -5505,6 +5509,15 @@ function botwriter_process_image($file_path) {
             // Drop direct mode table if it exists
             global $wpdb;
             $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}botwriter_direct_tasks");
+
+            // Normalize legacy text model options and curated model catalogs.
+            if (function_exists('botwriter_get_provider_text_model')) {
+                botwriter_get_provider_text_model('google');
+                botwriter_get_provider_text_model('openrouter');
+            }
+            if (function_exists('botwriter_get_models_data')) {
+                botwriter_get_models_data();
+            }
             
             update_option('botwriter_version', $plugin_version); // Update version in database
         }

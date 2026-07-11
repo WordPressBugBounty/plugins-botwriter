@@ -42,6 +42,7 @@ function botwriter_seo_bulk_action_label($action) {
         'normalize_headings' => __('Normalize heading levels', 'botwriter'),
         'regen_seo_title' => __('Refresh SEO titles', 'botwriter'),
         'regen_alt_text' => __('Fill missing image ALT', 'botwriter'),
+        'rewrite_alt_text' => __('Rewrite existing image ALT', 'botwriter'),
         'rebuild_internal_links' => __('Rebuild internal links', 'botwriter'),
         'add_external_references' => __('Add external references', 'botwriter'),
         'regen_faq' => __('Generate FAQ blocks', 'botwriter'),
@@ -69,6 +70,7 @@ function botwriter_seo_bulk_undo_type_for_action($action) {
         'normalize_headings' => 'content',
         'regen_seo_title' => 'meta',
         'regen_alt_text' => 'media',
+        'rewrite_alt_text' => 'media',
         'rebuild_internal_links' => 'content',
         'add_external_references' => 'content',
         'regen_faq' => 'meta',
@@ -362,13 +364,16 @@ function botwriter_seo_bulk_undo_capture_meta_snapshot($post_id, $action) {
     return !empty($snapshot['fields']) ? $snapshot : false;
 }
 
-function botwriter_seo_bulk_undo_capture_media_snapshot($post_id) {
+function botwriter_seo_bulk_undo_capture_media_snapshot($post_id, $action = '') {
     $post = get_post($post_id);
     if (!$post) {
         return false;
     }
 
-    $entries = botwriter_seo_bulk_undo_extract_image_entries((string) $post->post_content, true);
+    $action = sanitize_key((string) $action);
+    $only_missing = $action !== 'rewrite_alt_text';
+
+    $entries = botwriter_seo_bulk_undo_extract_image_entries((string) $post->post_content, $only_missing);
     if (empty($entries)) {
         return false;
     }
@@ -388,7 +393,7 @@ function botwriter_seo_bulk_undo_capture_snapshot($action, $post_id, $args = arr
         case 'meta':
             return botwriter_seo_bulk_undo_capture_meta_snapshot($post_id, $action);
         case 'media':
-            return botwriter_seo_bulk_undo_capture_media_snapshot($post_id);
+            return botwriter_seo_bulk_undo_capture_media_snapshot($post_id, $action);
     }
 
     return false;

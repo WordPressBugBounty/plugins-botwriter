@@ -386,19 +386,110 @@ function botwriter_get_image_providers() {
 }
 
 /**
- * Get the current text model based on selected provider
+ * Default text model per provider.
+ *
+ * @return array
  */
-function botwriter_get_current_text_model() {
-    $provider = get_option('botwriter_text_provider', 'openai');
-    $defaults = [
+function botwriter_get_provider_text_model_defaults() {
+    return [
         'openai' => 'gpt-5.4-mini',
         'anthropic' => 'claude-sonnet-4-6',
-        'google' => 'gemini-2.5-flash',
+        'google' => 'gemini-3.5-flash',
         'mistral' => 'mistral-large-latest',
         'groq' => 'llama-3.3-70b-versatile',
         'openrouter' => 'anthropic/claude-sonnet-4.6',
     ];
-    return get_option("botwriter_{$provider}_model", $defaults[$provider] ?? 'gpt-5.4-mini');
+}
+
+/**
+ * Normalize deprecated text model aliases to current models.
+ *
+ * @param string $provider Provider key.
+ * @param string $model    Raw configured model.
+ * @return string
+ */
+function botwriter_normalize_text_model($provider, $model) {
+    $provider = sanitize_key((string) $provider);
+    $model = trim((string) $model);
+
+    if ($model === '') {
+        return $model;
+    }
+
+    $deprecated_map = [
+        'google' => [
+            'gemini-3.1-flash-lite' => 'gemini-3.5-flash',
+            'gemini-3.1-flash-lite-preview' => 'gemini-3.5-flash',
+            'gemini-2.5-flash' => 'gemini-3.5-flash',
+            'gemini-2.5-flash-lite' => 'gemini-3.5-flash',
+            'gemini-2.0-flash' => 'gemini-3.5-flash',
+            'gemini-2.0-flash-lite' => 'gemini-3.5-flash',
+            'gemini-1.5-flash' => 'gemini-3.5-flash',
+            'gemini-1.5-pro' => 'gemini-2.5-pro',
+            'models/gemini-3.1-flash-lite' => 'gemini-3.5-flash',
+            'models/gemini-2.5-flash' => 'gemini-3.5-flash',
+            'models/gemini-2.5-flash-lite' => 'gemini-3.5-flash',
+            'models/gemini-2.0-flash' => 'gemini-3.5-flash',
+            'models/gemini-1.5-flash' => 'gemini-3.5-flash',
+            'models/gemini-1.5-pro' => 'gemini-2.5-pro',
+        ],
+        'openrouter' => [
+            'google/gemini-3.1-flash-lite' => 'google/gemini-3.5-flash',
+            'google/gemini-3.1-flash-lite-preview' => 'google/gemini-3.5-flash',
+            'google/gemini-2.5-flash' => 'google/gemini-3.5-flash',
+            'google/gemini-2.0-flash' => 'google/gemini-3.5-flash',
+            'google/gemini-2.0-flash-001' => 'google/gemini-3.5-flash',
+            'google/gemini-2.0-flash-exp:free' => 'google/gemini-3.5-flash',
+        ],
+    ];
+
+    if (!isset($deprecated_map[$provider])) {
+        return $model;
+    }
+
+    $key = strtolower($model);
+    return isset($deprecated_map[$provider][$key])
+        ? $deprecated_map[$provider][$key]
+        : $model;
+}
+
+/**
+ * Get model configured for a provider, normalized for deprecated aliases.
+ *
+ * @param string $provider Provider key.
+ * @return string
+ */
+function botwriter_get_provider_text_model($provider) {
+    $provider = sanitize_key((string) $provider);
+    $defaults = botwriter_get_provider_text_model_defaults();
+    $default_model = $defaults[$provider] ?? 'gpt-5.4-mini';
+    $option_name = "botwriter_{$provider}_model";
+    $configured_model = (string) get_option($option_name, $default_model);
+    $normalized_model = botwriter_normalize_text_model($provider, $configured_model);
+
+    if ($normalized_model === '') {
+        $normalized_model = $default_model;
+    }
+
+    if ($normalized_model !== $configured_model) {
+        update_option($option_name, $normalized_model);
+        botwriter_log('Text model option auto-normalized', [
+            'provider' => $provider,
+            'option_name' => $option_name,
+            'raw_model' => $configured_model,
+            'normalized_model' => $normalized_model,
+        ]);
+    }
+
+    return $normalized_model;
+}
+
+/**
+ * Get the current text model based on selected provider
+ */
+function botwriter_get_current_text_model() {
+    $provider = get_option('botwriter_text_provider', 'openai');
+    return botwriter_get_provider_text_model($provider);
 }
 
 /**
@@ -578,10 +669,10 @@ function botwriter_get_seo_translation_model($provider) {
     $fast_models = array(
         'openai'     => 'gpt-4o-mini',
         'anthropic'  => 'claude-haiku-4-5-20251001',
-        'google'     => 'gemini-2.5-flash',
+        'google'     => 'gemini-3.5-flash',
         'mistral'    => 'mistral-small-latest',
         'groq'       => 'llama-3.3-70b-versatile',
-        'openrouter' => 'google/gemini-2.5-flash',
+        'openrouter' => 'google/gemini-3.5-flash',
     );
     return $fast_models[$provider] ?? 'gpt-4o-mini';
 }

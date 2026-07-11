@@ -613,11 +613,23 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         ] );
 
         if ( $http_code !== 200 || ( isset( $data['status'] ) && $data['status'] === 'error' ) ) {
-            $msg = $data['error'] ?? "HTTP {$http_code}";
+            $error_code    = '';
+            $error_message = '';
 
-            $token_issue = in_array( $msg, array( 'invalid_site_token', 'token_required' ), true )
-                || stripos( (string) $msg, 'site token mismatch' ) !== false
-                || stripos( (string) $msg, 'token_witryny' ) !== false;
+            if ( is_array( $data ) ) {
+                $error_code    = (string) ( $data['error_code'] ?? $data['error'] ?? '' );
+                $error_message = (string) ( $data['error_message'] ?? $data['message'] ?? '' );
+            }
+
+            $error_message = wp_strip_all_tags( $error_message );
+            if ( $error_message === '' ) {
+                $error_message = $error_code !== '' ? $error_code : "HTTP {$http_code}";
+            }
+
+            $token_issue = in_array( $error_code, array( 'invalid_site_token', 'token_required' ), true )
+                || in_array( $error_message, array( 'invalid_site_token', 'token_required' ), true )
+                || stripos( $error_message, 'site token mismatch' ) !== false
+                || stripos( $error_message, 'token_witryny' ) !== false;
 
             // Self-heal stale token after plugin reinstall/domain re-pair: clear local token and retry once.
             if ( $token_issue && ! empty( $payload['site_token'] ) ) {
@@ -627,8 +639,9 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
                 $retry_payload['site_token'] = '';
 
                 botwriter_log( '[Woo AI] Site token mismatch detected. Retrying request with empty site_token.', [
-                    'provider' => $provider,
-                    'error'    => $msg,
+                    'provider'   => $provider,
+                    'error_code' => $error_code,
+                    'error'      => $error_message,
                 ] );
 
                 $retry_response = wp_remote_post( BOTWRITER_API_URL . 'woo', array(
@@ -657,7 +670,16 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
                 ] );
 
                 if ( $retry_http_code !== 200 || ( isset( $retry_data['status'] ) && $retry_data['status'] === 'error' ) ) {
-                    $retry_msg = $retry_data['error'] ?? "HTTP {$retry_http_code}";
+                    $retry_error_code = '';
+                    $retry_msg        = '';
+                    if ( is_array( $retry_data ) ) {
+                        $retry_error_code = (string) ( $retry_data['error_code'] ?? $retry_data['error'] ?? '' );
+                        $retry_msg        = (string) ( $retry_data['error_message'] ?? $retry_data['message'] ?? '' );
+                    }
+                    $retry_msg = wp_strip_all_tags( $retry_msg );
+                    if ( $retry_msg === '' ) {
+                        $retry_msg = $retry_error_code !== '' ? $retry_error_code : "HTTP {$retry_http_code}";
+                    }
                     return new WP_Error( 'api_error', $retry_msg );
                 }
 
@@ -676,7 +698,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
                 return $retry_content;
             }
 
-            return new WP_Error( 'api_error', $msg );
+            return new WP_Error( 'api_error', $error_message );
         }
 
         $content = $data['content'] ?? '';
@@ -705,10 +727,10 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         $model_options = array(
             'openai'     => array( 'botwriter_openai_model', 'gpt-4o-mini' ),
             'anthropic'  => array( 'botwriter_anthropic_model', 'claude-haiku-4-5-20251001' ),
-            'google'     => array( 'botwriter_google_model', 'gemini-2.5-flash' ),
+            'google'     => array( 'botwriter_google_model', 'gemini-3.5-flash' ),
             'mistral'    => array( 'botwriter_mistral_model', 'mistral-small-latest' ),
             'groq'       => array( 'botwriter_groq_model', 'llama-3.3-70b-versatile' ),
-            'openrouter' => array( 'botwriter_openrouter_model', 'google/gemini-2.5-flash' ),
+            'openrouter' => array( 'botwriter_openrouter_model', 'google/gemini-3.5-flash' ),
         );
 
         if ( isset( $model_options[ $provider ] ) ) {
@@ -748,18 +770,28 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
 
         $deprecated_map = array(
             'google' => array(
-                'gemini-2.0-flash'        => 'gemini-2.5-flash',
-                'gemini-2.0-flash-lite'   => 'gemini-2.5-flash-lite',
-                'gemini-1.5-flash'        => 'gemini-2.5-flash',
+                'gemini-3.1-flash-lite'   => 'gemini-3.5-flash',
+                'gemini-3.1-flash-lite-preview' => 'gemini-3.5-flash',
+                'gemini-2.5-flash'        => 'gemini-3.5-flash',
+                'gemini-2.5-flash-lite'   => 'gemini-3.5-flash',
+                'gemini-2.0-flash'        => 'gemini-3.5-flash',
+                'gemini-2.0-flash-lite'   => 'gemini-3.5-flash',
+                'gemini-1.5-flash'        => 'gemini-3.5-flash',
                 'gemini-1.5-pro'          => 'gemini-2.5-pro',
-                'models/gemini-2.0-flash' => 'gemini-2.5-flash',
-                'models/gemini-1.5-flash' => 'gemini-2.5-flash',
+                'models/gemini-3.1-flash-lite' => 'gemini-3.5-flash',
+                'models/gemini-2.5-flash' => 'gemini-3.5-flash',
+                'models/gemini-2.5-flash-lite' => 'gemini-3.5-flash',
+                'models/gemini-2.0-flash' => 'gemini-3.5-flash',
+                'models/gemini-1.5-flash' => 'gemini-3.5-flash',
                 'models/gemini-1.5-pro'   => 'gemini-2.5-pro',
             ),
             'openrouter' => array(
-                'google/gemini-2.0-flash'          => 'google/gemini-2.5-flash',
-                'google/gemini-2.0-flash-001'      => 'google/gemini-2.5-flash',
-                'google/gemini-2.0-flash-exp:free' => 'google/gemini-2.5-flash',
+                'google/gemini-3.1-flash-lite'   => 'google/gemini-3.5-flash',
+                'google/gemini-3.1-flash-lite-preview' => 'google/gemini-3.5-flash',
+                'google/gemini-2.5-flash'          => 'google/gemini-3.5-flash',
+                'google/gemini-2.0-flash'          => 'google/gemini-3.5-flash',
+                'google/gemini-2.0-flash-001'      => 'google/gemini-3.5-flash',
+                'google/gemini-2.0-flash-exp:free' => 'google/gemini-3.5-flash',
             ),
         );
 

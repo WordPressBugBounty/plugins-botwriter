@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "updated": "2026-05-03",
+    "updated": "2026-07-11",
     "providers": {
         "dalle": {
             "default": "gpt-image-1",
@@ -19,12 +19,18 @@
             "all_models": []
         },
         "gemini": {
-            "default": "gemini-2.5-flash-image",
+            "default": "gemini-3.1-flash-lite-image",
             "groups": {
-                "Gemini Image": {
-                    "gemini-3.1-flash-image-preview": "Gemini 3.1 Flash Image Preview",
-                    "gemini-3-pro-image-preview": "Gemini 3 Pro Image Preview",
-                    "gemini-2.5-flash-image": "Gemini 2.5 Flash Image"
+                "Gemini Image (Stable)": {
+                    "gemini-3.1-flash-lite-image": "Gemini 3.1 Flash Lite Image (fastest, lowest cost)",
+                    "gemini-3.1-flash-image": "Gemini 3.1 Flash Image (balanced, recommended)",
+                    "gemini-3-pro-image": "Gemini 3 Pro Image (highest quality, 4K)",
+                    "gemini-2.5-flash-image": "Gemini 2.5 Flash Image (legacy)"
+                },
+                "Legacy aliases (auto-migrated)": {
+                    "gemini-3.1-flash-image-preview": "Gemini 3.1 Flash Image Preview (legacy alias)",
+                    "gemini-3-pro-image-preview": "Gemini 3 Pro Image Preview (legacy alias)",
+                    "gemini-2.5-flash-image-preview": "Gemini 2.5 Flash Image Preview (legacy alias)"
                 }
             },
             "all_models": []

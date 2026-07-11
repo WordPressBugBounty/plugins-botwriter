@@ -6,6 +6,10 @@ function botwriter_seo_page_settings() {
         check_admin_referer('bw_seo_settings');
         $max_links = isset($_POST['max_links']) ? absint(wp_unslash($_POST['max_links'])) : 3;
         $serp_key = isset($_POST['serp_key']) ? sanitize_text_field(wp_unslash($_POST['serp_key'])) : '';
+        $internal_links_scope = isset($_POST['internal_links_scope']) ? sanitize_key(wp_unslash($_POST['internal_links_scope'])) : 'any';
+        if (!in_array($internal_links_scope, array('any', 'posts', 'products'), true)) {
+            $internal_links_scope = 'any';
+        }
 
         $provider_labels = function_exists('botwriter_get_text_providers')
             ? botwriter_get_text_providers()
@@ -29,6 +33,7 @@ function botwriter_seo_page_settings() {
             'botwriter_seo_auto_internal_links_enabled' => !empty($_POST['auto_links']) ? '1' : '0',
             'botwriter_seo_ai_internal_links_enabled' => !empty($_POST['ai_links']) ? '1' : '0',
             'botwriter_seo_auto_internal_links_max_links' => max(1, min(8, $max_links)),
+            'botwriter_seo_internal_links_scope' => $internal_links_scope,
             'botwriter_seo_embeddings_provider' => isset($_POST['emb_provider']) ? sanitize_key(wp_unslash($_POST['emb_provider'])) : 'openai',
             'botwriter_seo_serp_provider' => isset($_POST['serp_provider']) ? sanitize_key(wp_unslash($_POST['serp_provider'])) : 'serpapi',
             'botwriter_seo_serp_api_key' => $serp_key,
@@ -41,6 +46,10 @@ function botwriter_seo_page_settings() {
     }
 
     $max_links_value = (string) get_option('botwriter_seo_auto_internal_links_max_links', '3');
+    $internal_links_scope_value = sanitize_key((string) get_option('botwriter_seo_internal_links_scope', 'any'));
+    if (!in_array($internal_links_scope_value, array('any', 'posts', 'products'), true)) {
+        $internal_links_scope_value = 'any';
+    }
     $serp_api_key_value = (string) get_option('botwriter_seo_serp_api_key', '');
 
     $provider_labels = function_exists('botwriter_get_text_providers')
@@ -85,6 +94,12 @@ function botwriter_seo_page_settings() {
     botwriter_seo_card_open(__('Internal links engine', 'botwriter'), 'admin-links');
     echo '<div class="bw-form-row"><label>' . esc_html__('Auto-insert on publish', 'botwriter') . '</label><input type="checkbox" name="auto_links" value="1"' . checked((string) get_option('botwriter_seo_auto_internal_links_enabled', '0'), '1', false) . ' /></div>';
     echo '<div class="bw-form-row"><label>' . esc_html__('Use AI suggestions', 'botwriter') . '</label><input type="checkbox" name="ai_links" value="1"' . checked((string) get_option('botwriter_seo_ai_internal_links_enabled', '0'), '1', false) . ' /></div>';
+    echo '<div class="bw-form-row"><label>' . esc_html__('Link targets', 'botwriter') . '</label>';
+    echo '<select name="internal_links_scope">';
+    echo '<option value="any"' . selected($internal_links_scope_value, 'any', false) . '>' . esc_html__('Any (posts, pages, products)', 'botwriter') . '</option>';
+    echo '<option value="posts"' . selected($internal_links_scope_value, 'posts', false) . '>' . esc_html__('Posts only', 'botwriter') . '</option>';
+    echo '<option value="products"' . selected($internal_links_scope_value, 'products', false) . '>' . esc_html__('Products only', 'botwriter') . '</option>';
+    echo '</select></div>';
     echo '<div class="bw-form-row"><label>' . esc_html__('Max links / article', 'botwriter') . '</label><input type="number" name="max_links" min="1" max="8" value="' . esc_attr($max_links_value) . '" /></div>';
     botwriter_seo_card_close();
 

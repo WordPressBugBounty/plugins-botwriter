@@ -726,6 +726,7 @@ function botwriter_ajax_save_settings() {
         'botwriter_seo_sync_meta_enabled',
         'botwriter_seo_ai_meta_enabled',
         'botwriter_seo_auto_internal_links_enabled',
+        'botwriter_seo_internal_links_scope',
         'botwriter_seo_auto_internal_links_max_links',
         'botwriter_seo_ai_internal_links_enabled',
         'botwriter_seo_featured_image_alt_enabled',
@@ -803,10 +804,56 @@ function botwriter_ajax_save_settings() {
             'saved_value' => $value,
             'changed' => ($raw_value !== $value),
         ));
+    } elseif (in_array($field, [
+        'botwriter_openai_model',
+        'botwriter_anthropic_model',
+        'botwriter_google_model',
+        'botwriter_mistral_model',
+        'botwriter_groq_model',
+        'botwriter_openrouter_model',
+    ], true)) {
+        $raw_value = sanitize_text_field($value);
+        $provider_by_field = [
+            'botwriter_openai_model' => 'openai',
+            'botwriter_anthropic_model' => 'anthropic',
+            'botwriter_google_model' => 'google',
+            'botwriter_mistral_model' => 'mistral',
+            'botwriter_groq_model' => 'groq',
+            'botwriter_openrouter_model' => 'openrouter',
+        ];
+        $provider = $provider_by_field[$field] ?? 'openai';
+
+        if (function_exists('botwriter_normalize_text_model')) {
+            $value = (string) botwriter_normalize_text_model($provider, $raw_value);
+        } else {
+            $value = $raw_value;
+        }
+
+        if ($value === '') {
+            if (function_exists('botwriter_get_provider_text_model_defaults')) {
+                $defaults = botwriter_get_provider_text_model_defaults();
+                $value = (string) ($defaults[$provider] ?? 'gpt-5.4-mini');
+            } else {
+                $value = $raw_value;
+            }
+        }
+
+        botwriter_log('Settings save: text model normalized', array(
+            'field' => $field,
+            'provider' => $provider,
+            'raw_value' => $raw_value,
+            'saved_value' => $value,
+            'changed' => ($raw_value !== $value),
+        ));
     } elseif ($field === 'botwriter_paused_tasks') {
         $value = max(2, intval($value));
     } elseif ($field === 'botwriter_seo_auto_internal_links_max_links') {
         $value = max(1, min(8, intval($value)));
+    } elseif ($field === 'botwriter_seo_internal_links_scope') {
+        $value = sanitize_key($value);
+        if (!in_array($value, array('any', 'posts', 'products'), true)) {
+            $value = 'any';
+        }
     } elseif ($field === 'botwriter_seo_publish_faq_mode') {
         $value = sanitize_key($value);
         if ($value !== 'visible_schema' && $value !== 'schema_only') {
@@ -1484,6 +1531,16 @@ function botwriter_settings_meta_box_handler() {
             </div>
 
             <div class="form-row">
+                <label><?php esc_html_e('Automatic internal link targets:', 'botwriter'); ?></label>
+                <select name="botwriter_seo_internal_links_scope" class="botwriter-autosave bw-select-wide">
+                    <option value="any" <?php selected($settings['botwriter_seo_internal_links_scope'], 'any'); ?>><?php esc_html_e('Any (posts, pages, products)', 'botwriter'); ?></option>
+                    <option value="posts" <?php selected($settings['botwriter_seo_internal_links_scope'], 'posts'); ?>><?php esc_html_e('Posts only', 'botwriter'); ?></option>
+                    <option value="products" <?php selected($settings['botwriter_seo_internal_links_scope'], 'products'); ?>><?php esc_html_e('Products only', 'botwriter'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e('Controls which post types are eligible as automatic internal-link targets during publish-time SEO processing.', 'botwriter'); ?></p>
+            </div>
+
+            <div class="form-row">
                 <label><?php esc_html_e('Maximum automatic internal links per post:', 'botwriter'); ?></label>
                 <div class="input-with-suffix">
                     <input type="number" name="botwriter_seo_auto_internal_links_max_links" value="<?php echo esc_attr($settings['botwriter_seo_auto_internal_links_max_links']); ?>" min="1" max="8" class="small-input botwriter-autosave">
@@ -1598,7 +1655,7 @@ function botwriter_get_all_settings() {
         : 'gpt-image-1';
     $gemini_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('gemini')
-        : 'gemini-2.5-flash-image';
+        : 'gemini-3.1-flash-lite-image';
     $fal_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('fal')
         : 'fal-ai/flux-pro/v1.1';
@@ -1616,7 +1673,7 @@ function botwriter_get_all_settings() {
         $dalle_default = 'gpt-image-1';
     }
     if ($gemini_default === '') {
-        $gemini_default = 'gemini-2.5-flash-image';
+        $gemini_default = 'gemini-3.1-flash-lite-image';
     }
     if ($fal_default === '') {
         $fal_default = 'fal-ai/flux-pro/v1.1';
@@ -1653,6 +1710,9 @@ function botwriter_get_all_settings() {
         'botwriter_seo_sync_meta_enabled' => get_option('botwriter_seo_sync_meta_enabled', $legacy_meta_enabled),
         'botwriter_seo_ai_meta_enabled' => get_option('botwriter_seo_ai_meta_enabled', $legacy_meta_enabled),
         'botwriter_seo_auto_internal_links_enabled' => get_option('botwriter_seo_auto_internal_links_enabled', '0'),
+        'botwriter_seo_internal_links_scope' => in_array(sanitize_key((string) get_option('botwriter_seo_internal_links_scope', 'any')), array('any', 'posts', 'products'), true)
+            ? sanitize_key((string) get_option('botwriter_seo_internal_links_scope', 'any'))
+            : 'any',
         'botwriter_seo_auto_internal_links_max_links' => get_option('botwriter_seo_auto_internal_links_max_links', '3'),
         'botwriter_seo_ai_internal_links_enabled' => get_option('botwriter_seo_ai_internal_links_enabled', '0'),
         'botwriter_seo_featured_image_alt_enabled' => get_option('botwriter_seo_featured_image_alt_enabled', '1'),
@@ -1683,12 +1743,24 @@ function botwriter_get_all_settings() {
         'botwriter_stability_api_key' => get_option('botwriter_stability_api_key', ''),
         'botwriter_cloudflare_api_key' => get_option('botwriter_cloudflare_api_key', ''),
         // Text models
-        'botwriter_openai_model' => get_option('botwriter_openai_model', 'gpt-5.4-mini'),
-        'botwriter_anthropic_model' => get_option('botwriter_anthropic_model', 'claude-sonnet-4-6'),
-        'botwriter_google_model' => get_option('botwriter_google_model', 'gemini-2.5-flash'),
-        'botwriter_mistral_model' => get_option('botwriter_mistral_model', 'mistral-large-latest'),
-        'botwriter_groq_model' => get_option('botwriter_groq_model', 'llama-3.3-70b-versatile'),
-        'botwriter_openrouter_model' => get_option('botwriter_openrouter_model', 'anthropic/claude-sonnet-4.6'),
+        'botwriter_openai_model' => function_exists('botwriter_get_provider_text_model')
+            ? botwriter_get_provider_text_model('openai')
+            : get_option('botwriter_openai_model', 'gpt-5.4-mini'),
+        'botwriter_anthropic_model' => function_exists('botwriter_get_provider_text_model')
+            ? botwriter_get_provider_text_model('anthropic')
+            : get_option('botwriter_anthropic_model', 'claude-sonnet-4-6'),
+        'botwriter_google_model' => function_exists('botwriter_get_provider_text_model')
+            ? botwriter_get_provider_text_model('google')
+            : get_option('botwriter_google_model', 'gemini-3.5-flash'),
+        'botwriter_mistral_model' => function_exists('botwriter_get_provider_text_model')
+            ? botwriter_get_provider_text_model('mistral')
+            : get_option('botwriter_mistral_model', 'mistral-large-latest'),
+        'botwriter_groq_model' => function_exists('botwriter_get_provider_text_model')
+            ? botwriter_get_provider_text_model('groq')
+            : get_option('botwriter_groq_model', 'llama-3.3-70b-versatile'),
+        'botwriter_openrouter_model' => function_exists('botwriter_get_provider_text_model')
+            ? botwriter_get_provider_text_model('openrouter')
+            : get_option('botwriter_openrouter_model', 'anthropic/claude-sonnet-4.6'),
         // Image models
         'botwriter_dalle_model' => function_exists('botwriter_get_current_image_model_by_provider')
             ? botwriter_get_current_image_model_by_provider('dalle')

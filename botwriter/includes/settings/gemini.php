@@ -33,9 +33,10 @@ function botwriter_get_gemini_image_models() {
     }
 
     return [
-        'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image (fast, efficient)',
-        'gemini-3-pro-image-preview' => 'Gemini 3 Pro Image Preview (advanced, 4K)',
-        'gemini-3.1-flash-image-preview' => 'Gemini 3.1 Flash Image Preview (latest)',
+        'gemini-3.1-flash-lite-image' => 'Gemini 3.1 Flash Lite Image (fastest, lowest cost)',
+        'gemini-3.1-flash-image' => 'Gemini 3.1 Flash Image (balanced, recommended)',
+        'gemini-3-pro-image' => 'Gemini 3 Pro Image (advanced, 4K)',
+        'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image (legacy)',
     ];
 }
 
@@ -52,16 +53,17 @@ function botwriter_get_gemini_image_info() {
         'pricing_url' => 'https://ai.google.dev/gemini-api/docs/pricing',
         'free_credits' => __('Uses same API key as Gemini text models', 'botwriter'),
         'pricing_summary' => [
-            'Gemini 2.5 Flash Image' => __('See pricing page', 'botwriter'),
-            'Gemini 3 Pro Image Preview' => __('See pricing page', 'botwriter'),
-            'Gemini 3.1 Flash Image Preview' => __('See pricing page', 'botwriter'),
+            'Gemini 3.1 Flash Lite Image' => __('See pricing page', 'botwriter'),
+            'Gemini 3.1 Flash Image' => __('See pricing page', 'botwriter'),
+            'Gemini 3 Pro Image' => __('See pricing page', 'botwriter'),
+            'Gemini 2.5 Flash Image (legacy)' => __('See pricing page', 'botwriter'),
         ],
         'features' => [
             __('Uses the same API key as Google Gemini text models', 'botwriter'),
             __('High-quality image generation', 'botwriter'),
             __('Excellent text rendering in images', 'botwriter'),
             __('Multiple aspect ratios supported', 'botwriter'),
-            __('Fast generation with 2.5 Flash', 'botwriter'),
+            __('Supports Nano Banana 2 / 2 Lite / Pro families', 'botwriter'),
         ],
         'pros' => [
             __('Same API key as text models', 'botwriter'),
@@ -82,7 +84,7 @@ function botwriter_get_gemini_image_info() {
 function botwriter_render_gemini_settings($settings, $is_active) {
     $info = botwriter_get_gemini_image_info();
     $models = botwriter_get_gemini_image_models();
-    $current_model = $settings['botwriter_gemini_image_model'] ?? 'gemini-2.5-flash-image';
+    $current_model = $settings['botwriter_gemini_image_model'] ?? 'gemini-3.1-flash-lite-image';
     $google_api_key = $settings['botwriter_google_api_key'] ?? '';
     $has_key = !empty($google_api_key);
     ?>
@@ -124,7 +126,7 @@ function botwriter_render_gemini_settings($settings, $is_active) {
                         <option value="<?php echo esc_attr($id); ?>" <?php selected($current_model, $id); ?>><?php echo esc_html($name); ?></option>
                     <?php endforeach; ?>
                 </select>
-                <p class="description"><?php esc_html_e('2.5 Flash Image is recommended for speed. 3 Pro Preview for advanced features. 3.1 Flash Image Preview is the latest model.', 'botwriter'); ?></p>
+                <p class="description"><?php esc_html_e('3.1 Flash Lite Image is recommended for lowest cost. 3.1 Flash Image is the best balance. 3 Pro Image is best for premium quality and complex prompts.', 'botwriter'); ?></p>
             </div>
         </div>
 
@@ -134,7 +136,7 @@ function botwriter_render_gemini_settings($settings, $is_active) {
                 <li><?php esc_html_e('Get a free API key from', 'botwriter'); ?> <a href="<?php echo esc_url($info['api_url']); ?>" target="_blank"><?php esc_html_e('Google AI Studio', 'botwriter'); ?></a></li>
                 <li><?php esc_html_e('Enter your Google API key above (or in Text AI → Google Gemini)', 'botwriter'); ?></li>
                 <li><?php esc_html_e('Select Google Gemini as your image provider here', 'botwriter'); ?></li>
-                <li><?php esc_html_e('Choose your preferred model (2.5 Flash Image for free tier)', 'botwriter'); ?></li>
+                <li><?php esc_html_e('Choose your preferred model (3.1 Flash Lite for lowest cost, 3.1 Flash for best balance)', 'botwriter'); ?></li>
                 <li><?php esc_html_e('That\'s it! The same API key works for both text and images', 'botwriter'); ?></li>
             </ol>
         </div>
