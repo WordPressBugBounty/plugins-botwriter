@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
 Requires at least: 5.5
 Tested up to: 7.0
-Stable tag: 3.4.6
+Stable tag: 3.4.7
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -327,6 +327,9 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.4.7 =
+* Improved the new pairing system for a smoother and more reliable setup flow.
+
 = 3.4.6 =
 * Added a new SEO Bulk Action: Rewrite existing image ALT, to regenerate ALT text even when images already have ALT values.
 * Added SEO internal-links target scope setting with Any, Posts only, and Products only options.

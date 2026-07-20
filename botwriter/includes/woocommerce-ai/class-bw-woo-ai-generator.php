@@ -539,6 +539,7 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
     public function call_provider( $provider, $api_key, $prompt, $max_tokens, $ssl_verify, $field = '' ) {
         $timeout     = 120;
         $temperature = self::TEMPERATURE;
+        botwriter_ensure_site_token();
 
         botwriter_log( '[Woo AI] call_provider REQUEST (via Worker)', [
             'provider'   => $provider,

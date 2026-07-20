@@ -695,6 +695,7 @@ function botwriter_get_seo_translation_model($provider) {
  */
 function botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, $max_tokens = 200, $temperature = 0.3 ) {
     $ssl_verify = get_option( 'botwriter_sslverify', 'yes' ) === 'yes';
+    botwriter_ensure_site_token();
 
     // Map provider names: PHP uses 'google', Worker uses 'gemini'
     $provider_map   = array( 'google' => 'gemini' );
@@ -742,6 +743,10 @@ function botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, $m
     $http_code = wp_remote_retrieve_response_code( $response );
     $body      = wp_remote_retrieve_body( $response );
     $data      = json_decode( $body, true );
+
+    if ( is_array( $data ) && ! empty( $data['site_token'] ) ) {
+        update_option( 'botwriter_site_token', sanitize_text_field( (string) $data['site_token'] ) );
+    }
 
     if ( $http_code !== 200 || ( isset( $data['status'] ) && $data['status'] === 'error' ) ) {
         $msg = $data['error'] ?? "HTTP {$http_code}";

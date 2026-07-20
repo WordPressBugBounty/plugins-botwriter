@@ -71,6 +71,7 @@ class BotWriter_Woo_AI_Products {
                 <label for="bw-filter-status"><strong><?php esc_html_e( 'Filter', 'botwriter' ); ?></strong></label><br>
                 <select id="bw-filter-status" class="form-select" style="min-width:200px;">
                     <option value="all"><?php esc_html_e( 'All Products', 'botwriter' ); ?></option>
+                    <option value="not_ai_optimized"><?php esc_html_e( 'Not AI Optimized', 'botwriter' ); ?></option>
                     <option value="no_description"><?php esc_html_e( 'Without Description', 'botwriter' ); ?></option>
                     <option value="short_description"><?php esc_html_e( 'Without Short Description', 'botwriter' ); ?></option>
                     <option value="short_content"><?php esc_html_e( 'Description < 100 words', 'botwriter' ); ?></option>
@@ -245,6 +246,10 @@ class BotWriter_Woo_AI_Products {
                 $short_desc = $product->get_short_description();
                 $word_count = str_word_count( wp_strip_all_tags( $desc ) );
 
+                if ( $content_filter === 'not_ai_optimized' && (bool) get_post_meta( $pid, '_bw_woo_ai_optimized', true ) ) {
+                    continue;
+                }
+
                 if ( $content_filter === 'no_description' && ! empty( $desc ) ) {
                     continue;
                 }
@@ -417,6 +422,10 @@ class BotWriter_Woo_AI_Products {
                 $desc       = $product->get_description();
                 $short_desc = $product->get_short_description();
                 $word_count = str_word_count( wp_strip_all_tags( $desc ) );
+
+                if ( $content_filter === 'not_ai_optimized' && (bool) get_post_meta( $pid, '_bw_woo_ai_optimized', true ) ) {
+                    continue;
+                }
 
                 if ( $content_filter === 'no_description' && ! empty( $desc ) ) {
                     continue;

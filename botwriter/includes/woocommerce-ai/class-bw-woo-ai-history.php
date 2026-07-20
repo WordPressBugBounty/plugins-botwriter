@@ -60,6 +60,7 @@ class BotWriter_Woo_AI_History {
 
     public function ajax_get_usage() {
         BotWriter_Woo_AI::verify_request();
+        botwriter_ensure_site_token();
 
         $domain = preg_replace( '#^https?://#', '', home_url() );
         $domain = rtrim( (string) $domain, '/' );
@@ -82,6 +83,10 @@ class BotWriter_Woo_AI_History {
 
         $http_code = wp_remote_retrieve_response_code( $response );
         $data      = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        if ( is_array( $data ) && ! empty( $data['site_token'] ) ) {
+            update_option( 'botwriter_site_token', sanitize_text_field( (string) $data['site_token'] ) );
+        }
 
         if ( 200 !== $http_code || ! is_array( $data ) ) {
             $message = is_array( $data ) && ! empty( $data['error_message'] )

@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.4.6
+Version: 3.4.7
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.4.6');
+    define('BOTWRITER_VERSION', '3.4.7');
 }
 
 // Plugin directory path (with trailing slash)
@@ -38,6 +38,57 @@ define('BOTWRITER_API_URL', "https://api.wpbotwriter.com/");
 // Debugging constant for development
 if (!defined('BOTWRITER_DEBUG')) {
     define('BOTWRITER_DEBUG', false);
+}
+
+/**
+ * Pair a new installation with the service before its first generation call.
+ * Existing installations with a stored token do not perform any extra request.
+ *
+ * @return string The stored/confirmed token, or an empty string on failure.
+ */
+function botwriter_ensure_site_token() {
+    static $pairing = false;
+
+    $stored_token = (string) get_option('botwriter_site_token', '');
+    if ($stored_token !== '' || $pairing) {
+        return $stored_token;
+    }
+
+    $pairing = true;
+    $domain = preg_replace('#^https?://#', '', home_url());
+    $domain = rtrim((string) $domain, '/');
+    $candidate = '';
+
+    for ($step = 0; $step < 2; $step++) {
+        $response = wp_remote_post(rtrim(BOTWRITER_API_URL, '/') . '/validate', array(
+            'timeout' => 15,
+            'sslverify' => true,
+            'headers' => array('Content-Type' => 'application/json'),
+            'body' => wp_json_encode(array(
+                'domain' => $domain,
+                'api_key' => (string) get_option('botwriter_api_key', ''),
+                'site_token' => $candidate,
+            )),
+        ));
+
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            break;
+        }
+
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($data) || empty($data['valid']) || empty($data['site_token'])) {
+            break;
+        }
+
+        $candidate = sanitize_text_field((string) $data['site_token']);
+    }
+
+    if ($candidate !== '') {
+        update_option('botwriter_site_token', $candidate);
+    }
+
+    $pairing = false;
+    return $candidate;
 }
 
 
@@ -979,6 +1030,8 @@ function botwriter_generate_image_with_current_settings($prompt) {
         return array('success' => false, 'message' => __('Image provider is disabled in settings.', 'botwriter'));
     }
 
+    botwriter_ensure_site_token();
+
     $style_value = (string) ($settings['style_custom'] ?: $settings['style']);
     if ($style_value === 'realistic' || $style_value === 'none') {
         $style_value = '';
@@ -1030,6 +1083,10 @@ function botwriter_generate_image_with_current_settings($prompt) {
     $status_code = wp_remote_retrieve_response_code($response);
     $body_raw = wp_remote_retrieve_body($response);
     $result = json_decode($body_raw, true);
+
+    if (is_array($result) && !empty($result['site_token'])) {
+        update_option('botwriter_site_token', sanitize_text_field((string) $result['site_token']));
+    }
 
     if ($status_code !== 200 || !is_array($result) || ($result['status'] ?? '') !== 'success' || empty($result['download_url'])) {
         $error_message = '';
@@ -1444,6 +1501,7 @@ function botwriter_build_editor_assistant_prompt($target, $user_prompt, $context
  */
 function botwriter_call_editor_worker($provider, $api_key, $model, $prompt, $max_tokens = 2048, $temperature = 0.35) {
     $ssl_verify = get_option('botwriter_sslverify', 'yes') === 'yes';
+    botwriter_ensure_site_token();
 
     $provider_map = array(
         'google' => 'gemini',
@@ -4303,6 +4361,7 @@ function botwriter_send1_data_to_server($data) {
     
     Global $botwriter_version;
     $remote_url = BOTWRITER_API_URL . 'redis_api_cola.php';
+    botwriter_ensure_site_token();
     
     // Use constant to avoid get_plugin_data() and early translation loading
     $botwriter_version = BOTWRITER_VERSION;
