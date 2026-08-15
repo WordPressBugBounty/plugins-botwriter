@@ -25,10 +25,7 @@ function botwriter_get_stability_models() {
             'sd3.5-large-turbo' => 'SD 3.5 Large Turbo (fast)',
             'sd3.5-large' => 'SD 3.5 Large (highest quality)',
             'sd3.5-medium' => 'SD 3.5 Medium (balanced)',
-        ],
-        'Stable Diffusion 3' => [
-            'sd3-large' => 'SD3 Large',
-            'sd3-medium' => 'SD3 Medium',
+            'sd3.5-flash' => 'SD 3.5 Flash (lowest cost)',
         ],
         'Premium' => [
             'core' => 'Stable Image Core',

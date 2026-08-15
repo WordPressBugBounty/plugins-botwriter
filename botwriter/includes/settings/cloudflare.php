@@ -24,6 +24,12 @@ function botwriter_get_cloudflare_models() {
         'Flux (Black Forest Labs)' => [
             'flux-1-schnell' => 'FLUX.1 Schnell ⭐ (Fast, FREE tier - RECOMMENDED)',
             'flux-2-dev' => 'FLUX.2 Dev (Multi-reference, Partner - experimental)',
+            'flux-2-klein-4b' => 'FLUX.2 Klein 4B (ultra-fast)',
+            'flux-2-klein-9b' => 'FLUX.2 Klein 9B (enhanced quality)',
+        ],
+        'Leonardo' => [
+            'lucid-origin' => 'Lucid Origin',
+            'phoenix-1.0' => 'Phoenix 1.0',
         ],
         'Stable Diffusion' => [
             'stable-diffusion-xl-lightning' => 'SDXL Lightning (Very fast, Beta)',

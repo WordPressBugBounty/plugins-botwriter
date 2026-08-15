@@ -283,6 +283,38 @@ function botwriter_normalize_image_model($provider, $model) {
         }
     }
 
+    if ($provider === 'stability') {
+        $model_lc = strtolower($model);
+        $stability_aliases = array(
+            'sd3-large-turbo' => 'sd3.5-large-turbo',
+            'sd3-large' => 'sd3.5-large',
+            'sd3-medium' => 'sd3.5-medium',
+        );
+
+        if (isset($stability_aliases[$model_lc])) {
+            $model = $stability_aliases[$model_lc];
+        }
+    }
+
+    if ($provider === 'cloudflare') {
+        $model_lc = strtolower($model);
+        $cloudflare_aliases = array(
+            '@cf/black-forest-labs/flux-1-schnell' => 'flux-1-schnell',
+            '@cf/black-forest-labs/flux-2-dev' => 'flux-2-dev',
+            '@cf/black-forest-labs/flux-2-klein-4b' => 'flux-2-klein-4b',
+            '@cf/black-forest-labs/flux-2-klein-9b' => 'flux-2-klein-9b',
+            '@cf/leonardo/lucid-origin' => 'lucid-origin',
+            '@cf/leonardo/phoenix-1.0' => 'phoenix-1.0',
+            '@cf/bytedance/stable-diffusion-xl-lightning' => 'stable-diffusion-xl-lightning',
+            '@cf/stabilityai/stable-diffusion-xl-base-1.0' => 'stable-diffusion-xl-base-1.0',
+            '@cf/lykon/dreamshaper-8-lcm' => 'dreamshaper-8-lcm',
+        );
+
+        if (isset($cloudflare_aliases[$model_lc])) {
+            $model = $cloudflare_aliases[$model_lc];
+        }
+    }
+
     $valid_models = array_keys(botwriter_get_provider_image_models_flat($provider));
     if (!empty($valid_models) && in_array($model, $valid_models, true)) {
         return $model;

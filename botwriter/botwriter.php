@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.4.7
+Version: 3.4.8
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.4.7');
+    define('BOTWRITER_VERSION', '3.4.8');
 }
 
 // Plugin directory path (with trailing slash)
@@ -1544,6 +1544,7 @@ function botwriter_call_editor_worker($provider, $api_key, $model, $prompt, $max
     );
 
     $endpoint_total = count($endpoints);
+    $token_retry_attempted = false;
     foreach ($endpoints as $index => $remote_url) {
         $response = wp_remote_post($remote_url, array(
             'timeout' => 90,
@@ -1574,11 +1575,11 @@ function botwriter_call_editor_worker($provider, $api_key, $model, $prompt, $max
             continue;
         }
 
-        if (!empty($data['site_token'])) {
+        if (is_array($data) && !empty($data['site_token'])) {
             update_option('botwriter_site_token', sanitize_text_field((string) $data['site_token']));
         }
 
-        if (!empty($data['warning']) && function_exists('botwriter_announcements_add')) {
+        if (is_array($data) && !empty($data['warning']) && function_exists('botwriter_announcements_add')) {
             botwriter_announcements_add(
                 __('Service notice', 'botwriter'),
                 (string) $data['warning']
@@ -1586,21 +1587,65 @@ function botwriter_call_editor_worker($provider, $api_key, $model, $prompt, $max
         }
 
         if ($http_code !== 200 || (isset($data['status']) && $data['status'] === 'error')) {
-            $error_message = '';
-            if (is_array($data)) {
-                $error_message = (string) ($data['error'] ?? $data['message'] ?? '');
+            $worker_error_code = is_array($data) ? (string) ($data['error_code'] ?? '') : '';
+            $worker_error = is_array($data) ? (string) ($data['error'] ?? '') : '';
+            $worker_error_message = is_array($data) ? (string) ($data['error_message'] ?? $data['message'] ?? '') : '';
+            $token_issue = in_array($worker_error_code, array('invalid_site_token', 'token_required'), true)
+                || in_array($worker_error, array('invalid_site_token', 'token_required'), true)
+                || stripos($worker_error_message, 'site token') !== false
+                || stripos($worker_error_message, 'requires authentication') !== false;
+
+            if ($token_issue && !$token_retry_attempted && !empty($payload['site_token'])) {
+                $token_retry_attempted = true;
+                delete_option('botwriter_site_token');
+
+                $retry_payload = $payload;
+                $retry_payload['site_token'] = '';
+
+                botwriter_log('Editor assistant site token mismatch detected. Retrying request with empty site_token.', array(
+                    'error_code' => $worker_error_code,
+                    'error' => $worker_error,
+                    'endpoint' => $remote_url,
+                ));
+
+                $retry_response = wp_remote_post($remote_url, array(
+                    'timeout' => 90,
+                    'sslverify' => $ssl_verify,
+                    'headers' => array('Content-Type' => 'application/json'),
+                    'body' => wp_json_encode($retry_payload),
+                ));
+
+                if (!is_wp_error($retry_response)) {
+                    $http_code = wp_remote_retrieve_response_code($retry_response);
+                    $retry_body = wp_remote_retrieve_body($retry_response);
+                    $retry_data = json_decode($retry_body, true);
+
+                    if (is_array($retry_data)) {
+                        $data = $retry_data;
+                        if (!empty($retry_data['site_token'])) {
+                            update_option('botwriter_site_token', sanitize_text_field((string) $retry_data['site_token']));
+                        }
+                    }
+                }
             }
-            if ($error_message === '') {
-                $error_message = "HTTP {$http_code}";
+
+            if ($http_code !== 200 || (isset($data['status']) && $data['status'] === 'error')) {
+                $error_message = '';
+                if (is_array($data)) {
+                    $error_message = (string) ($data['error_message'] ?? $data['error'] ?? $data['message'] ?? '');
+                }
+                if ($error_message === '') {
+                    $error_message = "HTTP {$http_code}";
+                }
+                return new WP_Error('editor_worker_error', $error_message, array(
+                    'provider' => (string) $provider,
+                    'worker_provider' => (string) $worker_provider,
+                    'model' => (string) $model,
+                    'endpoint' => (string) $remote_url,
+                    'http_code' => (int) $http_code,
+                    'worker_error_code' => is_array($data) ? (string) ($data['error_code'] ?? '') : '',
+                ));
             }
-            return new WP_Error('editor_worker_error', $error_message, array(
-                'provider' => (string) $provider,
-                'worker_provider' => (string) $worker_provider,
-                'model' => (string) $model,
-                'endpoint' => (string) $remote_url,
-                'http_code' => (int) $http_code,
-                'worker_error_code' => is_array($data) ? (string) ($data['error_code'] ?? '') : '',
-            ));
         }
 
         $content = is_array($data) ? (string) ($data['content'] ?? '') : '';

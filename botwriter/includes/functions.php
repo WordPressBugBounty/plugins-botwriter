@@ -417,6 +417,11 @@ function botwriter_normalize_text_model($provider, $model) {
     }
 
     $deprecated_map = [
+        'anthropic' => [
+            'claude-sonnet-4-20250514' => 'claude-sonnet-4-6',
+            'claude-opus-4-20250514' => 'claude-opus-4-8',
+            'claude-opus-4-1-20250805' => 'claude-opus-4-8',
+        ],
         'google' => [
             'gemini-3.1-flash-lite' => 'gemini-3.5-flash',
             'gemini-3.1-flash-lite-preview' => 'gemini-3.5-flash',
@@ -433,6 +438,11 @@ function botwriter_normalize_text_model($provider, $model) {
             'models/gemini-1.5-flash' => 'gemini-3.5-flash',
             'models/gemini-1.5-pro' => 'gemini-2.5-pro',
         ],
+        'groq' => [
+            'meta-llama/llama-4-scout-17b-16e-instruct' => 'openai/gpt-oss-120b',
+            'qwen/qwen3-32b' => 'openai/gpt-oss-120b',
+            'llama-3.1-8b-instant' => 'openai/gpt-oss-20b',
+        ],
         'openrouter' => [
             'google/gemini-3.1-flash-lite' => 'google/gemini-3.5-flash',
             'google/gemini-3.1-flash-lite-preview' => 'google/gemini-3.5-flash',
@@ -440,6 +450,9 @@ function botwriter_normalize_text_model($provider, $model) {
             'google/gemini-2.0-flash' => 'google/gemini-3.5-flash',
             'google/gemini-2.0-flash-001' => 'google/gemini-3.5-flash',
             'google/gemini-2.0-flash-exp:free' => 'google/gemini-3.5-flash',
+            'mistralai/mistral-large-latest' => 'mistralai/mistral-large',
+            'meta-llama/llama-3.1-8b-instruct:free' => 'openai/gpt-oss-20b:free',
+            'qwen/qwen-2-7b-instruct:free' => 'nvidia/nemotron-3.5-lightning:free',
         ],
     ];
 
@@ -749,7 +762,60 @@ function botwriter_call_worker_nocount( $provider, $api_key, $model, $prompt, $m
     }
 
     if ( $http_code !== 200 || ( isset( $data['status'] ) && $data['status'] === 'error' ) ) {
-        $msg = $data['error'] ?? "HTTP {$http_code}";
+        $error_code = is_array( $data ) ? (string) ( $data['error_code'] ?? '' ) : '';
+        $error_name = is_array( $data ) ? (string) ( $data['error'] ?? '' ) : '';
+        $error_message = is_array( $data ) ? (string) ( $data['error_message'] ?? $data['message'] ?? '' ) : '';
+
+        $token_issue = in_array( $error_code, array( 'invalid_site_token', 'token_required' ), true )
+            || in_array( $error_name, array( 'invalid_site_token', 'token_required' ), true )
+            || stripos( $error_message, 'site token' ) !== false
+            || stripos( $error_message, 'requires authentication' ) !== false;
+
+        if ( $token_issue && ! empty( $payload['site_token'] ) ) {
+            delete_option( 'botwriter_site_token' );
+
+            $retry_payload = $payload;
+            $retry_payload['site_token'] = '';
+
+            botwriter_log( '[NoCount] Site token mismatch detected. Retrying request with empty site_token.', array(
+                'error_code' => $error_code,
+                'error' => $error_name,
+            ) );
+
+            $retry_response = wp_remote_post( BOTWRITER_API_URL . 'woo', array(
+                'timeout'   => 30,
+                'sslverify' => $ssl_verify,
+                'headers'   => array( 'Content-Type' => 'application/json' ),
+                'body'      => wp_json_encode( $retry_payload ),
+            ) );
+
+            if ( ! is_wp_error( $retry_response ) ) {
+                $http_code = wp_remote_retrieve_response_code( $retry_response );
+                $body      = wp_remote_retrieve_body( $retry_response );
+                $data      = json_decode( $body, true );
+
+                if ( is_array( $data ) && ! empty( $data['site_token'] ) ) {
+                    update_option( 'botwriter_site_token', sanitize_text_field( (string) $data['site_token'] ) );
+                }
+
+                if ( $http_code === 200 && ( ! isset( $data['status'] ) || $data['status'] !== 'error' ) ) {
+                    $content = $data['content'] ?? '';
+                    if ( empty( $content ) ) {
+                        return new WP_Error( 'empty_response', 'AI returned an empty response.' );
+                    }
+                    return $content;
+                }
+            }
+        }
+
+        $msg = '';
+        if ( is_array( $data ) ) {
+            $msg = (string) ( $data['error_message'] ?? $data['error'] ?? $data['message'] ?? '' );
+        }
+        if ( $msg === '' ) {
+            $msg = "HTTP {$http_code}";
+        }
+
         return new WP_Error( 'worker_error', $msg );
     }
 

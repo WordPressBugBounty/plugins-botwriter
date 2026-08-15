@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "updated": "2026-07-11",
+    "updated": "2026-08-15",
     "providers": {
         "dalle": {
             "default": "gpt-image-1",
@@ -119,11 +119,6 @@
                     "sd3.5-large": "SD 3.5 Large",
                     "sd3.5-medium": "SD 3.5 Medium",
                     "sd3.5-flash": "SD 3.5 Flash"
-                },
-                "Legacy (auto-rerouted)": {
-                    "sd3-large-turbo": "SD3 Large Turbo",
-                    "sd3-large": "SD3 Large",
-                    "sd3-medium": "SD3 Medium"
                 }
             },
             "all_models": []

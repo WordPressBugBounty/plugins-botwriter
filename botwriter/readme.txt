@@ -1,10 +1,10 @@
 === BotWriter – AI Writer & SEO Content Generator ===
 Contributors: estebandezafra
 Donate link: https://wpbotwriter.com
-Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, ai content generator
+Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, seo content generator
 Requires at least: 5.5
-Tested up to: 7.0
-Stable tag: 3.4.7
+Tested up to: 7.1
+Stable tag: 3.4.8
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -327,6 +327,12 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.4.8 =
+* Refreshed image model catalogs for OpenAI, Cloudflare, and Stability with current IDs.
+* Added compatibility normalization for legacy Stability model IDs and Cloudflare @cf model aliases.
+* Updated Cloudflare runtime mappings (plugin edge + server) so FLUX 2 Klein and Leonardo models are resolved correctly.
+* Improved GPT Image runtime handling so all gpt-image-* variants consistently apply size/quality mapping.
+
 = 3.4.7 =
 * Improved the new pairing system for a smoother and more reliable setup flow.
 

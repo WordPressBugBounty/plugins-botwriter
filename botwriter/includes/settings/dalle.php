@@ -32,7 +32,10 @@ function botwriter_get_dalle_models() {
     }
 
     return [
-        'gpt-image-1' => 'GPT Image 1 (latest - best quality)',
+        'gpt-image-2' => 'GPT Image 2 (latest)',
+        'gpt-image-1.5' => 'GPT Image 1.5',
+        'gpt-image-1' => 'GPT Image 1 (stable)',
+        'gpt-image-1-mini' => 'GPT Image 1 Mini',
         'dall-e-3' => 'DALL-E 3 (high quality)',
         'dall-e-2' => 'DALL-E 2 (legacy)',
     ];

@@ -770,6 +770,11 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
         }
 
         $deprecated_map = array(
+            'anthropic' => array(
+                'claude-sonnet-4-20250514' => 'claude-sonnet-4-6',
+                'claude-opus-4-20250514'   => 'claude-opus-4-8',
+                'claude-opus-4-1-20250805' => 'claude-opus-4-8',
+            ),
             'google' => array(
                 'gemini-3.1-flash-lite'   => 'gemini-3.5-flash',
                 'gemini-3.1-flash-lite-preview' => 'gemini-3.5-flash',
@@ -786,6 +791,11 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
                 'models/gemini-1.5-flash' => 'gemini-3.5-flash',
                 'models/gemini-1.5-pro'   => 'gemini-2.5-pro',
             ),
+            'groq' => array(
+                'meta-llama/llama-4-scout-17b-16e-instruct' => 'openai/gpt-oss-120b',
+                'qwen/qwen3-32b'                            => 'openai/gpt-oss-120b',
+                'llama-3.1-8b-instant'                      => 'openai/gpt-oss-20b',
+            ),
             'openrouter' => array(
                 'google/gemini-3.1-flash-lite'   => 'google/gemini-3.5-flash',
                 'google/gemini-3.1-flash-lite-preview' => 'google/gemini-3.5-flash',
@@ -793,6 +803,9 @@ Respond ONLY with the HTML content. No markdown code blocks, no extra text.",
                 'google/gemini-2.0-flash'          => 'google/gemini-3.5-flash',
                 'google/gemini-2.0-flash-001'      => 'google/gemini-3.5-flash',
                 'google/gemini-2.0-flash-exp:free' => 'google/gemini-3.5-flash',
+                'mistralai/mistral-large-latest'   => 'mistralai/mistral-large',
+                'meta-llama/llama-3.1-8b-instruct:free' => 'openai/gpt-oss-20b:free',
+                'qwen/qwen-2-7b-instruct:free'     => 'nvidia/nemotron-3.5-lightning:free',
             ),
         );
 
