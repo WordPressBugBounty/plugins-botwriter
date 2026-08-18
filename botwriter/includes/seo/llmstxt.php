@@ -383,8 +383,10 @@ function botwriter_seo_page_llmstxt() {
     }
     echo '</div></div>';
 
-    echo '<form method="post" class="bw-seo-grid cols-2">';
+    echo '<form method="post">';
     wp_nonce_field('bw_seo_llmstxt');
+
+    echo '<div class="bw-seo-grid cols-2">';
 
     botwriter_seo_card_open(__('Content sources', 'botwriter'), 'category');
     echo '<div class="bw-form-row"><label>' . esc_html__('Include post types', 'botwriter') . '</label><div>';
@@ -409,12 +411,9 @@ function botwriter_seo_page_llmstxt() {
     echo '<div class="bw-form-row"><label>' . esc_html__('Auto-refresh daily', 'botwriter') . '</label><input type="checkbox" name="auto_refresh" value="1"' . ($auto ? ' checked' : '') . ' /></div>';
     botwriter_seo_card_close();
 
-    echo '</form>'; // close grid form open above used to render cards inside; reopen for textareas
+    echo '</div>';
 
-    echo '<form method="post">';
-    wp_nonce_field('bw_seo_llmstxt');
-    // Re-emit fields so submitting any form persists everything.
-    echo '<input type="hidden" name="post_types[]" value="' . esc_attr($settings['post_types'][0] ?? 'post') . '" />';
+    echo '<div class="bw-seo-grid cols-2">';
 
     botwriter_seo_card_open(__('Manual override', 'botwriter'), 'edit-large');
     echo '<p class="description">' . esc_html__('If you fill this textarea, its content will be served instead of the generated body. Leave empty to use the generated one.', 'botwriter') . '</p>';
@@ -424,6 +423,8 @@ function botwriter_seo_page_llmstxt() {
     botwriter_seo_card_open(__('Current /llms.txt preview', 'botwriter'), 'visibility');
     echo '<pre class="bw-code-preview">' . esc_html($cache !== '' ? $cache : __('(empty — press Save & regenerate)', 'botwriter')) . '</pre>';
     botwriter_seo_card_close();
+
+    echo '</div>';
 
     echo '<p class="bw-actions-row bw-mt-16">';
     echo '<button class="bw-button primary" name="save_llmstxt" value="1"><span class="dashicons dashicons-saved"></span> ' . esc_html__('Save & regenerate', 'botwriter') . '</button>';
