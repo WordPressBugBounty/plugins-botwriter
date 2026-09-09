@@ -20,6 +20,10 @@ if (!defined('ABSPATH')) { exit; }
 
 const BOTWRITER_SEO_LLMSTXT_CRON = 'botwriter_seo_llmstxt_refresh';
 
+function botwriter_seo_llmstxt_is_enabled() {
+    return get_option('botwriter_seo_llms_txt_enabled', '1') === '1';
+}
+
 /**
  * Default settings.
  */
@@ -218,9 +222,16 @@ function botwriter_seo_llmstxt_regenerate() {
  */
 add_action('init', 'botwriter_seo_llmstxt_register_rewrite');
 function botwriter_seo_llmstxt_register_rewrite() {
+    if (!botwriter_seo_llmstxt_is_enabled()) { return; }
     add_rewrite_rule('^llms\.txt$', 'index.php?botwriter_seo_llmstxt=1', 'top');
     add_rewrite_tag('%botwriter_seo_llmstxt%', '([0-9]+)');
 }
+
+add_action('init', function () {
+    if (get_option('botwriter_seo_llms_txt_rewrite_flush_required') !== '1') { return; }
+    flush_rewrite_rules(false);
+    update_option('botwriter_seo_llms_txt_rewrite_flush_required', '0', false);
+}, 999);
 
 function botwriter_seo_llmstxt_is_current_request($wp = null) {
     if ($wp && !empty($wp->query_vars['botwriter_seo_llmstxt'])) {
@@ -240,21 +251,21 @@ function botwriter_seo_llmstxt_is_current_request($wp = null) {
 }
 
 add_action('parse_request', function ($wp) {
-    if (botwriter_seo_llmstxt_is_current_request($wp)) {
+    if (botwriter_seo_llmstxt_is_enabled() && botwriter_seo_llmstxt_is_current_request($wp)) {
         botwriter_seo_llmstxt_serve();
         exit;
     }
 });
 
 add_action('template_redirect', function () {
-    if (botwriter_seo_llmstxt_is_current_request()) {
+    if (botwriter_seo_llmstxt_is_enabled() && botwriter_seo_llmstxt_is_current_request()) {
         botwriter_seo_llmstxt_serve();
         exit;
     }
 }, 0);
 
 add_filter('redirect_canonical', function ($redirect_url) {
-    if (botwriter_seo_llmstxt_is_current_request()) {
+    if (botwriter_seo_llmstxt_is_enabled() && botwriter_seo_llmstxt_is_current_request()) {
         return false;
     }
     return $redirect_url;
@@ -294,15 +305,15 @@ function botwriter_seo_llmstxt_serve() {
  * Optional daily refresh.
  */
 add_action(BOTWRITER_SEO_LLMSTXT_CRON, function () {
-    if (get_option('botwriter_seo_llms_txt_auto') !== '1') { return; }
+    if (!botwriter_seo_llmstxt_is_enabled() || get_option('botwriter_seo_llms_txt_auto') !== '1') { return; }
     botwriter_seo_llmstxt_regenerate();
 });
 
 add_action('init', function () {
-    if (get_option('botwriter_seo_llms_txt_auto') === '1' && !wp_next_scheduled(BOTWRITER_SEO_LLMSTXT_CRON)) {
+    if (botwriter_seo_llmstxt_is_enabled() && get_option('botwriter_seo_llms_txt_auto') === '1' && !wp_next_scheduled(BOTWRITER_SEO_LLMSTXT_CRON)) {
         wp_schedule_event(time() + 3600, 'daily', BOTWRITER_SEO_LLMSTXT_CRON);
     }
-    if (get_option('botwriter_seo_llms_txt_auto') !== '1') {
+    if (!botwriter_seo_llmstxt_is_enabled() || get_option('botwriter_seo_llms_txt_auto') !== '1') {
         $ts = wp_next_scheduled(BOTWRITER_SEO_LLMSTXT_CRON);
         if ($ts) { wp_unschedule_event($ts, BOTWRITER_SEO_LLMSTXT_CRON); }
     }
@@ -348,12 +359,22 @@ function botwriter_seo_page_llmstxt() {
         if (empty($new['post_types'])) { $new['post_types'] = array('post', 'page'); }
         update_option('botwriter_seo_llms_txt_settings', $new, false);
         update_option('botwriter_seo_llms_txt_auto', !empty($_POST['auto_refresh']) ? '1' : '0');
+        $was_enabled = botwriter_seo_llmstxt_is_enabled();
+        $enabled = !empty($_POST['llmstxt_enabled']) ? '1' : '0';
+        update_option('botwriter_seo_llms_txt_enabled', $enabled, false);
 
         $override = isset($_POST['override']) ? sanitize_textarea_field(wp_unslash($_POST['override'])) : '';
         update_option('botwriter_seo_llms_txt_override', $override, false);
 
-        botwriter_seo_llmstxt_regenerate();
-        echo '<div class="bw-notice success">' . esc_html__('Saved and regenerated.', 'botwriter') . '</div>';
+        if ($was_enabled !== ($enabled === '1')) {
+            update_option('botwriter_seo_llms_txt_rewrite_flush_required', '1', false);
+        }
+        if ($enabled === '1') {
+            botwriter_seo_llmstxt_regenerate();
+            echo '<div class="bw-notice success">' . esc_html__('Saved and regenerated.', 'botwriter') . '</div>';
+        } else {
+            echo '<div class="bw-notice success">' . esc_html__('Saved. BotWriter will no longer serve /llms.txt.', 'botwriter') . '</div>';
+        }
         $settings = botwriter_seo_llmstxt_settings();
     }
 
@@ -361,6 +382,7 @@ function botwriter_seo_page_llmstxt() {
     $override = (string) get_option('botwriter_seo_llms_txt_override', '');
     $generated_at = (int) get_option('botwriter_seo_llms_txt_generated_at', 0);
     $auto = get_option('botwriter_seo_llms_txt_auto', '0') === '1';
+    $enabled = botwriter_seo_llmstxt_is_enabled();
     $physical = file_exists(ABSPATH . 'llms.txt');
 
     $allowed = function_exists('botwriter_seo_supported_post_types')
@@ -401,6 +423,7 @@ function botwriter_seo_page_llmstxt() {
     botwriter_seo_card_close();
 
     botwriter_seo_card_open(__('Tagline & automation', 'botwriter'), 'edit');
+    echo '<div class="bw-form-row"><label>' . esc_html__('Enable BotWriter llms.txt endpoint', 'botwriter') . '</label><input type="checkbox" name="llmstxt_enabled" value="1"' . ($enabled ? ' checked' : '') . ' /></div>';
     $tm = (string) $settings['tagline_mode'];
     echo '<div class="bw-form-row"><label>' . esc_html__('Tagline source', 'botwriter') . '</label><select name="tagline_mode">';
     echo '<option value="tagline"' . selected($tm, 'tagline', false) . '>' . esc_html__('WordPress site tagline', 'botwriter') . '</option>';
