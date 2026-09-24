@@ -4,7 +4,7 @@ Donate link: https://wpbotwriter.com
 Tags: ai writer, auto blogging, wordpress ai, woocommerce ai, seo content generator
 Requires at least: 5.5
 Tested up to: 7.1
-Stable tag: 3.4.10
+Stable tag: 3.5.0
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -327,6 +327,14 @@ All external service usage is detailed in the "External Services" section below.
 4. Add Tasks
 
 == Changelog ==
+= 3.5.0 =
+* Added SEO > Overwrite posts to rewrite selected existing posts, pages, and supported public custom post types with editable instructions and a reusable default prompt.
+* Added content filters and selection across pages, persistent per-user proposals, side-by-side previews, text editing, regeneration, and approval before applying changes.
+* Successful generation batches now open Pending proposals automatically. Partially failed or stopped batches retain remaining selections for retry and point users to completed proposals.
+* Added mandatory backups and SEO undo history for applied rewrites, with checks for permissions, proposal approval, and changes to the original content.
+* Preserved existing HTML structure, block markup, images, links, and shortcodes while rewriting text. Titles, URLs, publication status, and taxonomy assignments remain unchanged.
+* The new rewriting feature requires WordPress 6.7 or newer and rejects unsupported blocks, detected page-builder content, and incomplete AI responses. Completed proposals remain saved; batch processing requires the screen to stay open.
+
 = 3.4.10 =
 * Added an option to disable BotWriter's virtual llms.txt endpoint, allowing another plugin to manage /llms.txt without a conflict.
 

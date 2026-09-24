@@ -36,6 +36,7 @@ function botwriter_seo_bulk_undo_items_table() {
 
 function botwriter_seo_bulk_action_label($action) {
     $labels = array(
+        'rewrite_posts' => __('Overwrite posts', 'botwriter'),
         'regen_meta_description' => __('Refresh meta descriptions', 'botwriter'),
         'refresh_intro' => __('Strengthen intro & keyword placement', 'botwriter'),
         'expand_content' => __('Expand thin content', 'botwriter'),
@@ -64,6 +65,7 @@ function botwriter_seo_bulk_undo_revert_run($run_id) {
 
 function botwriter_seo_bulk_undo_type_for_action($action) {
     $map = array(
+        'rewrite_posts' => 'content',
         'regen_meta_description' => 'meta',
         'refresh_intro' => 'content',
         'expand_content' => 'content',
@@ -540,6 +542,13 @@ function botwriter_seo_bulk_undo_get_run_items($run_id, $status = '') {
 
 function botwriter_seo_bulk_undo_restore_content_snapshot($post_id, $snapshot) {
     $content = isset($snapshot['post_content']) ? (string) $snapshot['post_content'] : '';
+    if (!empty($snapshot['rewrite_exact'])) {
+        $result = wp_update_post(wp_slash(array('ID' => $post_id, 'post_content' => $content)), true);
+        if (is_wp_error($result) || !$result) { return false; }
+        delete_post_meta($post_id, '_botwriter_seo_analyzed_at');
+        botwriter_seo_compute_score($post_id, true);
+        return true;
+    }
     $ok = function_exists('botwriter_seo_bulk_update_post_content')
         ? botwriter_seo_bulk_update_post_content($post_id, $content)
         : !is_wp_error(wp_update_post(array('ID' => $post_id, 'post_content' => $content), true));

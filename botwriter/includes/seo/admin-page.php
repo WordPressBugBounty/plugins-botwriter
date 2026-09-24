@@ -15,6 +15,7 @@ function botwriter_seo_pages() {
         'botwriter_seo' => array('label' => __('Dashboard', 'botwriter'), 'icon' => 'chart-area', 'render' => 'botwriter_seo_page_dashboard'),
         'botwriter_seo_bulk_analysis' => array('label' => __('Bulk analysis', 'botwriter'), 'icon' => 'analytics', 'render' => 'botwriter_seo_page_bulk_analysis'),
         'botwriter_seo_bulk_actions' => array('label' => __('Bulk actions', 'botwriter'), 'icon' => 'admin-tools', 'render' => 'botwriter_seo_page_bulk_actions'),
+        'botwriter_seo_rewrite' => array('label' => __('Overwrite posts', 'botwriter'), 'icon' => 'edit-page', 'render' => 'botwriter_seo_page_rewrite'),
         'botwriter_seo_internal_links' => array('label' => __('Audit Internal Links', 'botwriter'), 'icon' => 'admin-links', 'render' => 'botwriter_seo_page_internal_links'),
         'botwriter_seo_llmstxt' => array('label' => __('llms.txt', 'botwriter'), 'icon' => 'format-aside', 'render' => 'botwriter_seo_page_llmstxt'),
         'botwriter_seo_media_alt' => array('label' => __('Media ALT', 'botwriter'), 'icon' => 'format-image', 'render' => 'botwriter_seo_page_media_alt'),
@@ -27,6 +28,7 @@ function botwriter_seo_primary_page_slugs() {
         'botwriter_seo',
         'botwriter_seo_bulk_analysis',
         'botwriter_seo_bulk_actions',
+        'botwriter_seo_rewrite',
     );
 }
 
@@ -284,5 +286,6 @@ function botwriter_seo_kpi($label, $value, $icon = 'chart-bar', $color = 'primar
 require_once __DIR__ . '/pages/dashboard.php';
 require_once __DIR__ . '/pages/bulk-analysis.php';
 require_once __DIR__ . '/pages/bulk-actions.php';
+require_once __DIR__ . '/pages/rewrite.php';
 require_once __DIR__ . '/pages/internal-links.php';
 require_once __DIR__ . '/pages/settings.php';

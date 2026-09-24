@@ -44,6 +44,7 @@ require_once $botwriter_seo_dir . 'bulk/targeting.php';
 require_once $botwriter_seo_dir . 'bulk/actions.php';   // defines botwriter_seo_ai_config used elsewhere
 require_once $botwriter_seo_dir . 'bulk/analysis.php';
 require_once $botwriter_seo_dir . 'bulk/action-optimize-images.php';
+require_once $botwriter_seo_dir . 'bulk/rewrite.php';
 
 // 4) AI editorial
 require_once $botwriter_seo_dir . 'ai/faq.php';
