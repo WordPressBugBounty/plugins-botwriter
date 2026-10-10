@@ -335,13 +335,21 @@ function botwriter_ajax_test_model() {
 
     $ssl_verify = get_option('botwriter_sslverify', 'yes') === 'yes';
     $test_message = 'Say "Ready!" in one word.';
+    $model = botwriter_normalize_text_model($provider, $model);
 
     // Provider-specific API calls
     switch ($provider) {
         case 'openai':
-            // GPT-5 and GPT-4.1 models require max_completion_tokens instead of max_tokens
-            $is_new_model = preg_match('/^(gpt-5|gpt-4\.1|o\d)/i', $model);
+            $is_new_model = preg_match('/^(gpt-[56]|gpt-4\.1|o\d)/i', $model);
             $token_param = $is_new_model ? 'max_completion_tokens' : 'max_tokens';
+            $test_body = array(
+                'model' => $model,
+                'messages' => array(array('role' => 'user', 'content' => $test_message)),
+                $token_param => $is_new_model ? 1024 : 10,
+            );
+            if (preg_match('/^gpt-6/i', $model)) {
+                $test_body['reasoning_effort'] = strpos($model, 'gpt-6-luna') === 0 ? 'none' : 'low';
+            }
             
             $response = wp_remote_post('https://api.openai.com/v1/chat/completions', array(
                 'timeout' => 30,
@@ -350,17 +358,19 @@ function botwriter_ajax_test_model() {
                     'Authorization' => 'Bearer ' . $api_key,
                     'Content-Type' => 'application/json',
                 ),
-                'body' => wp_json_encode(array(
-                    'model' => $model,
-                    'messages' => array(
-                        array('role' => 'user', 'content' => $test_message)
-                    ),
-                    $token_param => 10,
-                )),
+                'body' => wp_json_encode($test_body),
             ));
             break;
 
         case 'anthropic':
+            $test_body = array(
+                'model' => $model,
+                'max_tokens' => 1024,
+                'messages' => array(array('role' => 'user', 'content' => $test_message)),
+            );
+            if (strpos($model, 'claude-haiku-5-5') === 0) {
+                $test_body['thinking'] = array('type' => 'disabled');
+            }
             $response = wp_remote_post('https://api.anthropic.com/v1/messages', array(
                 'timeout' => 30,
                 'sslverify' => $ssl_verify,
@@ -369,13 +379,7 @@ function botwriter_ajax_test_model() {
                     'anthropic-version' => '2023-06-01',
                     'Content-Type' => 'application/json',
                 ),
-                'body' => wp_json_encode(array(
-                    'model' => $model,
-                    'max_tokens' => 10,
-                    'messages' => array(
-                        array('role' => 'user', 'content' => $test_message)
-                    ),
-                )),
+                'body' => wp_json_encode($test_body),
             ));
             break;
 
@@ -433,7 +437,7 @@ function botwriter_ajax_test_model() {
                     'messages' => array(
                         array('role' => 'user', 'content' => $test_message)
                     ),
-                    'max_tokens' => 10,
+                    'max_tokens' => 1024,
                 )),
             ));
             break;
@@ -453,7 +457,7 @@ function botwriter_ajax_test_model() {
                     'messages' => array(
                         array('role' => 'user', 'content' => $test_message)
                     ),
-                    'max_tokens' => 10,
+                    'max_tokens' => 1024,
                 )),
             ));
             break;
@@ -488,7 +492,11 @@ function botwriter_ajax_test_model() {
                 $reply = $data['choices'][0]['message']['content'] ?? '';
                 break;
             case 'anthropic':
-                $reply = $data['content'][0]['text'] ?? '';
+                foreach (($data['content'] ?? array()) as $block) {
+                    if (($block['type'] ?? '') === 'text') {
+                        $reply .= $block['text'] ?? '';
+                    }
+                }
                 break;
             case 'google':
                 $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
@@ -504,7 +512,7 @@ function botwriter_ajax_test_model() {
                 ),
             ));
         } else {
-            wp_send_json_success(array('message' => __('Model is working!', 'botwriter')));
+            wp_send_json_error(array('message' => __('The model returned no text. Check its output limit and availability.', 'botwriter')));
         }
     }
 
@@ -832,7 +840,7 @@ function botwriter_ajax_save_settings() {
         if ($value === '') {
             if (function_exists('botwriter_get_provider_text_model_defaults')) {
                 $defaults = botwriter_get_provider_text_model_defaults();
-                $value = (string) ($defaults[$provider] ?? 'gpt-5.4-mini');
+                $value = (string) ($defaults[$provider] ?? 'gpt-6-luna');
             } else {
                 $value = $raw_value;
             }
@@ -1652,37 +1660,37 @@ function botwriter_get_all_settings() {
 
     $dalle_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('dalle')
-        : 'gpt-image-1';
+        : 'gpt-image-2.5-flare';
     $gemini_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('gemini')
         : 'gemini-3.1-flash-lite-image';
     $fal_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('fal')
-        : 'fal-ai/flux-pro/v1.1';
+        : 'fal-ai/flux/schnell';
     $replicate_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('replicate')
-        : 'black-forest-labs/flux-1.1-pro';
+        : 'black-forest-labs/flux-schnell';
     $stability_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('stability')
-        : 'sd3.5-large-turbo';
+        : 'sd3.5-flash';
     $cloudflare_default = function_exists('botwriter_get_provider_default_image_model')
         ? botwriter_get_provider_default_image_model('cloudflare')
         : 'flux-1-schnell';
 
     if ($dalle_default === '') {
-        $dalle_default = 'gpt-image-1';
+        $dalle_default = 'gpt-image-2.5-flare';
     }
     if ($gemini_default === '') {
         $gemini_default = 'gemini-3.1-flash-lite-image';
     }
     if ($fal_default === '') {
-        $fal_default = 'fal-ai/flux-pro/v1.1';
+        $fal_default = 'fal-ai/flux/schnell';
     }
     if ($replicate_default === '') {
-        $replicate_default = 'black-forest-labs/flux-1.1-pro';
+        $replicate_default = 'black-forest-labs/flux-schnell';
     }
     if ($stability_default === '') {
-        $stability_default = 'sd3.5-large-turbo';
+        $stability_default = 'sd3.5-flash';
     }
     if ($cloudflare_default === '') {
         $cloudflare_default = 'flux-1-schnell';
@@ -1745,22 +1753,22 @@ function botwriter_get_all_settings() {
         // Text models
         'botwriter_openai_model' => function_exists('botwriter_get_provider_text_model')
             ? botwriter_get_provider_text_model('openai')
-            : get_option('botwriter_openai_model', 'gpt-5.4-mini'),
+            : get_option('botwriter_openai_model', 'gpt-6-luna'),
         'botwriter_anthropic_model' => function_exists('botwriter_get_provider_text_model')
             ? botwriter_get_provider_text_model('anthropic')
-            : get_option('botwriter_anthropic_model', 'claude-sonnet-4-6'),
+            : get_option('botwriter_anthropic_model', 'claude-haiku-5-5'),
         'botwriter_google_model' => function_exists('botwriter_get_provider_text_model')
             ? botwriter_get_provider_text_model('google')
-            : get_option('botwriter_google_model', 'gemini-3.5-flash'),
+            : get_option('botwriter_google_model', 'gemini-3.5-flash-lite'),
         'botwriter_mistral_model' => function_exists('botwriter_get_provider_text_model')
             ? botwriter_get_provider_text_model('mistral')
-            : get_option('botwriter_mistral_model', 'mistral-large-latest'),
+            : get_option('botwriter_mistral_model', 'ministral-3b-2512'),
         'botwriter_groq_model' => function_exists('botwriter_get_provider_text_model')
             ? botwriter_get_provider_text_model('groq')
-            : get_option('botwriter_groq_model', 'llama-3.3-70b-versatile'),
+            : get_option('botwriter_groq_model', 'openai/gpt-oss-20b'),
         'botwriter_openrouter_model' => function_exists('botwriter_get_provider_text_model')
             ? botwriter_get_provider_text_model('openrouter')
-            : get_option('botwriter_openrouter_model', 'anthropic/claude-sonnet-4.6'),
+            : get_option('botwriter_openrouter_model', 'openai/gpt-oss-20b'),
         // Image models
         'botwriter_dalle_model' => function_exists('botwriter_get_current_image_model_by_provider')
             ? botwriter_get_current_image_model_by_provider('dalle')

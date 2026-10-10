@@ -32,12 +32,9 @@ function botwriter_get_dalle_models() {
     }
 
     return [
-        'gpt-image-2' => 'GPT Image 2 (latest)',
-        'gpt-image-1.5' => 'GPT Image 1.5',
-        'gpt-image-1' => 'GPT Image 1 (stable)',
-        'gpt-image-1-mini' => 'GPT Image 1 Mini',
-        'dall-e-3' => 'DALL-E 3 (high quality)',
-        'dall-e-2' => 'DALL-E 2 (legacy)',
+        'gpt-image-2.5-flare' => 'GPT Image 2.5 Flare (fast/economical)',
+        'gpt-image-2.5-sunburst' => 'GPT Image 2.5 Sunburst',
+        'gpt-image-2' => 'GPT Image 2',
     ];
 }
 
@@ -46,19 +43,17 @@ function botwriter_get_dalle_models() {
  */
 function botwriter_get_dalle_info() {
     return [
-        'name' => 'DALL-E (OpenAI)',
-        'description' => __('OpenAI\'s image generation models. The latest GPT Image 1 offers the best quality and prompt adherence.', 'botwriter'),
+        'name' => 'GPT Image (OpenAI)',
+        'description' => __('OpenAI image generation with GPT Image. Flare prioritizes speed; Sunburst prioritizes quality.', 'botwriter'),
         'website' => 'https://openai.com',
         'api_url' => 'https://platform.openai.com/api-keys',
         'docs_url' => 'https://platform.openai.com/docs/guides/images',
         'pricing_url' => 'https://openai.com/api/pricing/',
         'free_credits' => __('Included in OpenAI API free credits ($5 for new accounts)', 'botwriter'),
         'pricing_summary' => [
-            'GPT Image 1 (Low)' => '~$0.01/image',
-            'GPT Image 1 (Medium)' => '~$0.04/image',
-            'GPT Image 1 (High)' => '~$0.17/image',
-            'DALL-E 3 (1024x1024)' => '$0.04/image',
-            'DALL-E 3 (1792x1024)' => '$0.08/image',
+            'GPT Image 2.5 Flare' => __('See pricing page (depends on size and quality)', 'botwriter'),
+            'GPT Image 2.5 Sunburst' => __('See pricing page (depends on size and quality)', 'botwriter'),
+            'GPT Image 2' => __('See pricing page (depends on size and quality)', 'botwriter'),
         ],
         'features' => [
             __('Uses the same API key as OpenAI text models', 'botwriter'),

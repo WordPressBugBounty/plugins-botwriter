@@ -1,0 +1,401 @@
+BotWriter - Full Changelog
+==========================
+
+= 3.6.0 =
+* Refreshed text and image model catalogs against provider documentation, with fast, economical defaults and automatic migration of obsolete selections. Existing active selections are preserved.
+* Added current model families including GPT-6, Claude 5.5, Gemini 3.8 Flash, Mistral Large 4, and Nano Banana 2.1.
+* Aligned model defaults and obsolete-model handling across WordPress settings, WooCommerce, SEO, Super Tasks, and the Worker service.
+* Updated GPT-6 and Claude request compatibility, provider model tests, and pricing summaries. Model tests now report empty responses as errors.
+
+= 3.5.0 =
+* Added SEO > Overwrite posts to rewrite selected existing posts, pages, and supported public custom post types with editable instructions and a reusable default prompt.
+* Added content filters and selection across pages, persistent per-user proposals, side-by-side previews, text editing, regeneration, and approval before applying changes.
+* Successful generation batches now open Pending proposals automatically. Partially failed or stopped batches retain remaining selections for retry and point users to completed proposals.
+* Added mandatory backups and SEO undo history for applied rewrites, with checks for permissions, proposal approval, and changes to the original content.
+* Preserved existing HTML structure, block markup, images, links, and shortcodes while rewriting text. Titles, URLs, publication status, and taxonomy assignments remain unchanged.
+* The new rewriting feature requires WordPress 6.7 or newer and rejects unsupported blocks, detected page-builder content, and incomplete AI responses. Completed proposals remain saved; batch processing requires the screen to stay open.
+
+= 3.4.10 =
+* Added an option to disable BotWriter's virtual llms.txt endpoint, allowing another plugin to manage /llms.txt without a conflict.
+
+= 3.4.9 =
+* Fixed llms.txt AI search profile settings so selected post types, including Pages and Products, are saved correctly.
+
+= 3.4.8 =
+* Refreshed image model catalogs for OpenAI, Cloudflare, and Stability with current IDs.
+* Added compatibility normalization for legacy Stability model IDs and Cloudflare @cf model aliases.
+* Updated Cloudflare runtime mappings (plugin edge + server) so FLUX 2 Klein and Leonardo models are resolved correctly.
+* Improved GPT Image runtime handling so all gpt-image-* variants consistently apply size/quality mapping.
+
+= 3.4.7 =
+* Improved the new pairing system for a smoother and more reliable setup flow.
+
+= 3.4.6 =
+* Added a new SEO Bulk Action: Rewrite existing image ALT, to regenerate ALT text even when images already have ALT values.
+* Added SEO internal-links target scope setting with Any, Posts only, and Products only options.
+* Refreshed Google Gemini image models to stable IDs (gemini-3.1-flash-lite-image, gemini-3.1-flash-image, gemini-3-pro-image), keeping gemini-2.5-flash-image as legacy and adding backward-compatible alias normalization.
+
+= 3.4.5 =
+* Removed Gemini 2.5 Flash and Gemini 2.5 Flash-Lite from selectable text model catalogs.
+* Added automatic fallback normalization to Gemini 3.5 Flash for legacy saved model settings.
+* Hardened model catalog sanitization so deprecated Gemini 2.5 Flash aliases are not reintroduced as selectable options.
+
+= 3.4.4 =
+* Fixed BotWriter Copilot floating widget visibility in the WordPress page editor (now matches post editor behavior).
+* Aligned editor-assistant permission checks for page editing roles.
+
+= 3.4.3 =
+* Added explicit API-key transmission notices in provider settings to improve transparency.
+* Expanded External Services disclosure with detailed key-routing and processing behavior.
+* Enforced SSL certificate verification in plugin settings (SSL bypass option removed).
+
+= 3.4.2 =
+* Updated bundled Bootstrap assets to 5.3.8 and jQuery UI base CSS to 1.14.2.
+* Refreshed curated text model lists for OpenAI, Anthropic, Google Gemini, Mistral, Groq and OpenRouter.
+* Removed obsolete Gemini Flash-Lite preview and legacy Magistral options from default model lists.
+
+= 3.4.1 =
+* Added WooCommerce AI request activity summary to the Optimization History screen.
+* Added current-month, previous-month, and retained seven-month request totals.
+
+
+= 3.4.0 =
+* Various fixes and improvements to improve SEO workflows.
+
+= 3.3.8 =
+* WooCommerce AI SEO output is now normalized before save/apply: BotWriter cleans JSON/array wrappers (for example `[ { "seo_title": "..." } ]`) and stores plain SEO title/meta text.
+* Improved handling of nested/double-encoded JSON responses in Woo SEO title and meta description generation.
+
+= 3.3.7 =
+* SEO Bulk Actions now inherit the global Text AI provider/model by default, with optional provider/model overrides available in SEO Settings.
+
+= 3.3.6 =
+* Added official BotWriter AI Writer page link to plugin description.
+
+= 3.3.5 =
+* Fixed WooCommerce AI token recovery: when the server returns invalid_site_token, Woo now clears the stale local token, retries once, and stores the new site_token returned by the API.
+* Improved Woo token-sync resilience after reinstall, reconnect, or domain re-pair operations.
+
+= 3.3.4 =
+* SEO settings updated with a cleaner publish-time actions workflow.
+* AI SEO meta generation now auto-syncs to excerpt and active SEO plugin fields from a single toggle.
+* Internal links post-processing now runs deterministic-first, with AI used only as fallback when deterministic insertion finds no links.
+* Added deterministic featured image ALT autofill on publish (fills empty ALT with post title).
+* Added optional publish-time FAQ generation with output mode control: visible block + schema or schema-only (disabled by default).
+* Added optional Open Graph + Twitter Cards output with anti-duplicate safeguards when major SEO plugins are active (disabled by default).
+* Added a new default template: SEO 2026 Optimized Article.
+
+= 3.3.3 =
+* Stock Images is now the default image provider on first plugin installation.
+* Preferred stock bank now defaults to Random on first plugin installation.
+* Added Random as preferred stock bank option in settings and improved automatic bank rotation.
+* Improved stock image metadata so the reported image model reflects the selected/resolved stock bank.
+
+= 3.3.2 =
+* Added a dedicated image models catalog and refreshed image provider model lists with newer options.
+* New image model options include GPT Image 2, Gemini 3.1 Flash Image Preview, Flux 2 family, Nano Banana, Seedream 4.5, and Cloudflare FLUX.2 Klein variants.
+
+= 3.3.1 =
+* Improved RSS duplicate control to skip source items that are too similar to recently published posts.
+* Fixed RSS/WordPress source retry timing so failed prefetches follow the normal backoff schedule instead of being retried in rapid bursts.
+
+
+= 3.3.0 =
+* NEW: Added FULL SEO Module 
+* NEW: Added BotWriter Floating Copilot in the post editor (Prompt + SEO assistant workspace).
+
+= 3.2.9 =
+* NEW: Added image editing/regeneration from the Logs screen using the same modal as post editing.
+
+= 3.2.8 =
+* NEW: Added featured image regeneration for published posts to improve SEO and ai writer workflows.
+
+
+= 3.2.7 =
+* Fixed WooCommerce AI product descriptions being applied as plain text instead of HTML in some providers like Gemini.
+
+= 3.2.6 =
+**Updated AI Model Defaults**
+* OpenAI: Updated to GPT-5.4 series (gpt-5.4, gpt-5.4-mini, gpt-5.4-nano). Removed deprecated GPT-4.1 models
+* Anthropic: Added Claude 4.6 (Opus 4.6, Sonnet 4.6). Removed legacy Claude 3.x models
+* Google: Added Gemini 3.1 Pro/Flash-Lite Preview. Removed deprecated Gemini 2.0 and shut-down Gemini 3 Pro Preview
+* Mistral: Updated to Mistral Large 3, Medium 3.1, Small 4. Added Magistral reasoning models. Removed deprecated Mixtral, Codestral, Ministral
+* Groq: Added OpenAI GPT-OSS (120B, 20B) and Qwen3 32B. Removed deprecated Mixtral, Gemma 2, Llama 4 Maverick
+* OpenRouter: Updated top models to Claude 4.6 and GPT-5.4. Added Gemma 4 26B free model
+
+= 3.2.5 =
+📷 **Free Stock Image Banks**
+* Stock photo banks as a free image provider — no API generation costs
+* Search Pixabay, Pexels, Unsplash, and Openverse for relevant featured images
+* AI generates short keyword phrases to find the best matching photo
+* Automatic fallback: if preferred bank has no results, tries the next one
+* Selection modes: first result, random from top 5, or random from top 10
+* Configurable attribution: image caption, post footer, or disabled
+* Orientation auto-detected from image size setting (landscape, square, portrait)
+* All four banks are completely free to use ($0.00 per image)
+
+= 3.1.0 =
+🏗️ **Architecture Refactor — Pure SaaS Client**
+* Refactored plugin to act purely as a client/interface to the BotWriter cloud service
+* All service-level decisions (processing, scheduling, retries) are now handled by the remote service
+* Removed local checking engine — the plugin delegates entirely to the cloud service
+* Removed Freemius SDK entirely — no longer bundled with the plugin
+* Removed local entitlement logic from all generation flows
+* All writers (Max, Cloe, Gael, Custom) are now available to all users
+* Neutral, non-marketing service error messages replace all upgrade/renew prompts
+* Centralized service response handler for consistent error display
+* Updated readme to accurately describe the SaaS architecture
+
+= 3.0.1 =
+🌟 **Demo Review Generator for WooCommerce**
+* Generate simulated demo/test product review data with configurable settings
+* Configurable star rating distribution (1★–5★ percentages)
+* Review length options: short, medium, long, or mixed with custom percentages
+* Content style/tone selection: natural, enthusiastic, professional, casual
+* Optional minor cons inclusion for natural variety
+* Auto-generated or custom reviewer names
+* Date scheduling: all today or spread over past N days
+* Internal demo/test metadata for cleanup
+* Delete only BotWriter-generated demo reviews (tracked via metadata)
+* Product filter by review count, rating, and category
+
+📊 **Optimization History**
+* Full history of all WooCommerce AI optimizations
+* Visual before/after diff for every field
+* Per-field revert or full product revert
+* Search, filter by date, category, and pagination
+* "Select all filtered" for bulk operations
+
+🔧 **Improvements**
+* SEO meta/title now stored in BotWriter fallback keys when no SEO plugin is installed
+* Fixed SEO meta incorrectly writing to short description field
+* Better error handling for WooCommerce AI operations
+
+= 3.0.0 =
+🛒 **WooCommerce AI Content Optimizer**
+* Dedicated WooCommerce AI Content Optimizer dashboard
+* Bulk-optimize product titles, descriptions, short descriptions, tags, and image ALT text
+* AI-generated SEO meta descriptions and SEO titles
+* AI-powered review summaries (sentiment analysis of existing reviews)
+* Category description optimizer with product context
+* Advanced product filters: status, category, stock, type, word count, price, tag count, review count
+* Preview & approve workflow: review all AI changes before applying
+* Automatic backup and one-click revert for every optimization
+* SEO plugin integration: Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework
+* Customizable prompt templates with {{placeholder}} variables
+* Configurable batch size and processing delay
+* Works with all supported AI text providers
+
+= 2.2.0 =
+✏️ **Content Rewriter**
+* Rewrite existing articles from any URL using AI
+* Add articles by URL or paste content manually
+
+🌐 **Site Rewriter**
+* Crawl an entire website and rewrite all its pages with AI
+* Select which pages to rewrite with checkbox UI
+* Content warnings for pages with missing or short content
+
+📋 **Manual Titles for Articles**
+* Paste your list of titles and the AI will write the articles
+* Quick way to plan and generate content in bulk
+
+🔍 **SEO Meta Description**
+* AI-generated meta descriptions for every published post
+* Compatible with Yoast SEO, Rank Math, All in One SEO, SEOPress, and The SEO Framework
+* Falls back to a standard meta tag if no SEO plugin is detected
+
+
+
+= 2.1.0 =
+🌐 **SEO Slug Translation**
+* Automatically translate post URL slugs, tag slugs, and image filenames to your target language
+* "SEO Translation" settings tab with master enable/disable toggle
+* Choose what to translate independently — post slugs, tag slugs, image filenames
+* 28 target languages supported (English, Spanish, French, German, Chinese, Japanese, Arabic, and more)
+
+= 2.0.9 =
+📝 **Post Type & Taxonomy Selector**
+* Choose any post type for your tasks — Posts, Pages, Products (WooCommerce) or any custom post type
+* Dynamic taxonomy selector — automatically loads available taxonomies and terms for the selected post type
+* Tasks now store full taxonomy data for precise content categorization
+* Backward compatible with existing category-based tasks
+
+🔧 **Bug Fixes**
+* Fixed form submission conflict with WordPress core admin routing
+* Fixed JavaScript error in category pre-selection for new tasks
+* Minor stability improvements
+
+= 2.0.7 =
+🎨 **Image Style Presets**
+* Choose from 12 artistic styles for AI-generated images
+* Styles: Realistic, Digital Art, Illustration, Cartoon, Comic, Anime, 3D Render, Watercolor, Oil Painting, Minimalist, Vintage, Cinematic
+* Custom style option - define your own style with free text
+* Style is automatically applied as a prefix to image prompts
+
+⚡ **Smart Image Optimization**
+* Automatic image post-processing for web optimization
+* Convert images to WebP format (typically 90%+ size reduction)
+* Resize images to configurable max width (default: 1200px)
+* Compress to target file size (default: 120KB - ideal for Google Discover)
+* Quality slider: balance between file size and image quality
+* Uses WordPress native image editor (Imagick/GD) for maximum compatibility
+
+🔧 **Bug Fixes**
+* Fix for Japanese and non-ASCII image filenames
+
+= 2.0.6 =
+� **No Image Generation Option**
+* "No Image Generation" option in Image Provider dropdown
+* Useful for text-only workflows where images are not needed
+* Automatically forces "Disable AI Images" in task creation when selected
+
+
+= 2.0.5 =
+**Google Gemini Image Provider + JSON Parsing Improvements**
+* Google Gemini as native image provider (gemini-2.5-flash-preview-image-generation)
+* Improved JSON parsing for AI responses
+* Better error handling across all providers
+
+= 2.0.2 =
+**Models Management & Testing**
+
+🔧 **API Testing**
+* "Test API Key & Update Models" button for all text AI providers
+* "Test Model" button to verify model connectivity before use
+* Automatic model discovery - fetches all available models from provider APIs
+* Smart filtering: excludes non-text models (DALL-E, TTS, embeddings from OpenAI; non-generateContent from Google)
+
+📋 **Centralized Models System**
+* JSON-based models configuration for easier updates
+* "Reset Models to Default" button in Settings > General > Tools
+* Models are now stored in database and can be updated dynamically
+* Updated model lists: Claude 4.5, Gemini 3.0 Preview, GPT-5 series
+
+🎯 **UI Improvements**
+* Added "FREE TIER" labels for Google, Mistral, Groq, and OpenRouter providers
+* Added "Disable Tags" option in Settings > General > Others
+* Page auto-reloads after model updates to show new models
+
+= 2.0.1 =
+**Major Release: Multi-Provider Architecture**
+
+🚀 **Multi-Provider Text Generation**
+* Support for 7 AI text providers
+* OpenAI: GPT-5.5, GPT-5.4, GPT-5.4 mini/nano
+* Anthropic: Claude Sonnet 4.5, Claude Haiku
+* Google: Gemini 2.5 Pro, Gemini 2.5 Flash
+* Mistral: Mistral Large, Mistral Small
+* Groq: Llama 3.3 70B with ultra-fast inference
+* OpenRouter: Access to 200+ models
+* DeepSeek: Cost-effective alternatives
+* Each task can use a different text provider
+
+🎨 **Multi-Provider Image Generation**
+* Support for 5 AI image providers with 50+ models
+* OpenAI DALL-E: GPT-Image-1, DALL-E 3
+* Fal.ai: Flux 2 Pro/Dev, Nano Banana Pro, Seedream 4.5, Recraft V3
+* Replicate: Flux 1.1 Pro, Ideogram V3, Imagen 4, Nano Banana Pro
+* Stability AI: Stable Diffusion 3.5, SD3 Turbo
+* Cloudflare Workers AI: Flux Schnell (fast & affordable)
+* Each task can use a different image provider and model
+
+📝 **Article Templates**
+* Create and save reusable article templates
+* Pre-configured prompts, styles, and structures
+* One-click template application to any task
+* Ensures consistent, professional content
+
+🔧 **Improvements**
+* Redesigned Settings UI with provider-specific tabs
+* Better error handling and retry logic for all providers
+* Improved logging with provider information
+* Faster task processing with optimized API calls
+
+
+= 1.4.3 =
+* New feature: Option to disable AI image generation per task
+* Enhanced task configuration: Added "Disable AI Images" checkbox
+* Improved user experience: Updated progress messages
+
+= 1.4.2 =
+Major: Write now (one-off post, runs immediately)
+* "Write now" screen to create a single post instantly
+* UX: Live progress with timeline messages and progress bar
+* Error handling: Friendly error details with Retry and Cancel options
+* Security: Stricter nonce/capability checks
+
+
+
+
+== External Services ==
+
+This plugin relies on third-party external services to generate text and images automatically, as well as to retrieve related content for your blog.
+
+    Service's Terms
+     https://wpbotwriter.com/service-terms.html
+
+    Privacy Policy
+    https://wpbotwriter.com/privacy-policy.html
+
+Below is a summary of the external services used and the data they handle:
+
+**1. BotWriter Cloud Service — Managed AI Processing Hub (api.wpbotwriter.com)**
+
+BotWriter routes all content generation requests through the BotWriter cloud service at api.wpbotwriter.com, which acts as a **centralized processing hub** between your site and the AI providers. The plugin may also contact provider endpoints directly for optional settings actions such as API key verification and model connectivity tests initiated by the site administrator.
+
+**Why is this cloud service necessary?**
+
+AI content generation is fundamentally different from typical WordPress operations. A single article generation request involves multiple sequential steps — building a structured prompt, calling the AI text provider, parsing and validating the response, extracting image prompts, calling a separate AI image provider, downloading and processing the generated image, and assembling the final result. This entire pipeline can take anywhere from 30 seconds to several minutes depending on the providers and content length.
+
+Most WordPress hosting environments (shared hosting, managed WordPress hosts) impose strict execution time limits (typically 30–60 seconds) and restrict long-running background processes. Making these calls directly from WordPress would result in frequent timeouts, lost content, and failed tasks — especially when generating multiple articles in sequence or processing bulk WooCommerce optimizations.
+
+The BotWriter cloud service solves these problems by offloading the heavy lifting to a dedicated infrastructure designed for long-running AI workloads:
+
+* **Long-running session management:** AI provider API calls can take 30–120+ seconds per request. The cloud service maintains persistent HTTPS connections to AI providers for as long as needed, without being constrained by your web server's timeout limits. Your WordPress site only needs short polling requests (a few seconds each) to check for completed results.
+* **Asynchronous job queue:** Tasks are placed in a processing queue and executed independently. Your WordPress cron submits a task and moves on immediately — the cloud service handles the actual generation in the background. This means your site's performance is never affected by AI processing.
+* **Multi-provider orchestration:** BotWriter supports 7+ text providers and 6+ image providers, each with different API formats, authentication methods, rate limits, and error behaviors. The cloud service normalizes all of this into a single consistent interface, so the plugin doesn't need to bundle and maintain separate API client libraries for every provider.
+* **Intelligent error recovery and retries:** AI providers frequently return transient errors — rate limits (HTTP 429), server overload (HTTP 503), temporary outages, and malformed responses. The cloud service implements provider-specific retry strategies with exponential backoff, automatically re-submitting failed requests without any intervention from your WordPress site.
+* **Provider-specific fallback logic:** If a provider consistently fails (e.g., an API outage), the cloud service can detect patterns and surface clear error messages, preventing your WordPress cron from burning cycles on doomed requests.
+* **Result caching and delivery guarantee:** Completed results are stored in the cloud and delivered to your site on the next cron poll. Even if your WordPress server is briefly unavailable (maintenance, reboot, host downtime), no generated content is ever lost.
+* **Structured response parsing:** AI models don't always return perfectly formatted output. The cloud service parses, validates, and structures the AI response (title, content, tags, image prompt) before delivering it, handling edge cases like malformed JSON, markdown fences in code blocks, and truncated responses.
+* **Image generation pipeline:** After text generation completes, the cloud service automatically extracts the AI-generated image prompt, calls the configured image provider, waits for the image to be rendered, and makes it available for download — all in a single seamless pipeline that would be nearly impossible to run reliably within WordPress's execution constraints.
+* **Request lifecycle tracking:** The cloud service monitors the processing pipeline end-to-end — from queue entry through provider call to result delivery — ensuring every request completes or surfaces a clear diagnostic message.
+
+This architecture means that even sites on basic shared hosting can reliably generate AI content with any provider — something that would be technically impossible if the plugin attempted to make these long-running API calls directly.
+
+Endpoints used:
+- **Queue Request:** `https://api.wpbotwriter.com/redis_api_cola.php` — Submits content generation requests to the processing queue
+- **Retrieve Results:** `https://api.wpbotwriter.com/redis_api_finish.php` — Retrieves completed content from the queue
+
+**Sent to BotWriter Platform:** site URL, site_token (a unique UUID auto-provisioned on first contact, used to identify the site — see FAQ), plugin version, task configuration (prompts, language, length, provider preferences), selected provider/model settings, and the provider API keys needed to process generation requests. Remote requests use HTTPS with SSL certificate verification enforced by the plugin.
+
+**Sent to selected AI provider:** the BotWriter cloud service uses the selected provider API key to call the AI provider you configured. The provider receives the prompts and generation settings required to complete the request.
+
+**API key handling:** API keys may be transmitted to the BotWriter Worker service only for generation routing. Provider API keys are encrypted in your WordPress database (AES-256 using your site's AUTH_KEY). For queued jobs, key material may be encrypted temporarily while the job is pending and removed after processing; synchronous generation requests are used for the request and are not stored permanently by BotWriter.
+
+**2. Text Generation Providers** *(called by the cloud service on your behalf)*
+When configured, the cloud service connects to these AI providers for text generation using your API keys:
+- **OpenAI API** - [Terms](https://openai.com/terms/) | [Privacy](https://openai.com/privacy/)
+- **Anthropic API (Claude)** - [Terms](https://www.anthropic.com/legal/consumer-terms) | [Privacy](https://www.anthropic.com/legal/privacy)
+- **Google AI (Gemini)** - [Terms](https://ai.google.dev/terms) | [Privacy](https://policies.google.com/privacy)
+- **Mistral AI** - [Terms](https://mistral.ai/terms/) | [Privacy](https://mistral.ai/privacy/)
+- **Groq** - [Terms](https://groq.com/terms-of-use/) | [Privacy](https://groq.com/privacy-policy/)
+- **OpenRouter** - [Terms](https://openrouter.ai/terms) | [Privacy](https://openrouter.ai/privacy)
+
+**3. Image Generation Providers** *(called by the cloud service on your behalf)*
+When configured, the cloud service connects to these AI providers for image generation using your API keys:
+- **OpenAI DALL-E** - [Terms](https://openai.com/terms/) | [Privacy](https://openai.com/privacy/)
+- **Fal.ai** - [Terms](https://fal.ai/terms) | [Privacy](https://fal.ai/privacy)
+- **Replicate** - [Terms](https://replicate.com/terms) | [Privacy](https://replicate.com/privacy)
+- **Stability AI** - [Terms](https://stability.ai/terms-of-service) | [Privacy](https://stability.ai/privacy-policy)
+- **Cloudflare Workers AI** - [Terms](https://www.cloudflare.com/terms/) | [Privacy](https://www.cloudflare.com/privacypolicy/)
+
+**4. Stock Photo Banks** *(called by the cloud service on your behalf)*
+When the Stock Images provider is selected, the cloud service searches these photo banks for relevant featured images. No user data beyond the search query is transmitted. Images are licensed for free use (see each service's license terms):
+- **Pixabay** - [Terms](https://pixabay.com/service/terms/) | [Privacy](https://pixabay.com/service/privacy/) | [License](https://pixabay.com/service/license-summary/)
+- **Pexels** - [Terms](https://www.pexels.com/terms-of-service/) | [Privacy](https://www.pexels.com/privacy-policy/) | [License](https://www.pexels.com/license/)
+- **Unsplash** - [Terms](https://unsplash.com/terms) | [Privacy](https://unsplash.com/privacy) | [License](https://unsplash.com/license)
+- **Openverse** - [Terms](https://wordpress.org/about/tos/) | [Privacy](https://wordpress.org/about/privacy/) | Creative Commons licensed content (license varies per image)
+
+By using this plugin, you acknowledge that it communicates with these third-party and external services, and that data is transmitted as described above. Please review the respective Terms of Service and Privacy Policies for each service.

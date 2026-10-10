@@ -1675,8 +1675,8 @@ function botwriter_seo_ai_config() {
 
     $model = $model_override;
     if ($model === '') {
-        if (function_exists('botwriter_get_current_text_model')) {
-            $model = (string) botwriter_get_current_text_model();
+        if (function_exists('botwriter_get_provider_text_model')) {
+            $model = (string) botwriter_get_provider_text_model($provider);
         } else {
             $model = (string) get_option("botwriter_{$provider}_model", '');
         }
@@ -1701,7 +1701,19 @@ function botwriter_seo_ai_config() {
     }
 
     if ($model === '') {
-        $model = (string) get_option('botwriter_openai_model', 'gpt-5.4-mini');
+        $model = botwriter_get_provider_text_model($provider);
+    }
+    $normalized_model = botwriter_normalize_text_model($provider, $model);
+    if ($normalized_model !== $model) {
+        botwriter_seo_bulk_log('AI model auto-normalized', array(
+            'provider' => $provider,
+            'from_model' => $model,
+            'to_model' => $normalized_model,
+        ));
+        if ($model_override !== '') {
+            update_option('botwriter_seo_ai_model', $normalized_model);
+        }
+        $model = $normalized_model;
     }
 
     return array('provider' => $provider, 'model' => $model, 'key' => $key);

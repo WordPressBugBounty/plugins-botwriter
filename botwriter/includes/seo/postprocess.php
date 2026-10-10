@@ -108,7 +108,7 @@ function botwriter_seo_auto_internal_links_postprocess($post_id, $context = arra
         $provider = sanitize_key((string) get_option('botwriter_text_provider', 'openai'));
         $model = function_exists('botwriter_get_current_text_model')
             ? (string) botwriter_get_current_text_model()
-            : (string) get_option('botwriter_openai_model', 'gpt-4o-mini');
+            : (string) get_option('botwriter_openai_model', 'gpt-6-luna');
         $api_key = function_exists('botwriter_get_provider_api_key')
             ? (string) botwriter_get_provider_api_key($provider)
             : '';

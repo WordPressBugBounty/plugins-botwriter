@@ -47,6 +47,7 @@ function botwriter_get_stability_info() {
         'pricing_url' => 'https://platform.stability.ai/pricing',
         'free_credits' => __('25 FREE credits on signup (no credit card required!)', 'botwriter'),
         'pricing_summary' => [
+            'SD 3.5 Flash' => '2.5 credits (~$0.025/image)',
             'SD 3.5 Large' => '6.5 credits (~$0.065/image)',
             'SD 3.5 Large Turbo' => '4 credits (~$0.04/image)',
             'SD 3.5 Medium' => '3.5 credits (~$0.035/image)',

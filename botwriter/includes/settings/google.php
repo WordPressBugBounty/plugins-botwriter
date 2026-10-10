@@ -22,8 +22,8 @@ function botwriter_get_google_info() {
         'pricing_url' => 'https://ai.google.dev/pricing',
         'free_credits' => __('FREE TIER: Unlimited free usage with rate limits (no credit card required!)', 'botwriter'),
         'pricing_summary' => [
-            'gemini-3.5-flash' => __('Production model (see official pricing page)', 'botwriter'),
-            'gemini-3.1-flash-lite' => __('Low-cost fallback model (see official pricing page)', 'botwriter'),
+            'gemini-3.8-flash' => __('Production model (see official pricing page)', 'botwriter'),
+            'gemini-3.5-flash-lite' => __('Low-cost model (see official pricing page)', 'botwriter'),
             'gemini-2.5-pro' => 'FREE or $1.25/1M input, $10/1M output',
         ],
         'features' => [

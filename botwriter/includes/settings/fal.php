@@ -88,9 +88,9 @@ function botwriter_get_fal_info() {
             'Seedream 4.5' => '~$0.03/image',
             'Flux 2 Pro' => '~$0.05/image',
             'Flux Pro v1.1' => '~$0.04/image',
-            'Flux Schnell' => '~$0.003/image (ultra cheap!)',
+            'Flux Schnell' => '$0.003/megapixel',
             'Recraft V3' => '~$0.04/image',
-            'Z-Image Turbo' => '~$0.002/image',
+            'Z-Image Turbo' => '$0.005/megapixel',
         ],
         'features' => [
             __('Hosts the best Flux models', 'botwriter'),

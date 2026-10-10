@@ -22,9 +22,9 @@ function botwriter_get_anthropic_info() {
         'pricing_url' => 'https://anthropic.com/pricing#api',
         'free_credits' => __('$5 free credits for new API accounts', 'botwriter'),
         'pricing_summary' => [
-            'claude-opus-4.5' => '$5/1M input, $25/1M output',
-            'claude-sonnet-4.5' => '$3/1M input, $15/1M output',
-            'claude-haiku-4.5' => '$1/1M input, $5/1M output',
+            'claude-haiku-5-5' => '$0.10/1M input, $0.50/1M output',
+            'claude-sonnet-5-5' => '$2/1M input, $10/1M output',
+            'claude-opus-5-5' => '$4/1M input, $20/1M output',
         ],
         'features' => [
             __('200K context window (can read entire books)', 'botwriter'),

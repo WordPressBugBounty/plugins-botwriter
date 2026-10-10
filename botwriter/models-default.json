@@ -1,11 +1,49 @@
 {
-    "version": "1.0.0",
-    "updated": "2026-08-15",
+    "version": "1.1.0",
+    "updated": "2026-10-10",
+    "sources": [
+        "https://developers.openai.com/api/docs/models",
+        "https://developers.openai.com/api/docs/deprecations",
+        "https://platform.claude.com/docs/en/models/overview",
+        "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+        "https://ai.google.dev/gemini-api/docs/models",
+        "https://ai.google.dev/gemini-api/docs/deprecations",
+        "https://docs.mistral.ai/models",
+        "https://console.groq.com/docs/models",
+        "https://console.groq.com/docs/deprecations",
+        "https://openrouter.ai/api/v1/models"
+    ],
     "providers": {
         "openai": {
-            "default": "gpt-5.4-mini",
+            "default": "gpt-6-luna",
+            "replacements": {
+                "gpt-5.4-nano": "gpt-6-luna",
+                "gpt-5.1": "gpt-6-luna",
+                "gpt-5": "gpt-6-luna",
+                "gpt-5-mini": "gpt-6-luna",
+                "gpt-5-nano": "gpt-6-luna",
+                "gpt-5-2025-08-07": "gpt-6-luna",
+                "gpt-5-mini-2025-08-07": "gpt-6-luna",
+                "gpt-5-nano-2025-08-07": "gpt-6-luna",
+                "gpt-4.1-nano": "gpt-6-luna",
+                "gpt-4.1-nano-2025-04-14": "gpt-6-luna",
+                "gpt-4o-2024-05-13": "gpt-6-luna",
+                "gpt-3.5-turbo": "gpt-6-luna",
+                "gpt-3.5-turbo-0125": "gpt-6-luna",
+                "gpt-4": "gpt-6-luna",
+                "gpt-4-0613": "gpt-6-luna",
+                "gpt-4-turbo": "gpt-6-luna",
+                "gpt-4-turbo-2024-04-09": "gpt-6-luna",
+                "gpt-4-1106-preview": "gpt-6-luna"
+            },
             "groups": {
-                "GPT-5.6 (Latest)": {
+                "GPT-6 (Latest)": {
+                    "gpt-6-luna": "GPT-6 Luna (fast/economical) [DEFAULT]",
+                    "gpt-6.1-sol": "GPT-6.1 Sol (balanced)",
+                    "gpt-6-astra": "GPT-6 Astra (highest capability)",
+                    "gpt-6-sol": "GPT-6 Sol"
+                },
+                "GPT-5.6": {
                     "gpt-5.6-sol": "GPT-5.6 Sol (flagship reasoning/coding)",
                     "gpt-5.6-terra": "GPT-5.6 Terra (balanced quality/cost)",
                     "gpt-5.6-luna": "GPT-5.6 Luna (high-volume, low-cost)"
@@ -15,8 +53,7 @@
                 },
                 "GPT-5.4": {
                     "gpt-5.4": "GPT-5.4 (highest quality)",
-                    "gpt-5.4-mini": "GPT-5.4 mini (fast/economical)",
-                    "gpt-5.4-nano": "GPT-5.4 nano (minimum latency)"
+                    "gpt-5.4-mini": "GPT-5.4 mini"
                 },
                 "GPT-4o": {
                     "gpt-4o": "GPT-4o",
@@ -26,44 +63,75 @@
             "all_models": []
         },
         "anthropic": {
-            "default": "claude-sonnet-4-6",
+            "default": "claude-haiku-5-5",
+            "replacements": {
+                "claude-sonnet-4-5-20250929": "claude-sonnet-5-5",
+                "claude-sonnet-4-5": "claude-sonnet-5-5",
+                "claude-sonnet-4-20250514": "claude-sonnet-5-5",
+                "claude-opus-4-20250514": "claude-opus-4-8",
+                "claude-opus-4-1-20250805": "claude-opus-4-8",
+                "claude-3-7-sonnet-20250219": "claude-sonnet-5-5",
+                "claude-3-7-sonnet-latest": "claude-sonnet-5-5",
+                "claude-3-5-sonnet-20240620": "claude-sonnet-5-5",
+                "claude-3-5-sonnet-20241022": "claude-sonnet-5-5",
+                "claude-3-5-sonnet-latest": "claude-sonnet-5-5",
+                "claude-3-5-haiku-20241022": "claude-haiku-5-5",
+                "claude-3-5-haiku-latest": "claude-haiku-5-5",
+                "claude-3-haiku-20240307": "claude-haiku-5-5"
+            },
             "groups": {
-                "Claude 5 / Latest": {
+                "Claude 5.5 / Latest": {
+                    "claude-haiku-5-5": "Claude Haiku 5.5 (fast/economical) [DEFAULT]",
+                    "claude-sonnet-5-5": "Claude Sonnet 5.5",
+                    "claude-opus-5-5": "Claude Opus 5.5",
+                    "claude-fable-5-1": "Claude Fable 5.1 (highest capability)"
+                },
+                "Claude 5": {
                     "claude-fable-5": "Claude Fable 5 (highest capability)",
                     "claude-opus-5": "Claude Opus 5 (complex agentic coding)",
-                    "claude-sonnet-5": "Claude Sonnet 5 (best speed/intelligence balance)",
-                    "claude-haiku-4-5-20251001": "Claude Haiku 4.5 [FASTEST]"
+                    "claude-sonnet-5": "Claude Sonnet 5"
                 },
                 "Claude 4.8 / 4.7": {
                     "claude-opus-4-8": "Claude Opus 4.8 (advanced reasoning)",
                     "claude-opus-4-7": "Claude Opus 4.7"
                 },
                 "Claude 4.6": {
-                    "claude-sonnet-4-6": "Claude Sonnet 4.6 [RECOMMENDED]",
+                    "claude-sonnet-4-6": "Claude Sonnet 4.6",
                     "claude-opus-4-6": "Claude Opus 4.6"
                 },
                 "Claude 4.5 (Legacy Active)": {
-                    "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5",
+                    "claude-haiku-4-5-20251001": "Claude Haiku 4.5",
                     "claude-opus-4-5-20251101": "Claude Opus 4.5"
                 }
             },
             "all_models": []
         },
         "google": {
-            "default": "gemini-3.5-flash",
+            "default": "gemini-3.5-flash-lite",
+            "replacements": {
+                "gemini-3.1-flash-lite": "gemini-3.5-flash-lite",
+                "gemini-3.1-flash-lite-preview": "gemini-3.5-flash-lite",
+                "gemini-2.5-flash": "gemini-3.5-flash-lite",
+                "gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+                "gemini-2.0-flash": "gemini-3.5-flash-lite",
+                "gemini-2.0-flash-001": "gemini-3.5-flash-lite",
+                "gemini-2.0-flash-lite": "gemini-3.5-flash-lite",
+                "gemini-2.0-flash-lite-001": "gemini-3.5-flash-lite",
+                "gemini-1.5-flash": "gemini-3.5-flash-lite",
+                "gemini-1.5-pro": "gemini-2.5-pro",
+                "gemini-3-pro-preview": "gemini-3.1-pro-preview"
+            },
             "groups": {
                 "Gemini 3 Stable": {
-                    "gemini-3.7-flash": "Gemini 3.7 Flash (latest stable)",
+                    "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite (fast/economical) [DEFAULT]",
+                    "gemini-3.8-flash": "Gemini 3.8 Flash (latest stable)",
+                    "gemini-3.7-flash": "Gemini 3.7 Flash (alias of 3.8 Flash)",
                     "gemini-3.6-flash": "Gemini 3.6 Flash (stable)",
-                    "gemini-3.5-flash": "Gemini 3.5 Flash (stable)",
-                    "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite (fast/economical)"
+                    "gemini-3.5-flash": "Gemini 3.5 Flash (alias of 3.6 Flash)"
                 },
                 "Gemini 3 Preview": {
                     "gemini-3.1-pro-preview": "Gemini 3.1 Pro Preview",
                     "gemini-3-flash-preview": "Gemini 3 Flash Preview"
-                },
-                "Gemini Legacy (Deprecated)": {
-                    "gemini-3.1-flash-lite": "Gemini 3.1 Flash-Lite (deprecated; shutdown earliest 2027-05-07)"
                 },
                 "Gemini 2.5 Pro": {
                     "gemini-2.5-pro": "Gemini 2.5 Pro (powerful reasoning)"
@@ -72,7 +140,28 @@
             "all_models": []
         },
         "mistral": {
-            "default": "mistral-large-latest",
+            "default": "ministral-3b-2512",
+            "replacements": {
+                "mistral-medium-2508": "mistral-medium-3-5",
+                "mistral-medium-2505": "mistral-medium-3-5",
+                "mistral-small-2506": "mistral-small-2603",
+                "mistral-small-2503": "mistral-small-2603",
+                "mistral-small-2501": "mistral-small-2603",
+                "mistral-small-2409": "mistral-small-2603",
+                "mistral-large-2411": "mistral-large-4",
+                "mistral-large-2407": "mistral-large-4",
+                "ministral-3b-2410": "ministral-3b-2512",
+                "ministral-8b-2410": "ministral-8b-2512",
+                "open-mistral-nemo": "ministral-8b-2512",
+                "open-mistral-nemo-2407": "ministral-8b-2512",
+                "open-mistral-7b": "ministral-8b-2512",
+                "open-mixtral-8x7b": "mistral-small-2603",
+                "open-mixtral-8x22b": "mistral-small-2603",
+                "magistral-small-latest": "mistral-small-2603",
+                "magistral-medium-latest": "mistral-medium-3-5",
+                "magistral-small-2509": "mistral-small-2603",
+                "magistral-medium-2509": "mistral-medium-3-5"
+            },
             "groups": {
                 "Latest Aliases (Recommended)": {
                     "mistral-large-latest": "Mistral Large (latest alias)",
@@ -80,6 +169,7 @@
                     "mistral-small-latest": "Mistral Small (latest alias)"
                 },
                 "Pinned Stable IDs": {
+                    "mistral-large-4": "Mistral Large 4",
                     "mistral-medium-3-5": "Mistral Medium 3.5 (v26.04)",
                     "mistral-small-2603": "Mistral Small 4 (v26.03)",
                     "mistral-large-2512": "Mistral Large 3 (v25.12)"
@@ -87,35 +177,68 @@
                 "Ministral (Edge/Open-Weight)": {
                     "ministral-14b-2512": "Ministral 3 14B (v25.12)",
                     "ministral-8b-2512": "Ministral 3 8B (v25.12)",
-                    "ministral-3b-2512": "Ministral 3 3B (v25.12)"
+                    "ministral-3b-2512": "Ministral 3 3B (fast/economical) [DEFAULT]"
                 }
             },
             "all_models": []
         },
         "groq": {
-            "default": "llama-3.3-70b-versatile",
+            "default": "openai/gpt-oss-20b",
+            "replacements": {
+                "llama-3.3-70b-versatile": "openai/gpt-oss-20b",
+                "llama-3.1-8b-instant": "openai/gpt-oss-20b",
+                "qwen/qwen3-32b": "openai/gpt-oss-120b",
+                "qwen/qwen3.6-27b": "qwen/qwen3.8-27b",
+                "meta-llama/llama-4-scout-17b-16e-instruct": "openai/gpt-oss-120b",
+                "meta-llama/llama-4-maverick-17b-128e-instruct": "openai/gpt-oss-120b",
+                "moonshotai/kimi-k2-instruct-0905": "openai/gpt-oss-120b",
+                "groq/compound": "openai/gpt-oss-20b",
+                "groq/compound-mini": "openai/gpt-oss-20b"
+            },
             "groups": {
                 "OpenAI GPT-OSS (Latest)": {
                     "openai/gpt-oss-120b": "GPT-OSS 120B (best quality)",
-                    "openai/gpt-oss-20b": "GPT-OSS 20B (fast/economical)"
+                    "openai/gpt-oss-20b": "GPT-OSS 20B (fast/economical) [DEFAULT]"
                 },
                 "Qwen": {
-                    "qwen/qwen3.6-27b": "Qwen3.6 27B (preview)"
-                },
-                "Llama 3.3 (Deprecated on Groq)": {
-                    "llama-3.3-70b-versatile": "Llama 3.3 70B Versatile [RECOMMENDED - DEPRECATED 2026-08-16]"
-                },
-                "Compound Systems": {
-                    "groq/compound": "Groq Compound (agentic system)",
-                    "groq/compound-mini": "Groq Compound Mini (agentic system)"
+                    "qwen/qwen3.8-27b": "Qwen3.8 27B"
                 }
             },
             "all_models": []
         },
         "openrouter": {
-            "default": "anthropic/claude-sonnet-4.6",
+            "default": "openai/gpt-oss-20b",
+            "replacements": {
+                "openai/gpt-oss-20b:free": "nvidia/nemotron-3.5-lightning:free",
+                "openai/gpt-5.4-nano": "openai/gpt-6-luna",
+                "anthropic/claude-sonnet-4.5": "anthropic/claude-sonnet-5.5",
+                "google/gemini-3.1-flash-lite": "google/gemini-3.5-flash-lite",
+                "google/gemini-3.1-flash-lite-preview": "google/gemini-3.5-flash-lite",
+                "google/gemini-2.5-flash": "google/gemini-3.5-flash-lite",
+                "google/gemini-2.0-flash": "google/gemini-3.5-flash-lite",
+                "google/gemini-2.0-flash-001": "google/gemini-3.5-flash-lite",
+                "google/gemini-2.0-flash-exp:free": "nvidia/nemotron-3.5-lightning:free",
+                "mistralai/mistral-large-latest": "mistralai/mistral-large",
+                "meta-llama/llama-3.1-8b-instruct:free": "nvidia/nemotron-3.5-lightning:free",
+                "qwen/qwen-2-7b-instruct:free": "nvidia/nemotron-3.5-lightning:free"
+            },
             "groups": {
-                "Top Models (2026-08)": {
+                "Fast / Economical": {
+                    "openai/gpt-oss-20b": "GPT-OSS 20B (fast/economical) [DEFAULT]",
+                    "openai/gpt-6-luna": "GPT-6 Luna",
+                    "anthropic/claude-haiku-5.5": "Claude Haiku 5.5",
+                    "google/gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite"
+                },
+                "Latest Models (2026-10)": {
+                    "openai/gpt-6.1-sol": "GPT-6.1 Sol",
+                    "openai/gpt-6-astra": "GPT-6 Astra",
+                    "anthropic/claude-fable-5.1": "Claude Fable 5.1",
+                    "anthropic/claude-opus-5.5": "Claude Opus 5.5",
+                    "anthropic/claude-sonnet-5.5": "Claude Sonnet 5.5",
+                    "google/gemini-3.8-flash": "Gemini 3.8 Flash",
+                    "deepseek/deepseek-v4.1-flash": "DeepSeek V4.1 Flash"
+                },
+                "Other Active Models": {
                     "anthropic/claude-fable-5": "Claude Fable 5 (Anthropic)",
                     "anthropic/claude-opus-5": "Claude Opus 5 (Anthropic)",
                     "anthropic/claude-sonnet-5": "Claude Sonnet 5 (Anthropic)",
@@ -146,7 +269,6 @@
                 "Free Models": {
                     "google/gemma-4-26b-a4b-it:free": "Gemma 4 26B [FREE]",
                     "google/gemma-4-31b-it:free": "Gemma 4 31B [FREE]",
-                    "openai/gpt-oss-20b:free": "GPT-OSS 20B [FREE]",
                     "nvidia/nemotron-3.5-lightning:free": "NVIDIA Nemotron 3.5 Lightning [FREE]"
                 }
             },

@@ -3,7 +3,7 @@
 Plugin Name: BotWriter – AI Writer & SEO Content Generator
 Plugin URI:  https://www.wpbotwriter.com
 Description: Plugin for automatically generating posts using artificial intelligence. Create content from scratch with AI and generate custom images. Optimize content for SEO, including tags, titles, and image descriptions. Advanced features like ChatGPT, automatic content creation, image generation, SEO optimization, and AI training make this plugin a complete tool for writers and content creators.
-Version: 3.5.0
+Version: 3.6.0
 Author: estebandezafra
 Requires PHP: 7.0
 License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 
 if (!defined('BOTWRITER_VERSION')) {
-    define('BOTWRITER_VERSION', '3.5.0');
+    define('BOTWRITER_VERSION', '3.6.0');
 }
 
 // Plugin directory path (with trailing slash)
@@ -659,14 +659,14 @@ function botwriter_get_current_image_model_by_provider($provider) {
         : '';
     if ($default_model === '') {
         $fallback_defaults = array(
-            'dalle' => 'gpt-image-1',
+            'dalle' => 'gpt-image-2.5-flare',
             'gemini' => 'gemini-3.1-flash-lite-image',
-            'fal' => 'fal-ai/flux-pro/v1.1',
-            'replicate' => 'black-forest-labs/flux-1.1-pro',
-            'stability' => 'sd3.5-large-turbo',
+            'fal' => 'fal-ai/flux/schnell',
+            'replicate' => 'black-forest-labs/flux-schnell',
+            'stability' => 'sd3.5-flash',
             'cloudflare' => 'flux-1-schnell',
         );
-        $default_model = (string) ($fallback_defaults[$provider] ?? 'gpt-image-1');
+        $default_model = (string) ($fallback_defaults[$provider] ?? 'gpt-image-2.5-flare');
     }
 
     $option_name = function_exists('botwriter_get_image_model_option_name')
@@ -1385,7 +1385,7 @@ function botwriter_apply_post_regenerated_image_ajax() {
             $provider = (string) ($settings['provider'] ?? 'dalle');
         }
         if ($model === '') {
-            $model = (string) ($settings['model'] ?? 'gpt-image-1');
+            $model = (string) ($settings['model'] ?? 'gpt-image-2.5-flare');
         }
     }
 
@@ -1739,7 +1739,7 @@ function botwriter_editor_assistant_generate_ajax() {
     $provider = sanitize_key((string) get_option('botwriter_text_provider', 'openai'));
     $model = function_exists('botwriter_get_current_text_model')
         ? (string) botwriter_get_current_text_model()
-        : (string) get_option('botwriter_openai_model', 'gpt-5.4-mini');
+        : (string) get_option('botwriter_openai_model', 'gpt-6-luna');
     $api_key = function_exists('botwriter_get_provider_api_key')
         ? (string) botwriter_get_provider_api_key($provider)
         : '';
@@ -2479,7 +2479,7 @@ function botwriter_activate_apikey_and_defaults() {
     }
 
     if (get_option('botwriter_openai_model') === false) {
-        update_option('botwriter_openai_model', 'gpt-5.4-mini');
+        update_option('botwriter_openai_model', botwriter_get_provider_text_model('openai'));
     }
     if (get_option('botwriter_ai_image_quality') === false) {
         update_option('botwriter_ai_image_quality', 'medium');
@@ -4451,14 +4451,14 @@ function botwriter_send1_data_to_server($data) {
         $data['text_model'] = botwriter_get_provider_text_model($text_provider);
     } else {
         $text_model_defaults = [
-            'openai' => 'gpt-5.4-mini',
-            'anthropic' => 'claude-sonnet-4-6',
-            'google' => 'gemini-3.5-flash',
-            'mistral' => 'mistral-large-latest',
-            'groq' => 'llama-3.3-70b-versatile',
-            'openrouter' => 'anthropic/claude-sonnet-4.6',
+            'openai' => 'gpt-6-luna',
+            'anthropic' => 'claude-haiku-5-5',
+            'google' => 'gemini-3.5-flash-lite',
+            'mistral' => 'ministral-3b-2512',
+            'groq' => 'openai/gpt-oss-20b',
+            'openrouter' => 'openai/gpt-oss-20b',
         ];
-        $data['text_model'] = get_option("botwriter_{$text_provider}_model", $text_model_defaults[$text_provider] ?? 'gpt-5.4-mini');
+        $data['text_model'] = get_option("botwriter_{$text_provider}_model", $text_model_defaults[$text_provider] ?? 'gpt-6-luna');
     }
     
     // Get current image model based on provider
@@ -4476,7 +4476,7 @@ function botwriter_send1_data_to_server($data) {
             ? (string) botwriter_get_provider_default_image_model($image_provider)
             : '';
         if ($image_model_default === '') {
-            $image_model_default = 'gpt-image-1';
+            $image_model_default = 'gpt-image-2.5-flare';
         }
 
         $image_model_option = function_exists('botwriter_get_image_model_option_name')
@@ -4533,7 +4533,7 @@ function botwriter_send1_data_to_server($data) {
     $data['cloudflare_account_id'] = get_option('botwriter_cloudflare_account_id');
     
     // Legacy field (kept for backward compatibility)
-    $data["openai_model"]=get_option('botwriter_openai_model', 'gpt-4o-mini');
+    $data["openai_model"] = botwriter_get_provider_text_model('openai');
 
     $current_time = gmdate('Y-m-d H:i:s', current_time('timestamp'));
     $data["last_execution_time"]=$current_time;

@@ -22,17 +22,16 @@ function botwriter_get_groq_info() {
         'pricing_url' => 'https://groq.com/pricing/',
         'free_credits' => __('FREE TIER: Generous free usage with rate limits!', 'botwriter'),
         'pricing_summary' => [
-            'llama-3.3-70b' => '$0.59/1M input, $0.79/1M output',
-            'llama-3.1-8b' => '$0.05/1M input, $0.08/1M output',
-            'llama-4-scout' => '$0.11/1M input, $0.34/1M output',
-            'mixtral-8x7b' => '$0.24/1M input, $0.24/1M output',
+            'openai/gpt-oss-20b' => '$0.075/1M input, $0.30/1M output',
+            'openai/gpt-oss-120b' => __('See pricing page', 'botwriter'),
+            'qwen/qwen3.8-27b' => __('See pricing page', 'botwriter'),
         ],
         'features' => [
             __('🚀 FASTEST API - up to 1000+ tokens/second!', 'botwriter'),
             __('Free tier with generous limits', 'botwriter'),
             __('Custom LPU (Language Processing Unit) hardware', 'botwriter'),
             __('Low latency - real-time applications', 'botwriter'),
-            __('Open-source models (Llama, Mixtral)', 'botwriter'),
+            __('Open-weight models (GPT-OSS, Qwen)', 'botwriter'),
             __('Pay-as-you-go, no commitments', 'botwriter'),
         ],
         'pros' => [

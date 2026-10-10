@@ -22,14 +22,14 @@ if (!defined('BOTWRITER_IMAGE_MODELS_OPTION')) {
  */
 function botwriter_get_image_models_fallback_catalog() {
     return array(
-        'version' => '1.0.0',
+        'version' => '1.1.0',
         'updated' => gmdate('Y-m-d'),
         'providers' => array(
             'dalle' => array(
-                'default' => 'gpt-image-1',
+                'default' => 'gpt-image-2.5-flare',
                 'groups' => array(
                     'GPT Image' => array(
-                        'gpt-image-1' => 'GPT Image 1',
+                        'gpt-image-2.5-flare' => 'GPT Image 2.5 Flare',
                     ),
                 ),
                 'all_models' => array(),
@@ -41,39 +41,34 @@ function botwriter_get_image_models_fallback_catalog() {
                         'gemini-3.1-flash-lite-image' => 'Gemini 3.1 Flash Lite Image',
                         'gemini-3.1-flash-image' => 'Gemini 3.1 Flash Image',
                         'gemini-3-pro-image' => 'Gemini 3 Pro Image',
-                        'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image (legacy)',
-                    ),
-                    'Legacy aliases (auto-migrated)' => array(
-                        'gemini-3.1-flash-image-preview' => 'Gemini 3.1 Flash Image Preview (legacy alias)',
-                        'gemini-3-pro-image-preview' => 'Gemini 3 Pro Image Preview (legacy alias)',
-                        'gemini-2.5-flash-image-preview' => 'Gemini 2.5 Flash Image Preview (legacy alias)',
+                        'gemini-nano-banana-2.1' => 'Nano Banana 2.1',
                     ),
                 ),
                 'all_models' => array(),
             ),
             'fal' => array(
-                'default' => 'fal-ai/flux-pro/v1.1',
+                'default' => 'fal-ai/flux/schnell',
                 'groups' => array(
                     'Fal.ai' => array(
-                        'fal-ai/flux-pro/v1.1' => 'Flux Pro v1.1',
+                        'fal-ai/flux/schnell' => 'Flux Schnell',
                     ),
                 ),
                 'all_models' => array(),
             ),
             'replicate' => array(
-                'default' => 'black-forest-labs/flux-1.1-pro',
+                'default' => 'black-forest-labs/flux-schnell',
                 'groups' => array(
                     'Replicate' => array(
-                        'black-forest-labs/flux-1.1-pro' => 'Flux 1.1 Pro',
+                        'black-forest-labs/flux-schnell' => 'Flux Schnell',
                     ),
                 ),
                 'all_models' => array(),
             ),
             'stability' => array(
-                'default' => 'sd3.5-large-turbo',
+                'default' => 'sd3.5-flash',
                 'groups' => array(
                     'Stability' => array(
-                        'sd3.5-large-turbo' => 'SD 3.5 Large Turbo',
+                        'sd3.5-flash' => 'SD 3.5 Flash',
                     ),
                 ),
                 'all_models' => array(),
@@ -119,24 +114,35 @@ function botwriter_get_image_models_fallback_catalog() {
  * @return array
  */
 function botwriter_load_default_image_models() {
+    static $models_data = null;
+    if ($models_data !== null) {
+        return $models_data;
+    }
+
     $json_file = plugin_dir_path(dirname(__FILE__)) . 'image-models-default.json';
 
     if (!file_exists($json_file)) {
+        botwriter_log('Image model catalog is missing', array('file' => $json_file), 'error');
         return botwriter_get_image_models_fallback_catalog();
     }
 
     $json_content = file_get_contents($json_file);
     if ($json_content === false) {
+        botwriter_log('Image model catalog could not be read', array('file' => $json_file), 'error');
         return botwriter_get_image_models_fallback_catalog();
     }
 
     $models_data = json_decode($json_content, true);
     if (json_last_error() !== JSON_ERROR_NONE || !is_array($models_data)) {
-        return botwriter_get_image_models_fallback_catalog();
+        botwriter_log('Invalid image model catalog', array('file' => $json_file), 'error');
+        $models_data = botwriter_get_image_models_fallback_catalog();
+        return $models_data;
     }
 
     if (empty($models_data['providers']) || !is_array($models_data['providers'])) {
-        return botwriter_get_image_models_fallback_catalog();
+        botwriter_log('Image model catalog has no providers', array('file' => $json_file), 'error');
+        $models_data = botwriter_get_image_models_fallback_catalog();
+        return $models_data;
     }
 
     return $models_data;
@@ -153,6 +159,12 @@ function botwriter_get_image_models_data() {
     if (empty($models_data) || !is_array($models_data) || empty($models_data['providers'])) {
         $models_data = botwriter_load_default_image_models();
         update_option(BOTWRITER_IMAGE_MODELS_OPTION, $models_data);
+    } else {
+        $catalog = botwriter_load_default_image_models();
+        if (version_compare((string) ($models_data['version'] ?? '0'), $catalog['version'], '<')) {
+            $models_data = $catalog;
+            update_option(BOTWRITER_IMAGE_MODELS_OPTION, $models_data);
+        }
     }
 
     return $models_data;
@@ -256,7 +268,7 @@ function botwriter_normalize_image_model($provider, $model) {
     }
 
     if ($default_model === '') {
-        $default_model = 'gpt-image-1';
+        $default_model = 'gpt-image-2.5-flare';
     }
 
     $model = trim((string) $model);
@@ -265,35 +277,16 @@ function botwriter_normalize_image_model($provider, $model) {
     }
 
     if ($provider === 'gemini') {
-        $gemini_aliases = array(
-            'gemini-2.0-flash-preview-image-generation' => 'gemini-2.5-flash-image',
-            'gemini-2.0-flash-exp-image-generation' => 'gemini-2.5-flash-image',
-            'gemini-2.0-flash-image' => 'gemini-2.5-flash-image',
-            'gemini-2.5-flash-image-preview' => 'gemini-2.5-flash-image',
-            'gemini-3.1-flash-lite-image-preview' => 'gemini-3.1-flash-lite-image',
-            'gemini-3.1-flash-image-preview' => 'gemini-3.1-flash-image',
-            'gemini-3-pro-image-preview' => 'gemini-3-pro-image',
-        );
-
-        $model_lc = strtolower($model);
-        if (isset($gemini_aliases[$model_lc])) {
-            $model = $gemini_aliases[$model_lc];
-        } else {
-            $model = $model_lc;
+        $model = strtolower($model);
+        if (strpos($model, 'models/') === 0) {
+            $model = substr($model, 7);
         }
     }
 
-    if ($provider === 'stability') {
-        $model_lc = strtolower($model);
-        $stability_aliases = array(
-            'sd3-large-turbo' => 'sd3.5-large-turbo',
-            'sd3-large' => 'sd3.5-large',
-            'sd3-medium' => 'sd3.5-medium',
-        );
-
-        if (isset($stability_aliases[$model_lc])) {
-            $model = $stability_aliases[$model_lc];
-        }
+    $catalog = botwriter_load_default_image_models();
+    $replacement = $catalog['providers'][$provider]['replacements'][strtolower($model)] ?? '';
+    if ($replacement !== '') {
+        $model = $replacement;
     }
 
     if ($provider === 'cloudflare') {

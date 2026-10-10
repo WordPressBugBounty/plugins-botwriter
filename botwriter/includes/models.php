@@ -32,23 +32,12 @@ function botwriter_is_deprecated_text_model_choice($provider, $model_id) {
         return false;
     }
 
-    $blocked = [
-        'google' => [
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite',
-            'models/gemini-2.5-flash',
-            'models/gemini-2.5-flash-lite',
-        ],
-        'openrouter' => [
-            'google/gemini-2.5-flash',
-        ],
-    ];
-
-    if (!isset($blocked[$provider])) {
-        return false;
+    if ($provider === 'google' && strpos($model_id, 'models/') === 0) {
+        $model_id = substr($model_id, 7);
     }
 
-    return in_array($model_id, $blocked[$provider], true);
+    $catalog = botwriter_load_default_models();
+    return isset($catalog['providers'][$provider]['replacements'][$model_id]);
 }
 
 /**
@@ -86,18 +75,27 @@ function botwriter_sanitize_models_data($models_data) {
     }
 
     $changed = false;
-
-    if (isset($models_data['providers']['google']) && is_array($models_data['providers']['google'])) {
-        $current_google_default = (string) ($models_data['providers']['google']['default'] ?? '');
-        if ($current_google_default === '' || botwriter_is_deprecated_text_model_choice('google', $current_google_default)) {
-            $models_data['providers']['google']['default'] = 'gemini-3.5-flash';
-            $changed = true;
+    $catalog = botwriter_load_default_models();
+    if ($catalog && version_compare((string) ($models_data['version'] ?? '0'), $catalog['version'], '<')) {
+        foreach ($catalog['providers'] as $provider => $provider_data) {
+            $provider_data['all_models'] = $models_data['providers'][$provider]['all_models'] ?? [];
+            $models_data['providers'][$provider] = $provider_data;
         }
+        $models_data['version'] = $catalog['version'];
+        $models_data['sources'] = $catalog['sources'] ?? [];
+        $changed = true;
     }
 
     foreach ($models_data['providers'] as $provider => $provider_data) {
         if (!is_array($provider_data)) {
             continue;
+        }
+
+        $default = (string) ($provider_data['default'] ?? '');
+        if (($default === '' || botwriter_is_deprecated_text_model_choice($provider, $default))
+            && isset($catalog['providers'][$provider]['default'])) {
+            $models_data['providers'][$provider]['default'] = $catalog['providers'][$provider]['default'];
+            $changed = true;
         }
 
         if (!empty($provider_data['groups']) && is_array($provider_data['groups'])) {
@@ -179,19 +177,28 @@ function botwriter_get_models_data() {
  * @return array|false The models data or false on failure
  */
 function botwriter_load_default_models() {
+    static $models_data = null;
+    if ($models_data !== null) {
+        return $models_data;
+    }
+
     $json_file = plugin_dir_path(dirname(__FILE__)) . 'models-default.json';
     
     if (!file_exists($json_file)) {
+        botwriter_log('Text model catalog is missing', ['file' => $json_file], 'error');
         return false;
     }
     
     $json_content = file_get_contents($json_file);
     if ($json_content === false) {
+        botwriter_log('Text model catalog could not be read', ['file' => $json_file], 'error');
         return false;
     }
     
     $models_data = json_decode($json_content, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($models_data) || empty($models_data['providers'])) {
+        botwriter_log('Invalid text model catalog', ['file' => $json_file], 'error');
+        $models_data = null;
         return false;
     }
     

@@ -362,11 +362,11 @@ $botwriter_languages = [
  */
 function botwriter_get_text_providers() {
     return [
-        'openai' => 'OpenAI (GPT-5.5, GPT-5.4)',
+        'openai' => 'OpenAI (GPT)',
         'anthropic' => 'Anthropic (Claude)',
         'google' => 'Google (Gemini)',
         'mistral' => 'Mistral AI',
-        'groq' => 'Groq (Llama, Qwen, GPT-OSS)',
+        'groq' => 'Groq (GPT-OSS, Qwen)',
         'openrouter' => 'OpenRouter (Multiple)',
     ];
 }
@@ -376,7 +376,7 @@ function botwriter_get_text_providers() {
  */
 function botwriter_get_image_providers() {
     return [
-        'dalle' => 'DALL-E (OpenAI)',
+        'dalle' => 'GPT Image (OpenAI)',
         'gemini' => 'Google Gemini',
         'fal' => 'Fal.ai (Flux)',
         'replicate' => 'Replicate',
@@ -391,14 +391,21 @@ function botwriter_get_image_providers() {
  * @return array
  */
 function botwriter_get_provider_text_model_defaults() {
-    return [
-        'openai' => 'gpt-5.4-mini',
-        'anthropic' => 'claude-sonnet-4-6',
-        'google' => 'gemini-3.5-flash',
-        'mistral' => 'mistral-large-latest',
-        'groq' => 'llama-3.3-70b-versatile',
-        'openrouter' => 'anthropic/claude-sonnet-4.6',
+    $defaults = [
+        'openai' => 'gpt-6-luna',
+        'anthropic' => 'claude-haiku-5-5',
+        'google' => 'gemini-3.5-flash-lite',
+        'mistral' => 'ministral-3b-2512',
+        'groq' => 'openai/gpt-oss-20b',
+        'openrouter' => 'openai/gpt-oss-20b',
     ];
+    $catalog = botwriter_get_models_data();
+    foreach ($defaults as $provider => $default) {
+        if (!empty($catalog['providers'][$provider]['default'])) {
+            $defaults[$provider] = $catalog['providers'][$provider]['default'];
+        }
+    }
+    return $defaults;
 }
 
 /**
@@ -416,53 +423,14 @@ function botwriter_normalize_text_model($provider, $model) {
         return $model;
     }
 
-    $deprecated_map = [
-        'anthropic' => [
-            'claude-sonnet-4-20250514' => 'claude-sonnet-4-6',
-            'claude-opus-4-20250514' => 'claude-opus-4-8',
-            'claude-opus-4-1-20250805' => 'claude-opus-4-8',
-        ],
-        'google' => [
-            'gemini-3.1-flash-lite' => 'gemini-3.5-flash',
-            'gemini-3.1-flash-lite-preview' => 'gemini-3.5-flash',
-            'gemini-2.5-flash' => 'gemini-3.5-flash',
-            'gemini-2.5-flash-lite' => 'gemini-3.5-flash',
-            'gemini-2.0-flash' => 'gemini-3.5-flash',
-            'gemini-2.0-flash-lite' => 'gemini-3.5-flash',
-            'gemini-1.5-flash' => 'gemini-3.5-flash',
-            'gemini-1.5-pro' => 'gemini-2.5-pro',
-            'models/gemini-3.1-flash-lite' => 'gemini-3.5-flash',
-            'models/gemini-2.5-flash' => 'gemini-3.5-flash',
-            'models/gemini-2.5-flash-lite' => 'gemini-3.5-flash',
-            'models/gemini-2.0-flash' => 'gemini-3.5-flash',
-            'models/gemini-1.5-flash' => 'gemini-3.5-flash',
-            'models/gemini-1.5-pro' => 'gemini-2.5-pro',
-        ],
-        'groq' => [
-            'meta-llama/llama-4-scout-17b-16e-instruct' => 'openai/gpt-oss-120b',
-            'qwen/qwen3-32b' => 'openai/gpt-oss-120b',
-            'llama-3.1-8b-instant' => 'openai/gpt-oss-20b',
-        ],
-        'openrouter' => [
-            'google/gemini-3.1-flash-lite' => 'google/gemini-3.5-flash',
-            'google/gemini-3.1-flash-lite-preview' => 'google/gemini-3.5-flash',
-            'google/gemini-2.5-flash' => 'google/gemini-3.5-flash',
-            'google/gemini-2.0-flash' => 'google/gemini-3.5-flash',
-            'google/gemini-2.0-flash-001' => 'google/gemini-3.5-flash',
-            'google/gemini-2.0-flash-exp:free' => 'google/gemini-3.5-flash',
-            'mistralai/mistral-large-latest' => 'mistralai/mistral-large',
-            'meta-llama/llama-3.1-8b-instruct:free' => 'openai/gpt-oss-20b:free',
-            'qwen/qwen-2-7b-instruct:free' => 'nvidia/nemotron-3.5-lightning:free',
-        ],
-    ];
-
-    if (!isset($deprecated_map[$provider])) {
-        return $model;
+    if ($provider === 'google' && stripos($model, 'models/') === 0) {
+        $model = substr($model, 7);
     }
 
+    $catalog = botwriter_load_default_models();
     $key = strtolower($model);
-    return isset($deprecated_map[$provider][$key])
-        ? $deprecated_map[$provider][$key]
+    return isset($catalog['providers'][$provider]['replacements'][$key])
+        ? $catalog['providers'][$provider]['replacements'][$key]
         : $model;
 }
 
@@ -475,7 +443,7 @@ function botwriter_normalize_text_model($provider, $model) {
 function botwriter_get_provider_text_model($provider) {
     $provider = sanitize_key((string) $provider);
     $defaults = botwriter_get_provider_text_model_defaults();
-    $default_model = $defaults[$provider] ?? 'gpt-5.4-mini';
+    $default_model = $defaults[$provider] ?? $defaults['openai'];
     $option_name = "botwriter_{$provider}_model";
     $configured_model = (string) get_option($option_name, $default_model);
     $normalized_model = botwriter_normalize_text_model($provider, $configured_model);
@@ -517,9 +485,9 @@ function botwriter_get_current_image_model() {
 
     $default = function_exists('botwriter_get_provider_default_image_model')
         ? (string) botwriter_get_provider_default_image_model($provider)
-        : 'gpt-image-1';
+        : 'gpt-image-2.5-flare';
     if ($default === '') {
-        $default = 'gpt-image-1';
+        $default = 'gpt-image-2.5-flare';
     }
 
     $option_name = function_exists('botwriter_get_image_model_option_name')
@@ -679,15 +647,8 @@ function botwriter_translate_slugs($title, $tags = '', $language = 'en') {
  * Get the fastest/cheapest model for SEO translation based on provider
  */
 function botwriter_get_seo_translation_model($provider) {
-    $fast_models = array(
-        'openai'     => 'gpt-4o-mini',
-        'anthropic'  => 'claude-haiku-4-5-20251001',
-        'google'     => 'gemini-3.5-flash',
-        'mistral'    => 'mistral-small-latest',
-        'groq'       => 'llama-3.3-70b-versatile',
-        'openrouter' => 'google/gemini-3.5-flash',
-    );
-    return $fast_models[$provider] ?? 'gpt-4o-mini';
+    $fast_models = botwriter_get_provider_text_model_defaults();
+    return $fast_models[$provider] ?? $fast_models['openai'];
 }
 
 /**

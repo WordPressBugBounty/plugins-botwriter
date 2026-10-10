@@ -22,11 +22,10 @@ function botwriter_get_mistral_info() {
         'pricing_url' => 'https://mistral.ai/technology/',
         'free_credits' => __('Free "Experiment" tier available with limited usage', 'botwriter'),
         'pricing_summary' => [
-            'mistral-large' => '$2/1M input, $6/1M output',
-            'mistral-medium' => '$0.40/1M input, $1.50/1M output',
-            'mistral-small' => '$0.20/1M input, $0.60/1M output',
-            'codestral' => '$0.30/1M input, $0.90/1M output',
-            'ministral-8b' => '$0.10/1M input, $0.10/1M output',
+            'ministral-3b-2512' => '$0.10/1M input, $0.10/1M output',
+            'mistral-small-2603' => __('See pricing page', 'botwriter'),
+            'mistral-medium-3-5' => __('See pricing page', 'botwriter'),
+            'mistral-large-4' => __('See pricing page', 'botwriter'),
         ],
         'features' => [
             __('European company (GDPR-compliant)', 'botwriter'),

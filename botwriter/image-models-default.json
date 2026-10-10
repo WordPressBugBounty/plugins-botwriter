@@ -1,42 +1,60 @@
 {
-    "version": "1.0.0",
-    "updated": "2026-08-15",
+    "version": "1.1.0",
+    "updated": "2026-10-10",
+    "sources": [
+        "https://developers.openai.com/api/docs/models/gpt-image-2.5-flare",
+        "https://developers.openai.com/api/docs/deprecations",
+        "https://ai.google.dev/gemini-api/docs/image-generation",
+        "https://ai.google.dev/gemini-api/docs/deprecations",
+        "https://fal.ai/models",
+        "https://replicate.com/collections/text-to-image",
+        "https://platform.stability.ai/pricing",
+        "https://developers.cloudflare.com/workers-ai/models/"
+    ],
     "providers": {
         "dalle": {
-            "default": "gpt-image-1",
+            "default": "gpt-image-2.5-flare",
+            "replacements": {
+                "dall-e-2": "gpt-image-2.5-flare",
+                "dall-e-3": "gpt-image-2.5-flare",
+                "gpt-image-1": "gpt-image-2.5-flare",
+                "gpt-image-1-mini": "gpt-image-2.5-flare",
+                "gpt-image-1.5": "gpt-image-2.5-flare",
+                "chatgpt-image-latest": "gpt-image-2.5-flare"
+            },
             "groups": {
                 "GPT Image": {
-                    "gpt-image-2": "GPT Image 2 (latest)",
-                    "gpt-image-1.5": "GPT Image 1.5",
-                    "gpt-image-1": "GPT Image 1 (stable)",
-                    "gpt-image-1-mini": "GPT Image 1 Mini"
-                },
-                "DALL-E (legacy)": {
-                    "dall-e-3": "DALL-E 3",
-                    "dall-e-2": "DALL-E 2"
+                    "gpt-image-2.5-flare": "GPT Image 2.5 Flare (fast/economical) [DEFAULT]",
+                    "gpt-image-2.5-sunburst": "GPT Image 2.5 Sunburst (highest quality)",
+                    "gpt-image-2": "GPT Image 2"
                 }
             },
             "all_models": []
         },
         "gemini": {
             "default": "gemini-3.1-flash-lite-image",
+            "replacements": {
+                "gemini-2.0-flash-preview-image-generation": "gemini-3.1-flash-lite-image",
+                "gemini-2.0-flash-exp-image-generation": "gemini-3.1-flash-lite-image",
+                "gemini-2.0-flash-image": "gemini-3.1-flash-lite-image",
+                "gemini-2.5-flash-image": "gemini-3.1-flash-lite-image",
+                "gemini-2.5-flash-image-preview": "gemini-3.1-flash-lite-image",
+                "gemini-3.1-flash-lite-image-preview": "gemini-3.1-flash-lite-image",
+                "gemini-3.1-flash-image-preview": "gemini-3.1-flash-image",
+                "gemini-3-pro-image-preview": "gemini-3-pro-image"
+            },
             "groups": {
                 "Gemini Image (Stable)": {
-                    "gemini-3.1-flash-lite-image": "Gemini 3.1 Flash Lite Image (fastest, lowest cost)",
+                    "gemini-3.1-flash-lite-image": "Nano Banana 2 Lite (fast/economical) [DEFAULT]",
+                    "gemini-nano-banana-2.1": "Nano Banana 2.1 (latest)",
                     "gemini-3.1-flash-image": "Gemini 3.1 Flash Image (balanced, recommended)",
-                    "gemini-3-pro-image": "Gemini 3 Pro Image (highest quality, 4K)",
-                    "gemini-2.5-flash-image": "Gemini 2.5 Flash Image (legacy)"
-                },
-                "Legacy aliases (auto-migrated)": {
-                    "gemini-3.1-flash-image-preview": "Gemini 3.1 Flash Image Preview (legacy alias)",
-                    "gemini-3-pro-image-preview": "Gemini 3 Pro Image Preview (legacy alias)",
-                    "gemini-2.5-flash-image-preview": "Gemini 2.5 Flash Image Preview (legacy alias)"
+                    "gemini-3-pro-image": "Gemini 3 Pro Image (highest quality, 4K)"
                 }
             },
             "all_models": []
         },
         "fal": {
-            "default": "fal-ai/flux-pro/v1.1",
+            "default": "fal-ai/flux/schnell",
             "groups": {
                 "Top Models": {
                     "fal-ai/nano-banana-pro": "Nano Banana Pro",
@@ -45,6 +63,8 @@
                     "fal-ai/flux-2-pro": "Flux 2 Pro"
                 },
                 "Google": {
+                    "fal-ai/nano-banana-2.1": "Nano Banana 2.1",
+                    "fal-ai/nano-banana-2": "Nano Banana 2",
                     "fal-ai/gemini-3-pro-image-preview": "Gemini 3 Pro Image"
                 },
                 "Flux 2.x": {
@@ -58,7 +78,7 @@
                 "Flux 1.x": {
                     "fal-ai/flux-pro/v1.1": "Flux Pro v1.1",
                     "fal-ai/flux/dev": "Flux Dev",
-                    "fal-ai/flux/schnell": "Flux Schnell"
+                    "fal-ai/flux/schnell": "Flux Schnell (fast/economical) [DEFAULT]"
                 },
                 "Other": {
                     "fal-ai/recraft/v3/text-to-image": "Recraft V3",
@@ -70,9 +90,10 @@
             "all_models": []
         },
         "replicate": {
-            "default": "black-forest-labs/flux-1.1-pro",
+            "default": "black-forest-labs/flux-schnell",
             "groups": {
                 "Top Models": {
+                    "google/nano-banana-2.1": "Nano Banana 2.1",
                     "openai/gpt-image-2": "GPT Image 2",
                     "google/nano-banana-2": "Nano Banana 2",
                     "google/imagen-4-ultra": "Imagen 4 Ultra",
@@ -93,7 +114,7 @@
                     "black-forest-labs/flux-1.1-pro": "Flux 1.1 Pro",
                     "black-forest-labs/flux-1.1-pro-ultra": "Flux 1.1 Pro Ultra",
                     "black-forest-labs/flux-dev": "Flux Dev",
-                    "black-forest-labs/flux-schnell": "Flux Schnell"
+                    "black-forest-labs/flux-schnell": "Flux Schnell (fast/economical) [DEFAULT]"
                 },
                 "Design Models": {
                     "ideogram-ai/ideogram-v3-quality": "Ideogram V3 Quality",
@@ -108,7 +129,12 @@
             "all_models": []
         },
         "stability": {
-            "default": "sd3.5-large-turbo",
+            "default": "sd3.5-flash",
+            "replacements": {
+                "sd3-large-turbo": "sd3.5-large-turbo",
+                "sd3-large": "sd3.5-large",
+                "sd3-medium": "sd3.5-medium"
+            },
             "groups": {
                 "Stable Image Services": {
                     "core": "Stable Image Core",
@@ -118,7 +144,7 @@
                     "sd3.5-large-turbo": "SD 3.5 Large Turbo",
                     "sd3.5-large": "SD 3.5 Large",
                     "sd3.5-medium": "SD 3.5 Medium",
-                    "sd3.5-flash": "SD 3.5 Flash"
+                    "sd3.5-flash": "SD 3.5 Flash (fast/economical) [DEFAULT]"
                 }
             },
             "all_models": []

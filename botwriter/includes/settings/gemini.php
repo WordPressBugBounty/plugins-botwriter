@@ -36,7 +36,7 @@ function botwriter_get_gemini_image_models() {
         'gemini-3.1-flash-lite-image' => 'Gemini 3.1 Flash Lite Image (fastest, lowest cost)',
         'gemini-3.1-flash-image' => 'Gemini 3.1 Flash Image (balanced, recommended)',
         'gemini-3-pro-image' => 'Gemini 3 Pro Image (advanced, 4K)',
-        'gemini-2.5-flash-image' => 'Gemini 2.5 Flash Image (legacy)',
+        'gemini-nano-banana-2.1' => 'Nano Banana 2.1',
     ];
 }
 
@@ -56,7 +56,7 @@ function botwriter_get_gemini_image_info() {
             'Gemini 3.1 Flash Lite Image' => __('See pricing page', 'botwriter'),
             'Gemini 3.1 Flash Image' => __('See pricing page', 'botwriter'),
             'Gemini 3 Pro Image' => __('See pricing page', 'botwriter'),
-            'Gemini 2.5 Flash Image (legacy)' => __('See pricing page', 'botwriter'),
+            'Nano Banana 2.1' => __('See pricing page', 'botwriter'),
         ],
         'features' => [
             __('Uses the same API key as Google Gemini text models', 'botwriter'),

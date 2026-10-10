@@ -22,9 +22,9 @@ function botwriter_get_openrouter_info() {
         'pricing_url' => 'https://openrouter.ai/models',
         'free_credits' => __('Some models are 100% FREE! Also offers free credits for new users.', 'botwriter'),
         'pricing_summary' => [
-            'claude-sonnet-4' => '~$3/1M input, $15/1M output',
-            'gpt-4o' => '~$2.5/1M input, $10/1M output',
-            'llama-3.3-70b' => '~$0.40/1M input, $0.40/1M output',
+            'openai/gpt-oss-20b' => __('See pricing page (varies by endpoint)', 'botwriter'),
+            'openai/gpt-6-luna' => '$0.10/1M input, $0.50/1M output',
+            'anthropic/claude-haiku-5.5' => '$0.10/1M input, $0.50/1M output',
             'FREE models' => '$0 (with limits)',
         ],
         'features' => [
